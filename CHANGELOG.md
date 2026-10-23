@@ -3,6 +3,16 @@
 Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
 `0.0.X` para correcciones. La versión sale en el pie de la app.
 
+## 0.2.0
+
+- **Botón Diagnóstico**, al final de la página. Copia de un toque un texto
+  corto con lo que la app sabe: versión, lugar, ajustes, de dónde y de cuándo
+  es cada dato (previsión, Kp, órbitas), los factores de la hora actual, la
+  mejor ventana y el último error. Si algo sale raro, pégalo en el chat. Si el
+  navegador no deja copiar, el texto queda seleccionado para copiarlo a mano.
+- Los fallos internos de la app quedan apuntados para el Diagnóstico, aunque
+  en pantalla no se vean.
+
 ## 0.1.1
 
 - **Satélites aunque el servidor no pueda bajar las órbitas.** CelesTrak no

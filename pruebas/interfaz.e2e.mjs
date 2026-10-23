@@ -94,6 +94,18 @@ try {
 
   assert.match(await page.textContent('#fuentes'), /24 órbitas del despliegue/);
 
+  // Diagnóstico: abre, trae lo importante y queda copiado (o seleccionado).
+  await ctx.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: url.replace(/\/$/, '') });
+  await page.getByRole('button', { name: 'Diagnóstico' }).click();
+  const diag = await page.inputValue('#txt-diagnostico');
+  assert.match(diag, /^Drone Forecast v\d+\.\d+\.\d+/);
+  assert.match(diag, /Lugar: Getafe/);
+  assert.match(diag, /Órbitas: 24 \(despliegue\)/);
+  assert.match(diag, /Ahora \d\d:\d\d → /);
+  await page.locator('#estado-diagnostico').filter({ hasText: /Copiado|Copiar/ }).waitFor();
+  assert.equal(await page.evaluate(() => navigator.clipboard.readText()), diag, 'el portapapeles tiene el informe');
+  await page.locator('#dlg-diagnostico button[value="cerrar"]').click();
+
   // Despliegue sin órbitas (CelesTrak no deja entrar a GitHub): el móvil las
   // pide él mismo, las guarda y, si CelesTrak cae, tira de las guardadas.
   gnssVacio = true;

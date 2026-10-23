@@ -9,7 +9,7 @@ bloqueada (con el motivo, y se pasa a la siguiente).
 
 ## Lista
 
-- [ ] **Botón Diagnóstico**: en el pie, un botón que copia al portapapeles un
+- [x] **Botón Diagnóstico** (0.2.0): en el pie, un botón que copia al portapapeles un
   texto corto con versión, lugar, ajustes, origen y antigüedad de cada dato
   (previsión, Kp, órbitas), los factores de la hora actual y el último error.
   Es lo que Javi pega en el chat cuando algo sale raro, porque en el móvil no

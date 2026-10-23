@@ -1,5 +1,6 @@
 // La interfaz. Pinta lo que devuelve construirPrevision(); no decide nada.
 
+import { informeDiagnostico } from '../motor/diagnostico.js';
 import { DRONES } from '../motor/drones.js';
 import { MISIONES, MODOS } from '../motor/misiones.js';
 import { construirPrevision, normalizarAjustes } from '../motor/prevision.js';
@@ -43,6 +44,7 @@ const estado = {
   gnss: { satelites: [], actualizado: null, origen: null },
   dia: null,
   abierta: null,
+  fallo: '',
 };
 
 export function esc(s) {
@@ -347,6 +349,52 @@ function pintar() {
   pintarPie();
 }
 
+// ---------- Diagnóstico ----------
+
+function textoDiagnostico() {
+  let p = null;
+  try {
+    p = prevision();
+  } catch {
+    /* el error ya está en estado.error */
+  }
+  return informeDiagnostico({
+    version: VERSION,
+    lugar: estado.lugar,
+    ajustes: estado.ajustes,
+    prevision: p,
+    meteo: {
+      descargado: estado.descargado,
+      desdeCache: estado.desdeCache,
+      horas: estado.meteo?.horas.length ?? 0,
+      elevacion: estado.meteo?.elevacion ?? null,
+    },
+    kp: { tramos: estado.kp.length },
+    orbitas: { total: estado.gnss.satelites.length, origen: estado.gnss.origen, actualizado: estado.gnss.actualizado },
+    error: [estado.error, estado.fallo].filter(Boolean).join(' | '),
+    navegador: navigator.userAgent,
+  });
+}
+
+async function abrirDiagnostico() {
+  const texto = textoDiagnostico();
+  $('#txt-diagnostico').value = texto;
+  $('#estado-diagnostico').textContent = '';
+  $('#dlg-diagnostico').showModal();
+  await copiarDiagnostico(texto);
+}
+
+async function copiarDiagnostico(texto = $('#txt-diagnostico').value) {
+  try {
+    await navigator.clipboard.writeText(texto);
+    $('#estado-diagnostico').textContent = 'Copiado. Pégalo en el chat.';
+  } catch {
+    // Sin permiso de portapapeles: se deja seleccionado para copiarlo a mano.
+    $('#txt-diagnostico').select();
+    $('#estado-diagnostico').textContent = 'Mantén pulsado el texto y elige «Copiar».';
+  }
+}
+
 // ---------- Lugar ----------
 
 function pintarFavoritos() {
@@ -402,6 +450,15 @@ function abrirLugar() {
 function enlazar() {
   $('#btn-lugar').addEventListener('click', abrirLugar);
   $('#btn-gps').addEventListener('click', usarGPS);
+  $('#btn-diagnostico').addEventListener('click', abrirDiagnostico);
+  $('#btn-copiar-diagnostico').addEventListener('click', () => copiarDiagnostico());
+  // Un fallo de JavaScript no se ve en el móvil: se guarda para el Diagnóstico.
+  window.addEventListener('error', (e) => {
+    estado.fallo = `${e.message} (${String(e.filename ?? '').split('/').pop()}:${e.lineno ?? '?'})`;
+  });
+  window.addEventListener('unhandledrejection', (e) => {
+    estado.fallo = `Promesa: ${e.reason?.message ?? e.reason}`;
+  });
   $('#btn-recargar').addEventListener('click', () => {
     descargar();
     cargarKp().then((kp) => {

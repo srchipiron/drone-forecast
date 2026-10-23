@@ -40,7 +40,7 @@ const estado = {
   error: '',
   cargando: false,
   kp: [],
-  gnss: { satelites: [], actualizado: null },
+  gnss: { satelites: [], actualizado: null, origen: null },
   dia: null,
   abierta: null,
 };
@@ -321,7 +321,10 @@ function pintarPie() {
   $('#version').textContent = `v${VERSION}`;
   const partes = ['Tiempo: Open-Meteo', 'Kp: NOAA SWPC', 'Órbitas: CelesTrak'];
   if (estado.descargado) partes.push(`previsión ${hace(estado.descargado)}`);
-  if (estado.gnss.actualizado) partes.push(`órbitas ${hace(Date.parse(estado.gnss.actualizado))}`);
+  if (estado.gnss.actualizado) {
+    const origen = { despliegue: 'del despliegue', guardadas: 'guardadas', celestrak: 'de CelesTrak' }[estado.gnss.origen] ?? '';
+    partes.push(`${estado.gnss.satelites.length} órbitas ${origen} ${hace(Date.parse(estado.gnss.actualizado))}`);
+  }
   $('#fuentes').textContent = partes.join(' · ');
 }
 

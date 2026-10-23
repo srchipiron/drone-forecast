@@ -3,6 +3,15 @@
 Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
 `0.0.X` para correcciones. La versión sale en el pie de la app.
 
+## 0.1.1
+
+- **Satélites aunque el servidor no pueda bajar las órbitas.** CelesTrak no
+  deja entrar a los servidores de GitHub, así que la primera versión salió sin
+  órbitas y el recuento de satélites decía «sin dato». Ahora, si pasa eso, el
+  móvil las pide él mismo a CelesTrak y las guarda 12 horas.
+- El pie dice cuántas órbitas hay y de dónde salieron (del despliegue,
+  de CelesTrak o guardadas), para saber desde el móvil que funciona.
+
 ## 0.1.0
 
 Primera versión.

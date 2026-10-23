@@ -1,0 +1,14 @@
+{
+  "name": "drone-forecast",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Previsión de vuelo para drones: semáforo por horas, viento en altura, Kp, satélites GNSS y mejor ventana del día.",
+  "type": "module",
+  "scripts": {
+    "test": "node --test \"pruebas/*.test.mjs\"",
+    "test:ui": "node pruebas/interfaz.e2e.mjs",
+    "datos": "node scripts/descargar-datos.mjs",
+    "servir": "npx --yes serve -l 8080 ."
+  },
+  "engines": { "node": ">=20" }
+}

@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Drone Forecast</title>
+  <meta name="description" content="¿Se puede volar? Viento en altura, rachas, lluvia, Kp, satélites y la mejor ventana del día para tu dron.">
+  <meta name="theme-color" content="#0f172a">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icono.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icono-192.png">
+  <link rel="stylesheet" href="styles.css">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://services.swpc.noaa.gov; img-src 'self' data:; style-src 'self'; script-src 'self'; object-src 'none'; base-uri 'none'">
+</head>
+<body>
+  <header class="cabecera">
+    <button id="btn-lugar" class="lugar" type="button" aria-haspopup="dialog">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s7-6.2 7-12a7 7 0 1 0-14 0c0 5.8 7 12 7 12Z"/><circle cx="12" cy="10" r="2.5"/></svg>
+      <span id="nombre-lugar">Elegir lugar</span>
+    </button>
+    <button id="btn-gps" class="icono" type="button" aria-label="Usar mi ubicación">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="7.5"/></svg>
+    </button>
+    <button id="btn-recargar" class="icono" type="button" aria-label="Actualizar previsión">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>
+    </button>
+  </header>
+
+  <main>
+    <div class="modo" role="radiogroup" aria-label="Modo de uso">
+      <button type="button" role="radio" data-modo="recreativo">Recreativo</button>
+      <button type="button" role="radio" data-modo="profesional">Profesional</button>
+    </div>
+
+    <section class="perfil tarjeta">
+      <label>Dron
+        <select id="sel-dron"></select>
+      </label>
+      <label id="campo-mision">Misión
+        <select id="sel-mision"></select>
+      </label>
+      <label class="altitud">Altura de vuelo <output id="val-altitud">120 m</output>
+        <input id="rng-altitud" type="range" min="10" max="120" step="5" value="120">
+      </label>
+      <p id="desc-mision" class="nota"></p>
+    </section>
+
+    <section id="aviso" class="aviso" hidden></section>
+    <section id="ahora" class="tarjeta veredicto" aria-live="polite"></section>
+    <section id="dias" class="dias" aria-label="Mejor ventana de cada día"></section>
+    <section id="horas" class="tarjeta horas"></section>
+    <section id="checklist" class="tarjeta checklist" hidden></section>
+
+    <details id="ajustes" class="tarjeta">
+      <summary>Ajustes</summary>
+      <div class="rejilla-ajustes">
+        <label>Unidades de viento
+          <select id="aj-unidades">
+            <option value="kmh">km/h</option>
+            <option value="ms">m/s</option>
+            <option value="kn">nudos</option>
+          </select>
+        </label>
+        <label>Viento cómodo (% del límite del dron)
+          <input id="aj-margen" type="number" min="30" max="100" step="5" inputmode="numeric">
+        </label>
+        <label>Satélites mínimos
+          <input id="aj-sats" type="number" min="4" max="40" inputmode="numeric">
+        </label>
+        <label>Kp máximo
+          <input id="aj-kp" type="number" min="1" max="9" inputmode="numeric">
+        </label>
+        <label class="casilla"><input id="aj-noche" type="checkbox"> Permitir vuelo nocturno</label>
+        <label id="campo-interior">Temperatura interior (termografía)
+          <input id="aj-interior" type="number" min="5" max="35" inputmode="numeric">
+        </label>
+      </div>
+      <fieldset id="dron-personalizado">
+        <legend>Dron personalizado</legend>
+        <label>Viento máximo (m/s) <input id="pz-viento" type="number" min="2" max="30" step="0.1" inputmode="decimal"></label>
+        <label>Temperatura mínima (°C) <input id="pz-tmin" type="number" min="-40" max="20" inputmode="numeric"></label>
+        <label>Temperatura máxima (°C) <input id="pz-tmax" type="number" min="10" max="60" inputmode="numeric"></label>
+        <label class="casilla"><input id="pz-ip" type="checkbox"> Resiste lluvia ligera (IP45 o más)</label>
+      </fieldset>
+    </details>
+
+    <footer class="pie">
+      <p><a href="https://drones.enaire.es/" target="_blank" rel="noopener noreferrer">Consulta las zonas geográficas UAS en ENAIRE Drones</a> antes de cada vuelo.</p>
+      <p id="fuentes" class="nota"></p>
+      <p class="nota">Orientativo: la decisión y la responsabilidad del vuelo son del piloto.</p>
+      <p class="nota">Drone Forecast <span id="version"></span></p>
+    </footer>
+  </main>
+
+  <dialog id="dlg-lugar" aria-labelledby="titulo-lugar">
+    <form method="dialog" class="dlg-cabecera">
+      <h2 id="titulo-lugar">Lugar de vuelo</h2>
+      <button class="icono" value="cerrar" aria-label="Cerrar">✕</button>
+    </form>
+    <form id="form-buscar" class="buscar">
+      <input id="txt-buscar" type="search" placeholder="Pueblo, ciudad o paraje" autocomplete="off" enterkeyhint="search">
+      <button type="submit">Buscar</button>
+    </form>
+    <p class="nota">También vale «40.4168, -3.7038».</p>
+    <ul id="resultados" class="lista-lugares"></ul>
+    <h3>Favoritos</h3>
+    <ul id="favoritos" class="lista-lugares"></ul>
+  </dialog>
+
+  <script type="module" src="src/app/main.js"></script>
+</body>
+</html>

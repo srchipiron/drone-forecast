@@ -91,7 +91,7 @@ try {
   await page.locator('#horas .hora button').nth(3).click();
   assert.ok((await page.locator('#horas .factor').count()) >= 10);
 
-  await page.screenshot({ path: process.env.CAPTURA ?? '/dev/null', fullPage: true });
+  if (process.env.CAPTURA) await page.screenshot({ path: process.env.CAPTURA, fullPage: true });
   assert.equal(errores.length, 0, errores.join('\n'));
   console.log('ok - interfaz');
 } finally {

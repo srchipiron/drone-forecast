@@ -32,9 +32,10 @@ function meteo() {
 }
 const gnss = { actualizado: new Date(ahora).toISOString(), satelites: Array.from({ length: 24 }, (_, k) => ({ nombre: `GPS-${k}`, constelacion: 'GPS', epoca: ahora, n: 2.00563, e: 0.005, i: 55, raan: (k % 6) * 60, argp: 0, M: Math.floor(k / 6) * 90 + (k % 6) * 15 })) };
 
+let gnssVacio = false;
 const srv = createServer(async (req, res) => {
   const p = normalize(decodeURIComponent(new URL(req.url, 'http://x').pathname)).replace(/^\/+/, '');
-  if (p === 'data/gnss.json') return res.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify(gnss));
+  if (p === 'data/gnss.json') return res.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify(gnssVacio ? { satelites: [] } : gnss));
   try {
     const cuerpo = await readFile(join(raiz, p || 'index.html'));
     res.writeHead(200, { 'content-type': TIPOS[extname(p || 'index.html')] ?? 'application/octet-stream' }).end(cuerpo);
@@ -90,6 +91,48 @@ try {
   // Tocar una hora la abre con sus factores.
   await page.locator('#horas .hora button').nth(3).click();
   assert.ok((await page.locator('#horas .factor').count()) >= 10);
+
+  assert.match(await page.textContent('#fuentes'), /24 órbitas del despliegue/);
+
+  // Diagnóstico: abre, trae lo importante y queda copiado (o seleccionado).
+  await ctx.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: url.replace(/\/$/, '') });
+  await page.getByRole('button', { name: 'Diagnóstico' }).click();
+  const diag = await page.inputValue('#txt-diagnostico');
+  assert.match(diag, /^Drone Forecast v\d+\.\d+\.\d+/);
+  assert.match(diag, /Lugar: Getafe/);
+  assert.match(diag, /Órbitas: 24 \(despliegue\)/);
+  assert.match(diag, /Ahora \d\d:\d\d → /);
+  await page.locator('#estado-diagnostico').filter({ hasText: /Copiado|Copiar/ }).waitFor();
+  assert.equal(await page.evaluate(() => navigator.clipboard.readText()), diag, 'el portapapeles tiene el informe');
+  await page.locator('#dlg-diagnostico button[value="cerrar"]').click();
+
+  // Despliegue sin órbitas (CelesTrak no deja entrar a GitHub): el móvil las
+  // pide él mismo, las guarda y, si CelesTrak cae, tira de las guardadas.
+  gnssVacio = true;
+  const ctx2 = await navegador.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
+  await ctx2.addInitScript(() => {
+    if (!localStorage.getItem('drone-forecast:lugar'))
+      localStorage.setItem('drone-forecast:lugar', JSON.stringify({ nombre: 'Getafe', zona: '', lat: 40.3057, lon: -3.7329 }));
+  });
+  const p2 = await ctx2.newPage();
+  p2.on('pageerror', (e) => errores.push(e.message));
+  for (const r of ['https://api.open-meteo.com/**', 'https://services.swpc.noaa.gov/**']) await p2.route(r, (x) => x.fulfill({ json: r.includes('noaa') ? [] : meteo() }));
+  let pedidasCelestrak = 0;
+  const omm = (k) => ({ OBJECT_NAME: `SAT ${k}`, EPOCH: new Date(ahora).toISOString().replace('Z', ''), MEAN_MOTION: 2.00563, ECCENTRICITY: 0.005, INCLINATION: 55, RA_OF_ASC_NODE: (k % 6) * 60, ARG_OF_PERICENTER: 0, MEAN_ANOMALY: Math.floor(k / 6) * 90 + (k % 6) * 15 });
+  await p2.route('https://celestrak.org/**', (x) => {
+    pedidasCelestrak++;
+    return x.request().url().includes('gps-ops') ? x.fulfill({ json: Array.from({ length: 24 }, (_, k) => omm(k)) }) : x.fulfill({ status: 503, body: '' });
+  });
+  await p2.goto(url);
+  await p2.locator('#fuentes').filter({ hasText: /24 órbitas de CelesTrak/ }).waitFor();
+  assert.match(await p2.textContent('#ahora .resumen'), /Satélites\s*\d+/);
+  const antes = pedidasCelestrak;
+  await p2.unroute('https://celestrak.org/**');
+  await p2.route('https://celestrak.org/**', (x) => x.abort());
+  await p2.reload();
+  await p2.locator('#fuentes').filter({ hasText: /24 órbitas guardadas/ }).waitFor();
+  assert.equal(antes, 4, 'una petición por constelación');
+  gnssVacio = false;
 
   if (process.env.CAPTURA) await page.screenshot({ path: process.env.CAPTURA, fullPage: true });
   assert.equal(errores.length, 0, errores.join('\n'));

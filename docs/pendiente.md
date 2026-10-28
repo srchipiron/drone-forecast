@@ -14,6 +14,10 @@ bloqueada (con el motivo, y se pasa a la siguiente).
   (previsión, Kp, órbitas), los factores de la hora actual y el último error.
   Es lo que Javi pega en el chat cuando algo sale raro, porque en el móvil no
   hay consola.
+- [ ] **Zonas UAS de ENAIRE** (Javi lo pidió primero: ahí se ve si un vuelo necesita permiso): comprobar si ENAIRE publica las zonas
+  geográficas UAS en un servicio abierto con CORS. Si sí, decir en el
+  veredicto si el punto cae dentro de una zona (sin mapa todavía). Si no se
+  puede, marcar `[~]` con lo que se ha probado.
 - [ ] **Resumen de favoritos**: en el diálogo de lugar, cada favorito con su
   mejor ventana de hoy y mañana (una descarga por favorito, con caché), para
   elegir dónde volar sin abrirlos uno a uno.
@@ -35,7 +39,3 @@ bloqueada (con el motivo, y se pasa a la siguiente).
 - [ ] **Aviso de ventana**: con la app instalada, si el navegador lo permite
   (Periodic Background Sync), una notificación cuando mañana haya una ventana
   verde en un favorito. Si no lo permite, el botón no sale.
-- [ ] **Zonas UAS de ENAIRE**: comprobar si ENAIRE publica las zonas
-  geográficas UAS en un servicio abierto con CORS. Si sí, decir en el
-  veredicto si el punto cae dentro de una zona (sin mapa todavía). Si no se
-  puede, marcar `[~]` con lo que se ha probado.

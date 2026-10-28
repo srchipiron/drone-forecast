@@ -3,6 +3,18 @@
 Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
 `0.0.X` para correcciones. La versión sale en el pie de la app.
 
+## 0.2.1
+
+- **El botón de ubicación ya no dice siempre «no hay permiso».** Ahora
+  distingue qué pasa y te dice qué tocar: si Chrome no tiene permiso (y
+  dónde dárselo), si la ubicación del móvil está apagada o si el GPS ha
+  tardado. Si tarda, reintenta solo con el GPS fino antes de rendirse.
+- Mientras busca, el icono de ubicación gira.
+- El motivo exacto queda apuntado en el Diagnóstico.
+- **ENAIRE Drones, a mano**: bajo el veredicto sale «¿Hace falta permiso
+  aquí?», que abre el mapa de zonas UAS de ENAIRE. Antes solo estaba al
+  final de la página.
+
 ## 0.2.0
 
 - **Botón Diagnóstico**, al final de la página. Copia de un toque un texto

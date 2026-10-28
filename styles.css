@@ -183,7 +183,13 @@ body[data-modo="recreativo"] .perfil label:first-child { grid-column: 1 / -1; }
 
 .sol { color: var(--suave); font-size: 0.85rem; }
 
-.enaire { margin: 0.6rem 0 0; }
+.enaire { margin: 0.75rem 0 0; padding: 0.6rem 0.75rem; border-radius: 10px; background: var(--fondo); font-size: 0.9rem; }
+
+.enaire p { margin: 0.2rem 0; }
+
+.enaire ul { margin: 0.3rem 0; padding-left: 1.1rem; }
+
+.enaire.dentro { background: var(--precaucion-fondo); }
 
 .enaire a { color: var(--acento); font-weight: 600; }
 

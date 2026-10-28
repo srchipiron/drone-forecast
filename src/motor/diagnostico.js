@@ -30,6 +30,7 @@ function fecha(ms, zona) {
  * @param {{descargado: number, desdeCache: boolean, horas: number, elevacion: number | null}} d.meteo
  * @param {{tramos: number}} d.kp
  * @param {{total: number, origen: string | null, actualizado: string | null}} d.orbitas
+ * @param {{estado: string, zonas: object[], motivos?: string[]} | null} [d.enaire]
  * @param {string} d.error
  * @param {string} [d.navegador]
  * @param {number} [d.ahora]
@@ -59,6 +60,14 @@ export function informeDiagnostico(d) {
   l.push(
     `Órbitas: ${d.orbitas.total}${d.orbitas.origen ? ` (${d.orbitas.origen})` : ''}${d.orbitas.actualizado ? ` ${hace(Date.parse(d.orbitas.actualizado), ahora)}` : ''}${p && !p.satelitesDisponibles ? ' · NO SE USAN' : ''}`,
   );
+  if (d.enaire) {
+    const z = d.enaire;
+    l.push(
+      `ENAIRE: ${z.estado}${z.zonas?.length ? ` · ${z.zonas.length} zonas (${z.zonas.map((x) => x.nombre).slice(0, 3).join(', ')})` : ''}${z.motivos?.length ? ` · fallos: ${z.motivos.join('; ')}` : ''}`,
+    );
+  } else if (d.lugar) {
+    l.push('ENAIRE: consultando');
+  }
   if (p?.actual) {
     const h = p.actual;
     l.push(`Ahora ${hora(h.ms, zona)} → ${ICONO[h.estado]} ${h.estado}`);

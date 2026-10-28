@@ -7,7 +7,7 @@ import { construirPrevision, normalizarAjustes } from '../motor/prevision.js';
 import { fmtViento } from '../motor/unidades.js';
 import { VERSION } from '../version.js';
 import { almacen } from './almacen.js';
-import { buscarLugar, cargarKp, cargarPrevision, cargarSatelites, leerDescarga } from './datos.js';
+import { buscarLugar, cargarKp, cargarPrevision, cargarSatelites, consultarEnaire, leerDescarga } from './datos.js';
 import { mensajeUbicacion, pedirUbicacion } from './ubicacion.js';
 
 const $ = (s) => document.querySelector(s);
@@ -46,6 +46,9 @@ const estado = {
   dia: null,
   abierta: null,
   fallo: '',
+  // Zonas de ENAIRE del lugar actual: null mientras se consulta.
+  enaire: null,
+  enaireDe: '',
 };
 
 export function esc(s) {
@@ -107,6 +110,7 @@ function ponerLugar(lugar) {
   estado.dia = null;
   estado.abierta = null;
   descargar();
+  cargarEnaire();
 }
 
 async function usarGPS() {
@@ -205,8 +209,42 @@ function pintarAhora(p) {
         : '<p class="ventana-hoy">Hoy no queda ninguna hora volable.</p>'
     }
     <p class="sol">☀ ${esc(hora(hoy?.sol.salida, p.zona))} – ${esc(hora(hoy?.sol.puesta, p.zona))} · hora dorada desde ${esc(hora(hoy?.sol.doradaTarde, p.zona))}</p>
-    <p class="enaire"><a href="https://drones.enaire.es/" target="_blank" rel="noopener noreferrer">¿Hace falta permiso aquí? Míralo en ENAIRE Drones</a></p>
+    ${bloqueEnaire()}
     <details><summary>Todos los factores</summary>${listaFactores(h)}</details>`;
+}
+
+const MAPA_ENAIRE = '<a href="https://drones.enaire.es/" target="_blank" rel="noopener noreferrer">mapa de ENAIRE Drones</a>';
+
+function bloqueEnaire() {
+  const z = estado.enaire;
+  if (!z) return `<div class="enaire"><p>Zonas UAS: consultando ENAIRE…</p></div>`;
+  if (z.estado === 'dentro') {
+    const n = z.zonas.length;
+    return `<div class="enaire dentro"><p><strong>Dentro de ${n} zona${n === 1 ? '' : 's'} UAS de ENAIRE</strong>${z.fallidas.length ? ' (y alguna capa no respondió)' : ''}:</p>
+      <ul>${z.zonas
+        .slice(0, 6)
+        .map(
+          (x) =>
+            `<li><strong>${esc(x.nombre)}</strong> · ${esc(x.capa)}${x.restriccion ? ` · ${esc(x.restriccion)}` : ''}${x.motivo ? ` · ${esc(x.motivo)}` : ''}${x.mensaje ? `<br><span class="nota">${esc(x.mensaje)}</span>` : ''}</li>`,
+        )
+        .join('')}</ul>
+      <p>Revisa las condiciones en el ${MAPA_ENAIRE} antes de volar.</p></div>`;
+  }
+  if (z.estado === 'fuera')
+    return `<div class="enaire fuera"><p>No consta en ninguna zona UAS de ENAIRE. Compruébalo igualmente en el ${MAPA_ENAIRE} (NOTAM y zonas temporales).</p></div>`;
+  return `<div class="enaire sin-dato"><p>${z.estado === 'incompleto' ? 'No se pudo consultar ENAIRE del todo' : 'No se pudo consultar ENAIRE'}: míralo en el ${MAPA_ENAIRE} antes de volar.</p></div>`;
+}
+
+async function cargarEnaire() {
+  if (!estado.lugar) return;
+  const clave = `${estado.lugar.lat},${estado.lugar.lon}`;
+  if (estado.enaireDe === clave && estado.enaire) return;
+  estado.enaireDe = clave;
+  estado.enaire = null;
+  const r = await consultarEnaire(estado.lugar.lat, estado.lugar.lon);
+  if (estado.enaireDe !== clave) return; // el lugar cambió mientras tanto
+  estado.enaire = r;
+  pintar();
 }
 
 function pintarDias(p) {
@@ -386,6 +424,7 @@ function textoDiagnostico() {
     },
     kp: { tramos: estado.kp.length },
     orbitas: { total: estado.gnss.satelites.length, origen: estado.gnss.origen, actualizado: estado.gnss.actualizado },
+    enaire: estado.enaire,
     error: [estado.error, estado.fallo].filter(Boolean).join(' | '),
     navegador: navigator.userAgent,
   });
@@ -568,6 +607,7 @@ async function arrancar() {
       /* se descarga de nuevo */
     }
   }
+  cargarEnaire();
   const [kp, gnss] = await Promise.all([cargarKp(), cargarSatelites(), descargar()]);
   estado.kp = kp;
   estado.gnss = gnss;

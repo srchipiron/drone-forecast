@@ -1,6 +1,7 @@
 // Todo lo que viene de la red. Lo que llega de fuera son datos: se valida al
 // leerlo (src/motor/*) y nunca se mete en la página sin escapar.
 
+import { CAPAS, leerZonas, resumenZonas, urlConsultaEnaire } from '../motor/enaire.js';
 import { URL_KP, leerKp } from '../motor/kp.js';
 import { leerBusqueda, leerConsenso, leerPrevision, urlBusqueda, urlConsenso, urlPrevision } from '../motor/meteo.js';
 import { desdeOMM, satValido } from '../motor/satelites.js';
@@ -76,4 +77,19 @@ export async function cargarSatelites() {
 
 export async function buscarLugar(texto) {
   return leerBusqueda(await pedir(urlBusqueda(texto), 10000));
+}
+
+// Zonas UAS de ENAIRE en el punto, capa a capa. Una capa que falla queda
+// como fallida: resumenZonas no dirá «fuera de zonas» con un hueco.
+export async function consultarEnaire(lat, lon) {
+  const resultados = await Promise.all(
+    CAPAS.map(async (c) => {
+      try {
+        return { capa: c.nombre, ok: true, zonas: leerZonas(await pedir(urlConsultaEnaire(c.id, lat, lon), 15000), c.nombre) };
+      } catch (e) {
+        return { capa: c.nombre, ok: false, motivo: e.message };
+      }
+    }),
+  );
+  return { ...resumenZonas(resultados), motivos: resultados.filter((r) => !r.ok).map((r) => `${r.capa}: ${r.motivo}`) };
 }

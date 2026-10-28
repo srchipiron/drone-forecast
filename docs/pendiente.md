@@ -14,7 +14,7 @@ bloqueada (con el motivo, y se pasa a la siguiente).
   (previsión, Kp, órbitas), los factores de la hora actual y el último error.
   Es lo que Javi pega en el chat cuando algo sale raro, porque en el móvil no
   hay consola.
-- [ ] **Zonas UAS de ENAIRE** (Javi lo pidió primero: ahí se ve si un vuelo necesita permiso): comprobar si ENAIRE publica las zonas
+- [x] **Zonas UAS de ENAIRE** (0.4.0; Javi lo pidió primero: ahí se ve si un vuelo necesita permiso): comprobar si ENAIRE publica las zonas
   geográficas UAS en un servicio abierto con CORS. Si sí, decir en el
   veredicto si el punto cae dentro de una zona (sin mapa todavía). Si no se
   puede, marcar `[~]` con lo que se ha probado.

@@ -23,6 +23,13 @@ export const VARIABLES = [
 // Modelos para medir el acuerdo: si discrepan, la previsión vale menos.
 export const MODELOS_CONSENSO = ['ecmwf_ifs025', 'gfs_seamless', 'icon_seamless', 'meteofrance_seamless'];
 
+export const NOMBRES_MODELO = {
+  ecmwf_ifs025: 'ECMWF',
+  gfs_seamless: 'GFS',
+  icon_seamless: 'ICON',
+  meteofrance_seamless: 'Météo-France',
+};
+
 const BASE = 'https://api.open-meteo.com/v1/forecast';
 const COMUNES = 'wind_speed_unit=ms&timezone=auto&timeformat=unixtime&forecast_days=7';
 
@@ -84,11 +91,17 @@ export function leerConsenso(json) {
   if (!h || !Array.isArray(h.time)) return new Map();
   const series = Object.keys(h)
     .filter((k) => k.startsWith('wind_speed_10m_'))
-    .map((k) => h[k]);
+    .map((k) => [k.slice('wind_speed_10m_'.length), h[k]]);
   const salida = new Map();
   h.time.forEach((t, i) => {
-    const vals = series.map((s) => num(s?.[i])).filter((v) => v !== null);
-    if (vals.length >= 2) salida.set(t * 1000, { dispersion: Math.max(...vals) - Math.min(...vals), modelos: vals.length });
+    const valores = {};
+    for (const [modelo, s] of series) {
+      const v = num(s?.[i]);
+      if (v !== null) valores[modelo] = v;
+    }
+    const vals = Object.values(valores);
+    if (vals.length >= 2)
+      salida.set(t * 1000, { dispersion: Math.max(...vals) - Math.min(...vals), modelos: vals.length, valores });
   });
   return salida;
 }

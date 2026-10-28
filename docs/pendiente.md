@@ -24,17 +24,17 @@ bloqueada (con el motivo, y se pasa a la siguiente).
 - [x] **Perfil de viento** (0.6.0): al abrir una hora, el viento a 10, 80, 120 y 180 m
   y la altura de vuelo marcada, en una barra horizontal por nivel (sin
   estilos en línea: la CSP los bloquea).
-- [ ] **Gráfica del día**: una línea SVG del viento a la altura de vuelo y de
+- [x] **Gráfica del día** (0.7.0): una línea SVG del viento a la altura de vuelo y de
   las rachas a lo largo del día, con el límite del dron como raya, encima de
   la lista de horas.
-- [ ] **Diario de vuelos**: botón «He volado» en la hora actual que guarda
+- [x] **Diario de vuelos** (0.7.0): botón «He volado» en la hora actual que guarda
   fecha, lugar, dron, misión, la previsión de esa hora y una nota y valoración
   (bien / regular / mal). Lista de vuelos en Ajustes y exportar a JSON.
   Persistencia en `almacen.js`.
-- [ ] **Informe para el cliente** (modo profesional): botón que abre una vista
+- [x] **Informe para el cliente** (0.7.0) (modo profesional): botón que abre una vista
   imprimible (CSS `@media print`) con lugar, fecha, misión, ventana elegida y
   la tabla de factores, para guardarla como PDF desde el móvil.
-- [ ] **Detalle por modelo**: en «Acuerdo entre modelos», el viento de cada
+- [x] **Detalle por modelo** (0.7.0): en «Acuerdo entre modelos», el viento de cada
   modelo (ECMWF, GFS, ICON, Météo-France) en vez de solo la dispersión.
 - [ ] **Aviso de ventana**: con la app instalada, si el navegador lo permite
   (Periodic Background Sync), una notificación cuando mañana haya una ventana

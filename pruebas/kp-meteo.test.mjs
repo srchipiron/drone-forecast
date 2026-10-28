@@ -41,7 +41,7 @@ test('Open-Meteo sin horas es un error, no una previsión vacía', () => {
 
 test('consenso: dispersión entre modelos y modelos que faltan', () => {
   const c = leerConsenso({ hourly: { time: [100, 200], wind_speed_10m_ecmwf_ifs025: [3, null], wind_speed_10m_gfs_seamless: [7, 5], wind_speed_10m_icon_seamless: [4, null] } });
-  assert.deepEqual(c.get(100000), { dispersion: 4, modelos: 3 });
+  assert.deepEqual(c.get(100000), { dispersion: 4, modelos: 3, valores: { ecmwf_ifs025: 3, gfs_seamless: 7, icon_seamless: 4 } });
   assert.equal(c.has(200000), false);
 });
 

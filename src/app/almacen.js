@@ -34,6 +34,8 @@ export const almacen = {
   // Órbitas bajadas de CelesTrak desde el móvil (unos 20 kB).
   orbitas: () => leer('orbitas', null),
   guardarOrbitas: (o) => escribir('orbitas', o),
+  diario: () => leer('diario', []),
+  guardarDiario: (d) => escribir('diario', d),
   checklist: () => leer('checklist', { dia: '', hechos: [] }),
   guardarChecklist: (c) => escribir('checklist', c),
 };

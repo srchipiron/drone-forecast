@@ -3,6 +3,24 @@
 Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
 `0.0.X` para correcciones. La versión sale en el pie de la app.
 
+## 0.7.0
+
+- **Gráfica del día**, encima de la lista de horas: el viento (línea azul) y
+  las rachas (discontinua) a tu altura de vuelo, con las rayas de «cómodo» y
+  «límite» de tu dron. Debajo va una franja con el color del semáforo de cada
+  hora y una marca en la hora actual.
+- **Diario de vuelos.** Al terminar, pulsa «He volado» y valora el vuelo
+  (bien, regular o mal), con una nota si quieres. Se guarda junto a lo que
+  decía la app en ese momento. El diario resume cuántos vuelos salieron bien
+  cuando la app decía verde o ámbar: así sabrás si el margen de viento te va
+  corto o largo. Se puede exportar a JSON y borrar vuelo a vuelo.
+- **Informe para el cliente** (modo profesional): un botón genera una página
+  para imprimir o guardar en PDF desde el móvil. Lleva el lugar, la misión, el
+  dron, el día, la mejor ventana, las zonas de ENAIRE, la tabla hora a hora y
+  los factores.
+- **Acuerdo entre modelos con detalle**: además de si coinciden, dice el
+  viento que da cada modelo (ECMWF, GFS, ICON y Météo-France).
+
 ## 0.6.0
 
 - **Perfil de viento.** Al tocar una hora, antes de los factores, sale el

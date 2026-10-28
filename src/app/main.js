@@ -1,6 +1,8 @@
 // La interfaz. Pinta lo que devuelve construirPrevision(); no decide nada.
 
 import { informeDiagnostico } from '../motor/diagnostico.js';
+import { VALORACIONES, anadirEntrada, crearEntrada, diarioValido, resumenDiario } from '../motor/diario.js';
+import { graficaDia } from '../motor/grafica.js';
 import { DRONES } from '../motor/drones.js';
 import { MISIONES, MODOS } from '../motor/misiones.js';
 import { construirPrevision, normalizarAjustes, resumenDias } from '../motor/prevision.js';
@@ -214,6 +216,10 @@ function pintarAhora(p) {
     }
     <p class="sol">☀ ${esc(hora(hoy?.sol.salida, p.zona))} – ${esc(hora(hoy?.sol.puesta, p.zona))} · hora dorada desde ${esc(hora(hoy?.sol.doradaTarde, p.zona))}</p>
     ${bloqueEnaire()}
+    <div class="acciones acciones-ahora">
+      <button type="button" data-accion="volado" data-ms="${h.ms}">He volado</button>
+      ${p.ajustes.modo === 'profesional' ? '<button type="button" data-accion="informe">Informe para el cliente</button>' : ''}
+    </div>
     <details><summary>Todos los factores</summary>${listaFactores(h)}</details>`;
 }
 
@@ -290,6 +296,31 @@ function bloquePerfil(h, p) {
     .join('')}</ul></div>`;
 }
 
+// Gráfica del día en SVG (atributos de presentación y clases: la CSP no deja
+// estilos en línea). Debajo, una franja por hora con el color del semáforo.
+function svgGrafica(dia, p) {
+  const g = graficaDia(dia.horas, umbralesViento(p));
+  const u = p.ajustes.unidades;
+  const ahora = Date.now();
+  const marcaAhora = g.xDe.find((m) => ahora >= m.ms && ahora < m.ms + 3600000);
+  const etiquetas = g.xDe.filter((m, i) => i % 6 === 0);
+  const alto = g.alto + 24;
+  // La primera etiqueta se alinea a la izquierda para que no se corte.
+  const ancla = (i) => (i === 0 ? ' class="inicio"' : '');
+  return `<figure class="grafica">
+    <svg viewBox="0 0 ${g.ancho} ${alto}" role="img" aria-label="Viento y rachas a ${esc(p.ajustes.altitud)} metros a lo largo del día">
+      ${g.franjas.map((f) => `<rect class="franja ${esc(f.estado)}" x="${f.x}" y="${g.alto + 1}" width="${f.ancho}" height="5"></rect>`).join('')}
+      <line class="umbral limite" x1="0" x2="${g.ancho}" y1="${g.yLimite}" y2="${g.yLimite}"></line>
+      <line class="umbral comodo" x1="0" x2="${g.ancho}" y1="${g.yComodo}" y2="${g.yComodo}"></line>
+      ${marcaAhora ? `<line class="ahora" x1="${marcaAhora.x}" x2="${marcaAhora.x}" y1="0" y2="${g.alto}"></line>` : ''}
+      <path class="rachas" d="${g.rachas}"></path>
+      <path class="viento" d="${g.viento}"></path>
+      ${etiquetas.map((m, i) => `<text${ancla(i)} x="${m.x}" y="${alto - 3}">${esc(hora(m.ms, p.zona))}</text>`).join('')}
+    </svg>
+    <figcaption class="nota"><span class="ley viento"></span> viento · <span class="ley rachas"></span> rachas · rayas: cómodo ${esc(fmtViento(umbralesViento(p).comodo, u))} y límite ${esc(fmtViento(umbralesViento(p).limite, u))}</figcaption>
+  </figure>`;
+}
+
 function pintarHoras(p) {
   const el = $('#horas');
   const dia = p?.dias.find((d) => d.clave === estado.dia);
@@ -299,7 +330,7 @@ function pintarHoras(p) {
   }
   el.hidden = false;
   const u = p.ajustes.unidades;
-  el.innerHTML = `<h2>Hora a hora</h2><ol class="lista-horas">${dia.horas
+  el.innerHTML = `<h2>Hora a hora</h2>${svgGrafica(dia, p)}<ol class="lista-horas">${dia.horas
     .map((h) => {
       const abierta = estado.abierta === h.ms;
       const pasada = h.ms + 3600000 <= Date.now();
@@ -422,7 +453,130 @@ function pintar() {
   pintarDias(p);
   pintarHoras(p);
   pintarChecklist();
+  pintarDiario();
   pintarPie();
+}
+
+// ---------- Diario de vuelos ----------
+
+const NOMBRE_ESTADO = { ok: 'verde', precaucion: 'ámbar', no: 'rojo' };
+
+function fecha(ms) {
+  return new Intl.DateTimeFormat('es-ES', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(ms));
+}
+
+function pintarDiario() {
+  const diario = diarioValido(almacen.diario());
+  $('#diario-cuenta').textContent = diario.length ? `(${diario.length})` : '';
+  if (!diario.length) {
+    $('#diario-cuerpo').innerHTML =
+      '<p class="nota">Aún no hay vuelos. Pulsa «He volado» al terminar: con el tiempo verás si el semáforo acierta con tu dron.</p>';
+    return;
+  }
+  const r = resumenDiario(diario);
+  const filas = ['ok', 'precaucion', 'no']
+    .filter((e) => r[e].total)
+    .map(
+      (e) =>
+        `<li>${chipEstado(e, `En ${NOMBRE_ESTADO[e]}`)} ${r[e].total} vuelo${r[e].total === 1 ? '' : 's'}: ${r[e].bien} bien · ${r[e].regular} regular · ${r[e].mal} mal</li>`,
+    )
+    .join('');
+  const u = estado.ajustes.unidades;
+  $('#diario-cuerpo').innerHTML = `
+    <ul class="resumen-diario">${filas}</ul>
+    <ol class="lista-vuelos">${diario
+      .slice(0, 30)
+      .map(
+        (e) => `<li>
+          <div><strong>${esc(fecha(e.ms))}</strong> · ${esc(e.lugar.nombre)} ${chipEstado(e.prevision.estado, NOMBRE_ESTADO[e.prevision.estado] ?? '—')}
+            <span class="valoracion-${esc(e.valoracion)}">${esc(VALORACIONES[e.valoracion])}</span></div>
+          <div class="nota">${esc(e.dron)} · ${esc(e.altitud)} m · viento ${esc(fmtViento(e.prevision.vientoAlt, u))} · rachas ${esc(fmtViento(e.prevision.rachaAlt, u))}${e.nota ? ` · «${esc(e.nota)}»` : ''}</div>
+          <button type="button" class="icono borrar" data-borrar-vuelo="${esc(e.id)}" aria-label="Borrar este vuelo">✕</button>
+        </li>`,
+      )
+      .join('')}</ol>
+    <div class="acciones"><button type="button" data-accion="exportar-diario">Exportar el diario (JSON)</button></div>`;
+}
+
+function abrirVuelo(ms) {
+  const p = prevision();
+  const h = p?.horas.find((x) => x.ms === ms);
+  if (!h) return;
+  estado.vueloMs = ms;
+  $('#vuelo-prevision').textContent = `La app decía: ${ESTADOS[h.estado].texto.toLowerCase()} · viento ${fmtViento(h.vientoAlt, p.ajustes.unidades)} · rachas ${fmtViento(h.rachaAlt, p.ajustes.unidades)}`;
+  $('#form-vuelo').reset();
+  $('#dlg-vuelo').showModal();
+}
+
+function guardarVuelo(e) {
+  e.preventDefault();
+  const p = prevision();
+  const h = p?.horas.find((x) => x.ms === estado.vueloMs);
+  const valoracion = new FormData($('#form-vuelo')).get('valoracion');
+  if (!h || !valoracion) return;
+  const entrada = crearEntrada(p, h, estado.lugar, { valoracion, nota: $('#txt-vuelo').value, ms: Date.now() });
+  almacen.guardarDiario(anadirEntrada(diarioValido(almacen.diario()), entrada));
+  $('#dlg-vuelo').close();
+  $('#diario').open = true;
+  pintarDiario();
+}
+
+function exportarDiario() {
+  const datos = JSON.stringify(diarioValido(almacen.diario()), null, 2);
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([datos], { type: 'application/json' }));
+  a.download = `diario-vuelos-${new Date().toISOString().slice(0, 10)}.json`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+}
+
+// ---------- Informe para el cliente ----------
+
+function htmlInforme(p) {
+  const dia = p.dias.find((d) => d.clave === estado.dia) ?? p.dias[0];
+  const h = p.actual ?? dia.horas[0];
+  const u = p.ajustes.unidades;
+  const z = estado.enaire;
+  const enaire = !z
+    ? 'sin consultar'
+    : z.estado === 'dentro'
+      ? z.zonas.map((x) => `${x.nombre} (${x.capa}${x.restriccion ? `, ${x.restriccion}` : ''})`).join('; ')
+      : z.estado === 'fuera'
+        ? 'no consta en ninguna zona UAS'
+        : 'no se pudo consultar';
+  const v = dia.ventana;
+  return `
+    <h1>Condiciones de vuelo</h1>
+    <p>${esc(estado.lugar.nombre)} (${esc(estado.lugar.lat.toFixed(5))}, ${esc(estado.lugar.lon.toFixed(5))}) · generado el ${esc(fecha(Date.now()))}</p>
+    <table class="datos-informe">
+      <tr><th>Misión</th><td>${esc(p.mision.nombre)}</td></tr>
+      <tr><th>Dron</th><td>${esc(p.dron.nombre)} · altura ${esc(p.ajustes.altitud)} m</td></tr>
+      <tr><th>Día</th><td>${esc(dia.clave)} · sol ${esc(hora(dia.sol.salida, p.zona))}–${esc(hora(dia.sol.puesta, p.zona))}</td></tr>
+      <tr><th>Mejor ventana</th><td>${v ? `${esc(hora(v.inicio, p.zona))}–${esc(hora(v.fin, p.zona))} (${esc(NOMBRE_ESTADO[v.estado])})` : 'ninguna'}</td></tr>
+      <tr><th>Zonas UAS (ENAIRE)</th><td>${esc(enaire)}</td></tr>
+    </table>
+    <h2>Hora a hora</h2>
+    <table class="horas-informe">
+      <tr><th>Hora</th><th>Semáforo</th><th>Viento</th><th>Rachas</th><th>Lluvia</th><th>Satélites</th></tr>
+      ${dia.horas
+        .map(
+          (x) =>
+            `<tr><td>${esc(hora(x.ms, p.zona))}</td><td>${esc(ESTADOS[x.estado].corto)}</td><td>${esc(fmtViento(x.vientoAlt, u))}</td><td>${esc(fmtViento(x.rachaAlt, u))}</td><td>${esc(x.probLluvia ?? '—')}%</td><td>${esc(x.sats?.total ?? '—')}</td></tr>`,
+        )
+        .join('')}
+    </table>
+    <h2>Factores a las ${esc(hora(h.ms, p.zona))}</h2>
+    <table class="horas-informe">${h.factores
+      .map((f) => `<tr><td>${esc(f.nombre)}</td><td>${esc(ESTADOS[f.estado].corto)}</td><td>${esc(f.valor)}</td><td>${esc(f.detalle)}</td></tr>`)
+      .join('')}</table>
+    <p class="nota">Fuentes: Open-Meteo, NOAA SWPC, CelesTrak, ENAIRE. Orientativo: la decisión y la responsabilidad del vuelo son del piloto.</p>`;
+}
+
+function imprimirInforme() {
+  const p = prevision();
+  if (!p || !estado.lugar) return;
+  $('#informe').innerHTML = htmlInforme(p);
+  window.print();
 }
 
 // ---------- Diagnóstico ----------
@@ -615,6 +769,14 @@ function enlazar() {
     const b = e.target.closest('button');
     if (!b) return;
     if (b.dataset.accion === 'lugar') abrirLugar();
+    else if (b.dataset.accion === 'volado') abrirVuelo(Number(b.dataset.ms));
+    else if (b.dataset.accion === 'cerrar-vuelo') $('#dlg-vuelo').close();
+    else if (b.dataset.accion === 'informe') imprimirInforme();
+    else if (b.dataset.accion === 'exportar-diario') exportarDiario();
+    else if (b.dataset.borrarVuelo) {
+      almacen.guardarDiario(diarioValido(almacen.diario()).filter((e) => e.id !== b.dataset.borrarVuelo));
+      pintarDiario();
+    }
     else if (b.dataset.accion === 'gps') usarGPS();
     else if (b.dataset.dia) {
       estado.dia = b.dataset.dia;
@@ -653,6 +815,7 @@ function enlazar() {
     almacen.guardarChecklist({ dia: hoy, hechos: [...hechos] });
     pintarChecklist();
   });
+  $('#form-vuelo').addEventListener('submit', guardarVuelo);
   $('#form-buscar').addEventListener('submit', (e) => {
     e.preventDefault();
     buscar($('#txt-buscar').value);

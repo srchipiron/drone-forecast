@@ -106,6 +106,17 @@ try {
   assert.ok(await page.locator('#campo-mision').isVisible());
   assert.ok(await page.locator('#checklist').isVisible());
   await page.selectOption('#sel-mision', 'termografia_fv');
+  // Informe para el cliente: se rellena y se manda a imprimir.
+  await page.evaluate(() => {
+    window.__impreso = 0;
+    window.print = () => window.__impreso++;
+  });
+  await page.locator('[data-accion="informe"]').click();
+  assert.equal(await page.evaluate(() => window.__impreso), 1);
+  const informe = await page.textContent('#informe');
+  assert.match(informe, /Condiciones de vuelo[^]*Termografía fotovoltaica[^]*DJI Mini 5 Pro[^]*CTR Madrid/);
+  assert.match(informe, /Irradiancia/);
+  assert.equal(await page.locator('#informe').isVisible(), false, 'en pantalla no se ve');
   await page.locator('#ahora summary').click();
   await page.getByText('Irradiancia').first().waitFor();
   await page.locator('[data-check="0"]').check();
@@ -148,6 +159,30 @@ try {
   await page.locator('#estado-diagnostico').filter({ hasText: /Copiado|Copiar/ }).waitFor();
   assert.equal(await page.evaluate(() => navigator.clipboard.readText()), diag, 'el portapapeles tiene el informe');
   await page.locator('#dlg-diagnostico button[value="cerrar"]').click();
+
+  // Gráfica del día encima de la lista de horas.
+  assert.equal(await page.locator('#horas .grafica svg path.viento').count(), 1);
+  assert.match(await page.locator('#horas .grafica path.viento').getAttribute('d'), /^M[\d.]+,[\d.]+ L/);
+  assert.ok((await page.locator('#horas .grafica rect.franja').count()) >= 23);
+  if (process.env.CAPTURA_GRAFICA) await page.locator('#horas .grafica').screenshot({ path: process.env.CAPTURA_GRAFICA });
+
+  // Diario: «He volado» → valoración → aparece en el diario y en su resumen.
+  await page.locator('[data-accion="volado"]').click();
+  await page.locator('#dlg-vuelo input[value="regular"]').check();
+  await page.fill('#txt-vuelo', 'Rachas en la cresta <b>');
+  await page.locator('#form-vuelo button[type="submit"]').click();
+  await page.locator('#diario .lista-vuelos li').first().waitFor();
+  assert.match(await page.textContent('#diario .lista-vuelos'), /Getafe<img[^]*Regular[^]*«Rachas en la cresta <b>»/);
+  assert.match(await page.textContent('#diario-cuenta'), /\(1\)/);
+  assert.match(await page.textContent('#diario .resumen-diario'), /1 vuelo: 0 bien · 1 regular · 0 mal/);
+  const descarga = page.waitForEvent('download');
+  await page.locator('[data-accion="exportar-diario"]').click();
+  assert.match((await descarga).suggestedFilename(), /^diario-vuelos-\d{4}-\d\d-\d\d\.json$/);
+  await page.reload();
+  assert.match(await page.textContent('#diario-cuenta'), /\(1\)/, 'el diario se guarda');
+  await page.locator('#diario summary').click();
+  await page.locator('[data-borrar-vuelo]').click();
+  assert.equal(await page.locator('#diario .lista-vuelos li').count(), 0);
 
   // Favorito: al guardarlo sale su resumen, y coincide con la pantalla principal.
   await page.locator('#btn-lugar').click();

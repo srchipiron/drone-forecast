@@ -4,14 +4,14 @@
 // edita en Ajustes.
 
 export const DRONES = [
-  { id: 'mini4pro', nombre: 'DJI Mini 4 Pro', maxViento: 10.7, tempMin: -10, tempMax: 40, ip: null },
-  { id: 'mini3', nombre: 'DJI Mini 3 / 3 Pro', maxViento: 10.7, tempMin: -10, tempMax: 40, ip: null },
-  { id: 'air3', nombre: 'DJI Air 3 / Air 3S', maxViento: 12, tempMin: -10, tempMax: 40, ip: null },
-  { id: 'mavic3', nombre: 'DJI Mavic 3 / 3 Pro', maxViento: 12, tempMin: -10, tempMax: 40, ip: null },
-  { id: 'avata2', nombre: 'DJI Avata 2', maxViento: 10.7, tempMin: -10, tempMax: 40, ip: null },
-  { id: 'm3e', nombre: 'DJI Mavic 3 Enterprise / 3T', maxViento: 12, tempMin: -10, tempMax: 40, ip: null },
-  { id: 'm30', nombre: 'DJI Matrice 30 / 30T', maxViento: 15, tempMin: -20, tempMax: 50, ip: 'IP55' },
-  { id: 'm350', nombre: 'DJI Matrice 350 RTK', maxViento: 12, tempMin: -20, tempMax: 50, ip: 'IP55' },
+  { id: 'mini4pro', marca: 'DJI', nombre: 'DJI Mini 4 Pro', maxViento: 10.7, tempMin: -10, tempMax: 40, ip: null },
+  { id: 'mini3', marca: 'DJI', nombre: 'DJI Mini 3 / 3 Pro', maxViento: 10.7, tempMin: -10, tempMax: 40, ip: null },
+  { id: 'air3', marca: 'DJI', nombre: 'DJI Air 3 / Air 3S', maxViento: 12, tempMin: -10, tempMax: 40, ip: null },
+  { id: 'mavic3', marca: 'DJI', nombre: 'DJI Mavic 3 / 3 Pro', maxViento: 12, tempMin: -10, tempMax: 40, ip: null },
+  { id: 'avata2', marca: 'DJI', nombre: 'DJI Avata 2', maxViento: 10.7, tempMin: -10, tempMax: 40, ip: null },
+  { id: 'm3e', marca: 'DJI', nombre: 'DJI Mavic 3 Enterprise / 3T', maxViento: 12, tempMin: -10, tempMax: 40, ip: null },
+  { id: 'm30', marca: 'DJI', nombre: 'DJI Matrice 30 / 30T', maxViento: 15, tempMin: -20, tempMax: 50, ip: 'IP55' },
+  { id: 'm350', marca: 'DJI', nombre: 'DJI Matrice 350 RTK', maxViento: 12, tempMin: -20, tempMax: 50, ip: 'IP55' },
 ];
 
 export const PERSONALIZADO = {

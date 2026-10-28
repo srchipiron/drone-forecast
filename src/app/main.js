@@ -285,9 +285,19 @@ function pintarPerfil() {
   document.body.dataset.modo = a.modo;
   const selDron = $('#sel-dron');
   // Solo se rehacen las opciones si cambian: rehacerlas cierra el desplegable abierto.
-  ponerOpciones(selDron, [...DRONES, { id: 'personalizado', nombre: 'Personalizado…' }]
-    .map((d) => `<option value="${esc(d.id)}">${esc(d.nombre)}</option>`)
-    .join(''));
+  // Agrupados por marca, en el orden de la lista.
+  const marcas = [...new Set(DRONES.map((d) => d.marca))];
+  ponerOpciones(
+    selDron,
+    marcas
+      .map(
+        (m) =>
+          `<optgroup label="${esc(m)}">${DRONES.filter((d) => d.marca === m)
+            .map((d) => `<option value="${esc(d.id)}">${esc(d.nombre)}</option>`)
+            .join('')}</optgroup>`,
+      )
+      .join('') + '<option value="personalizado">Personalizado…</option>',
+  );
   selDron.value = a.dron;
   const misiones = MODOS[a.modo].misiones;
   $('#campo-mision').hidden = misiones.length < 2;

@@ -14,8 +14,8 @@ un día sin PR.
 2. Mira si hay PRs abiertos de ramas `auto/*`:
    - Si alguno tiene las pruebas en rojo, **arreglarlo es la tarea de hoy**
      (en su misma rama). No empieces nada nuevo.
-   - Si hay uno en verde esperando a Javi, no abras otro: para y di que está
-     esperando.
+   - Si hay uno en verde y sin conflictos, fusiónalo (ver «5. Fusionar») y
+     sigue con la tarea de hoy.
 3. Mira el último despliegue de `main` (workflow Desplegar). Si está en rojo,
    arreglarlo es la tarea de hoy.
 
@@ -64,5 +64,22 @@ parte y deja el resto como línea nueva justo debajo.
 - Un commit, push y PR contra `main`. En el PR: qué cambia para Javi en dos
   líneas, cómo se ha probado (incluida la mutación) y qué no se ha podido
   comprobar.
-- Termina con un resumen de tres líneas: qué hiciste, el enlace al PR y qué
-  tiene que mirar Javi en el móvil.
+- Suscríbete a la actividad del PR.
+
+## 5. Fusionar
+
+Javi decidió (28-10-2026) que los PR los fusiona Claude, no él. Fusiona
+(merge normal, no squash) cuando se cumpla todo:
+
+- **Todas** las comprobaciones de GitHub en verde en la cabeza actual
+  (`pruebas` e `interfaz`), y sin conflictos con `main`.
+- El PR no toca `.github/`, `.claude/` ni `CLAUDE.md`. Si los toca, no lo
+  fusiones: díselo a Javi y que decida.
+
+Si una comprobación falla, arréglala en la misma rama y vuelve a esperar; no
+fusiones nunca en rojo ni saltándote una prueba. Después de fusionar, mira
+que el despliegue de `main` (Desplegar) acabe en verde; si no, arreglarlo es
+lo siguiente.
+
+Termina con un resumen de tres líneas: qué hiciste, el enlace al PR, si
+quedó fusionado y publicado, y qué tiene que mirar Javi en el móvil.

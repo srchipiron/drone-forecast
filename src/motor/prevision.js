@@ -39,6 +39,8 @@ export function normalizarAjustes(a = {}) {
   r.personalizado.tempMin = acotar(r.personalizado.tempMin, -40, 20, -10);
   r.personalizado.tempMax = acotar(r.personalizado.tempMax, 10, 60, 40);
   if (!['recreativo', 'profesional'].includes(r.modo)) r.modo = 'recreativo';
+  // Categoría abierta: 120 m como mucho. En profesional se deja hasta 180.
+  r.altitud = Math.min(r.altitud, r.modo === 'profesional' ? 180 : 120);
   r.mision = misionActiva(r).id;
   r.dron = idDron(r.dron);
   r.permitirNoche = Boolean(r.permitirNoche);

@@ -123,7 +123,9 @@ test('mejor ventana: el tramo verde más largo; si no hay verde, el ámbar', () 
 
 test('ajustes absurdos se acotan', () => {
   const a = normalizarAjustes({ altitud: 9999, margenViento: 'x', modo: 'hacker' });
-  assert.equal(a.altitud, 500);
+  assert.equal(a.altitud, 120, 'recreativo: 120 m como mucho (categoría abierta)');
+  assert.equal(normalizarAjustes({ altitud: 9999, modo: 'profesional' }).altitud, 180);
+  assert.equal(normalizarAjustes({ altitud: 180, modo: 'recreativo' }).altitud, 120, 'al pasar a recreativo baja a 120');
   assert.equal(a.margenViento, 70);
   assert.equal(a.modo, 'recreativo');
 });
@@ -145,4 +147,13 @@ test('el perfil y el semáforo usan los mismos umbrales de viento', async () => 
   const foto = prev({}, { modo: 'profesional', mision: 'fotogrametria', dron: 'mini5pro' });
   assert.deepEqual(umbralesViento(foto), { comodo: 6, limite: 12 }, 'la fotogrametría usa el 50%');
   assert.match(foto.actual.factores.find((f) => f.id === 'viento').detalle, /Cómodo hasta 22 km\/h/);
+});
+
+test('una hora sin dato de viento nunca sale en verde', () => {
+  const crudo = respuestaOpenMeteo();
+  for (const k of ['wind_speed_10m', 'wind_speed_80m', 'wind_speed_120m', 'wind_speed_180m', 'wind_gusts_10m']) crudo.hourly[k] = crudo.hourly[k].map(() => null);
+  const p = construirPrevision({ meteo: leerPrevision(crudo), kp, satelites: sats, lugar: LUGAR, ajustes: {}, ahora: AHORA });
+  assert.equal(f(p.actual, 'viento').estado, 'precaucion');
+  assert.notEqual(p.actual.estado, 'ok');
+  assert.notEqual(p.dias[0].ventana?.estado, 'ok', 'ni una ventana verde sin viento');
 });

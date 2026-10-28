@@ -62,13 +62,17 @@ export async function descargarGnss() {
       console.warn(`${constelacion}: ${motivo(e)}`);
     }
   }
+  let antes = null;
   if (fallos.length) {
-    const antes = await previo('gnss.json');
+    antes = await previo('gnss.json');
     const conservados = (antes?.satelites ?? []).filter((s) => fallos.includes(s.constelacion) && satValido(s));
     if (conservados.length) console.warn(`Se conservan ${conservados.length} satélites publicados de ${fallos.join(', ')}`);
     satelites.push(...conservados);
   }
-  return { actualizado: new Date().toISOString(), satelites };
+  // Si no se ha bajado nada nuevo, la fecha es la de lo conservado: la app la
+  // usa para saber si le sirven o tiene que pedirlas ella a CelesTrak.
+  const nuevas = fallos.length < Object.keys(GRUPOS).length;
+  return { actualizado: nuevas ? new Date().toISOString() : (antes?.actualizado ?? null), satelites };
 }
 
 export async function descargarKp() {

@@ -18,6 +18,9 @@ export function umbralesViento({ dron, ajustes, mision }) {
 function fViento(h, ctx) {
   const { dron, ajustes } = ctx;
   const { comodo, limite } = umbralesViento(ctx);
+  // Sin dato de viento no se puede decir que se puede volar: ámbar, nunca verde.
+  if (!Number.isFinite(h.vientoAlt))
+    return factor('viento', `Viento a ${ajustes.altitud} m`, 'precaucion', '—', 'Sin dato de viento: mira tú el viento antes de despegar');
   const estado = escalonMax(h.vientoAlt, comodo, limite);
   const dir = puntoCardinal(h.dirAlt);
   return factor(

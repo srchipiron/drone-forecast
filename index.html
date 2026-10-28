@@ -46,7 +46,8 @@
     </section>
 
     <section id="aviso" class="aviso" hidden></section>
-    <section id="ahora" class="tarjeta veredicto" aria-live="polite"></section>
+    <section id="ahora" class="tarjeta veredicto"></section>
+    <p id="anuncio" class="visualmente-oculto" aria-live="polite"></p>
     <section id="dias" class="dias" aria-label="Mejor ventana de cada día"></section>
     <section id="horas" class="tarjeta horas"></section>
     <section id="checklist" class="tarjeta checklist" hidden></section>
@@ -104,7 +105,7 @@
       <button class="icono" value="cerrar" aria-label="Cerrar">✕</button>
     </form>
     <form id="form-buscar" class="buscar">
-      <input id="txt-buscar" type="search" placeholder="Pueblo, ciudad o paraje" autocomplete="off" enterkeyhint="search">
+      <input id="txt-buscar" type="search" aria-label="Buscar lugar" placeholder="Pueblo, ciudad o paraje" autocomplete="off" enterkeyhint="search">
       <button type="submit">Buscar</button>
     </form>
     <p class="nota">También vale «40.4168, -3.7038».</p>

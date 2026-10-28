@@ -3,6 +3,37 @@
 Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
 `0.0.X` para correcciones. La versión sale en el pie de la app.
 
+## 0.7.1
+
+Correcciones tras una revisión completa de la app:
+
+- **Una hora sin dato de viento ya no sale en verde.** Si el modelo no da
+  viento, la hora queda en ámbar («mira tú el viento antes de despegar»).
+- **Cambiar de lugar rápido ya no mezcla previsiones.** Antes, si tocabas un
+  favorito mientras se descargaba otro, podías ver el nombre del nuevo con
+  el tiempo del anterior. Lo mismo con el GPS lento: si eliges un sitio a
+  mano mientras busca, gana el tuyo.
+- **Sin cobertura y con la previsión guardada de hace días**, la app ya no
+  enseña una hora vieja como «ahora». Dice que no hay previsión para ahora y
+  te ofrece reintentar.
+- **Satélites siempre al día.** Si las órbitas del servidor tienen más de
+  3 días, el móvil las pide directamente.
+- **En recreativo, la altura no pasa de 120 m** aunque vengas del modo
+  profesional con 180.
+- **La pantalla ya no se rehace cada minuto**: «Todos los factores» no se
+  cierra solo y no se borra lo que estás escribiendo en Ajustes. Con la app
+  abierta, la previsión se refresca sola cada 30 minutos y el Kp cada 3 horas.
+- **Recargar también vuelve a consultar ENAIRE** si antes falló.
+- **Más legible al sol y para daltónicos:**
+  - Mejor contraste en el modo oscuro.
+  - Cada factor lleva su símbolo (✓, ! o ✕), no solo el color.
+  - Los días dicen «con precaución» además de ir en ámbar.
+  - Botones y casillas más grandes para el dedo.
+- **Más rápida:** la previsión solo se recalcula cuando cambia algo.
+- La lista de comprobación se vacía a medianoche de tu móvil, no a la 01:00.
+- El modo sin cobertura se instala nada más abrir la app, y una actualización
+  ya no puede mezclar ficheros de dos versiones.
+
 ## 0.7.0
 
 - **Gráfica del día**, encima de la lista de horas: el viento (línea azul) y

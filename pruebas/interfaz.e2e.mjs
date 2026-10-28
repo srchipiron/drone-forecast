@@ -238,6 +238,51 @@ try {
   await p3.locator('#ahora .grande').filter({ hasText: /volar|precaución|No vueles/ }).waitFor();
   await p3.locator('#ahora .enaire.fuera').filter({ hasText: 'No consta en ninguna zona UAS de ENAIRE' }).waitFor();
 
+  // Carrera: la previsión del lugar anterior llega tarde y no pisa la del nuevo.
+  const ctx4 = await navegador.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
+  await ctx4.addInitScript(() => {
+    if (!localStorage.getItem('drone-forecast:lugar'))
+      localStorage.setItem('drone-forecast:lugar', JSON.stringify({ nombre: 'Lento', zona: '', lat: 40.3, lon: -3.7 }));
+  });
+  const p4 = await ctx4.newPage();
+  p4.on('pageerror', (e) => errores.push(e.message));
+  for (const r of ['https://services.swpc.noaa.gov/**', 'https://celestrak.org/**', 'https://servais.enaire.es/**']) await p4.route(r, (x) => x.fulfill({ json: r.includes('enaire') ? { features: [] } : [] }));
+  await p4.route('https://api.open-meteo.com/**', async (x) => {
+    const lento = x.request().url().includes('latitude=40.3000');
+    const m = meteo();
+    m.hourly.temperature_2m = m.hourly.temperature_2m.map(() => (lento ? 18 : 31));
+    if (lento) await new Promise((r) => setTimeout(r, 1500));
+    await x.fulfill({ json: m });
+  });
+  await p4.route('https://geocoding-api.open-meteo.com/**', (x) => x.fulfill({ json: { results: [] } }));
+  await p4.goto(url);
+  await p4.locator('#btn-lugar').click();
+  await p4.fill('#txt-buscar', '1.5, 1.5');
+  await p4.press('#txt-buscar', 'Enter');
+  await p4.locator('[data-res="0"]').click();
+  await p4.waitForTimeout(2500);
+  assert.match(await p4.textContent('#nombre-lugar'), /1\.5000, 1\.5000/);
+  assert.match(await p4.textContent('#ahora'), /31 °C/, 'la previsión es la del lugar nuevo');
+  assert.doesNotMatch(await p4.textContent('#ahora'), /18 °C/, 'la del anterior, que llegó tarde, no la pisa');
+
+  // Previsión caducada (sin cobertura y con lo guardado de hace días): no se
+  // enseña una hora vieja como si fuera «ahora».
+  const ctx5 = await navegador.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
+  await ctx5.addInitScript(() => {
+    localStorage.setItem('drone-forecast:lugar', JSON.stringify({ nombre: 'Viejo', zona: '', lat: 40.3, lon: -3.7 }));
+  });
+  const p5 = await ctx5.newPage();
+  p5.on('pageerror', (e) => errores.push(e.message));
+  for (const r of ['https://services.swpc.noaa.gov/**', 'https://celestrak.org/**', 'https://servais.enaire.es/**']) await p5.route(r, (x) => x.fulfill({ json: r.includes('enaire') ? { features: [] } : [] }));
+  await p5.route('https://api.open-meteo.com/**', (x) => {
+    const m = meteo();
+    m.hourly.time = m.hourly.time.map((t) => t - 10 * 86400);
+    return x.fulfill({ json: m });
+  });
+  await p5.goto(url);
+  await p5.locator('#ahora .grande').filter({ hasText: 'Sin previsión para ahora' }).waitFor();
+  assert.equal(await p5.locator('#ahora [data-accion="recargar"]').count(), 1);
+
   if (process.env.CAPTURA) await page.screenshot({ path: process.env.CAPTURA, fullPage: true });
   assert.equal(errores.length, 0, errores.join('\n'));
   console.log('ok - interfaz');

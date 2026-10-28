@@ -11,7 +11,8 @@
   --precaucion-fondo: #fef3c7;
   --no: #b91c1c;
   --no-fondo: #fee2e2;
-  --sin-dato: #64748b;
+  --sin-dato: #4b5563;
+  --sobre-acento: #ffffff;
   --radio: 14px;
   color-scheme: light;
 }
@@ -31,6 +32,7 @@
     --no: #f87171;
     --no-fondo: #3b0a0a;
     --sin-dato: #94a3b8;
+    --sobre-acento: #0b1120;
     color-scheme: dark;
   }
 }
@@ -49,6 +51,7 @@
   --no: #f87171;
   --no-fondo: #3b0a0a;
   --sin-dato: #94a3b8;
+  --sobre-acento: #0b1120;
   color-scheme: dark;
 }
 
@@ -86,6 +89,8 @@ select, input[type="number"], input[type="search"] {
 svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
 [hidden] { display: none !important; }
+
+.visualmente-oculto { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
 .nota { color: var(--suave); font-size: 0.85rem; margin: 0.25rem 0; }
 
@@ -130,7 +135,7 @@ main { max-width: 760px; margin: 0 auto; padding: 0.75rem 16px 2rem; display: gr
 
 .modo button { border: 0; background: transparent; font-weight: 600; color: var(--suave); }
 
-.modo button[aria-checked="true"] { background: var(--acento); color: #fff; }
+.modo button[aria-checked="true"] { background: var(--acento); color: var(--sobre-acento); }
 
 /* Perfil */
 .perfil { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
@@ -195,18 +200,18 @@ body[data-modo="recreativo"] .perfil label:first-child { grid-column: 1 / -1; }
 
 .acciones { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 
-.acciones button:first-child { background: var(--acento); color: #fff; border-color: var(--acento); }
+.acciones button:first-child { background: var(--acento); color: var(--sobre-acento); border-color: var(--acento); }
 
-details summary { cursor: pointer; font-weight: 600; padding: 0.4rem 0; min-height: 32px; }
+details summary { cursor: pointer; font-weight: 600; padding: 0.4rem 0; min-height: 44px; display: flex; align-items: center; gap: 0.4rem; }
 
 .veredicto details { margin-top: 0.5rem; }
 
 /* Factores */
 .factores { list-style: none; padding: 0; margin: 0.4rem 0 0; display: grid; gap: 0.35rem; }
 
-.factor { display: grid; grid-template-columns: 12px 1fr auto; column-gap: 0.5rem; align-items: center; padding: 0.4rem 0; border-top: 1px solid var(--borde); }
+.factor { display: grid; grid-template-columns: 16px 1fr auto; column-gap: 0.5rem; align-items: center; padding: 0.4rem 0; border-top: 1px solid var(--borde); }
 
-.factor .punto { width: 10px; height: 10px; border-radius: 50%; background: var(--sin-dato); }
+.factor .punto { width: 16px; height: 16px; border-radius: 50%; background: var(--sin-dato); color: var(--tarjeta); font-size: 10px; font-weight: 800; line-height: 16px; text-align: center; }
 
 .factor.ok .punto { background: var(--ok); }
 
@@ -311,7 +316,7 @@ details summary { cursor: pointer; font-weight: 600; padding: 0.4rem 0; min-heig
 /* Checklist */
 .lista-check { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.3rem; }
 
-.casilla { display: flex; gap: 0.6rem; align-items: flex-start; min-height: 32px; }
+.casilla { display: flex; gap: 0.6rem; align-items: center; min-height: 44px; }
 
 .casilla input { width: 20px; height: 20px; margin-top: 0.1rem; accent-color: var(--acento); flex: none; }
 
@@ -342,7 +347,7 @@ dialog::backdrop { background: rgb(0 0 0 / 0.5); }
 
 .buscar { display: flex; gap: 0.5rem; margin-top: 0.75rem; }
 
-.buscar button { background: var(--acento); color: #fff; border-color: var(--acento); }
+.buscar button { background: var(--acento); color: var(--sobre-acento); border-color: var(--acento); }
 
 dialog h3 { font-size: 0.95rem; margin: 1rem 0 0.4rem; }
 

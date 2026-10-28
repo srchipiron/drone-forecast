@@ -3,6 +3,20 @@
 Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
 `0.0.X` para correcciones. La versión sale en el pie de la app.
 
+## 0.4.0
+
+- **Zonas UAS de ENAIRE en la tarjeta principal.** La app pregunta a
+  ENAIRE si el lugar cae en alguna zona geográfica UAS: aeronáutica,
+  infraestructuras, urbana o medioambiental.
+  - Si cae, te dice en cuáles, con su nombre y si piden autorización.
+  - Si no consta en ninguna, lo dice, pero te manda igualmente al mapa
+    oficial (NOTAM y zonas temporales).
+  - Si ENAIRE no responde, dice «No se pudo consultar». Nunca dice «sin
+    zonas» por un fallo.
+  - Es informativo: no cambia el semáforo del tiempo. Lo que manda es el
+    mapa de ENAIRE Drones.
+- El Diagnóstico incluye lo que respondió ENAIRE.
+
 ## 0.3.0
 
 - **Drones de la gama actual**, agrupados por marca en el selector:

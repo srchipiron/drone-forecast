@@ -128,3 +128,9 @@ export function construirPrevision({ meteo, consenso = new Map(), kp = [], satel
     satelitesDisponibles: sats.length > 0,
   };
 }
+
+// Lo que enseña un favorito en la lista: la mejor ventana de hoy y mañana.
+// Sale de construirPrevision, como todo lo demás.
+export function resumenDias(prevision, n = 2) {
+  return prevision.dias.slice(0, n).map((d) => ({ clave: d.clave, ventana: d.ventana }));
+}

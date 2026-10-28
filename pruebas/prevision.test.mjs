@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { leerPrevision } from '../src/motor/meteo.js';
-import { construirPrevision, normalizarAjustes } from '../src/motor/prevision.js';
+import { construirPrevision, normalizarAjustes, resumenDias } from '../src/motor/prevision.js';
 import { mejorVentana } from '../src/motor/ventanas.js';
 import { AHORA, LUGAR, constelacionSintetica, respuestaOpenMeteo } from './fixtures/sinteticos.mjs';
 
@@ -125,4 +125,14 @@ test('ajustes absurdos se acotan', () => {
   assert.equal(a.altitud, 500);
   assert.equal(a.margenViento, 70);
   assert.equal(a.modo, 'recreativo');
+});
+
+test('resumen de un favorito: hoy y mañana con su ventana, desde la misma previsión', () => {
+  const p = prev();
+  const r = resumenDias(p);
+  assert.equal(r.length, 2);
+  assert.deepEqual(r.map((d) => d.clave), ['2026-06-21', '2026-06-22']);
+  assert.deepEqual(r[0].ventana, p.dias[0].ventana);
+  assert.deepEqual(r[1].ventana, p.dias[1].ventana);
+  assert.equal(resumenDias(p, 1).length, 1);
 });

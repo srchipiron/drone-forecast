@@ -18,7 +18,7 @@ bloqueada (con el motivo, y se pasa a la siguiente).
   geográficas UAS en un servicio abierto con CORS. Si sí, decir en el
   veredicto si el punto cae dentro de una zona (sin mapa todavía). Si no se
   puede, marcar `[~]` con lo que se ha probado.
-- [ ] **Resumen de favoritos**: en el diálogo de lugar, cada favorito con su
+- [x] **Resumen de favoritos** (0.5.0): en el diálogo de lugar, cada favorito con su
   mejor ventana de hoy y mañana (una descarga por favorito, con caché), para
   elegir dónde volar sin abrirlos uno a uno.
 - [ ] **Perfil de viento**: al abrir una hora, el viento a 10, 80, 120 y 180 m

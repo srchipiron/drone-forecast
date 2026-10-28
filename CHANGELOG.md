@@ -3,6 +3,13 @@
 Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
 `0.0.X` para correcciones. La versión sale en el pie de la app.
 
+## 0.5.0
+
+- **Resumen de favoritos.** Al abrir «Lugar de vuelo», cada favorito enseña
+  su mejor ventana de hoy y de mañana, en verde o ámbar, calculada con tu
+  dron, tu misión y tu altura. Así eliges dónde volar sin abrirlos uno a uno.
+  La previsión de cada favorito se guarda 30 minutos.
+
 ## 0.4.0
 
 - **Zonas UAS de ENAIRE en la tarjeta principal.** La app pregunta a

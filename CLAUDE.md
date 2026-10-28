@@ -36,3 +36,7 @@ Una tarea programada lanza cada mañana `/mejorar`
 (`.claude/commands/mejorar.md`): coge la primera línea pendiente de
 `docs/pendiente.md`, la hace con sus pruebas y abre un PR en una rama
 `auto/*`. La lista es de Javi: él decide el orden.
+
+**Los PR los fusiona Claude** (Javi, 28-10-2026), con todas las pruebas de
+GitHub en verde y sin conflictos. Un PR que toque `.github/`, `.claude/` o
+`CLAUDE.md` no se fusiona solo: lo decide Javi.

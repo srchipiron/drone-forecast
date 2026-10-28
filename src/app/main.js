@@ -5,6 +5,8 @@ import { DRONES } from '../motor/drones.js';
 import { MISIONES, MODOS } from '../motor/misiones.js';
 import { construirPrevision, normalizarAjustes, resumenDias } from '../motor/prevision.js';
 import { fmtViento } from '../motor/unidades.js';
+import { umbralesViento } from '../motor/veredicto.js';
+import { perfilViento } from '../motor/viento.js';
 import { VERSION } from '../version.js';
 import { almacen } from './almacen.js';
 import { buscarLugar, cargarKp, cargarPrevision, cargarSatelites, cargarSoloPrevision, consultarEnaire, leerDescarga } from './datos.js';
@@ -269,6 +271,25 @@ function pintarDias(p) {
     .join('');
 }
 
+// Viento por alturas en una hora. <meter> colorea solo: hasta «low» verde,
+// hasta «high» ámbar, más allá rojo; con los mismos umbrales que el semáforo.
+function bloquePerfil(h, p) {
+  const filas = perfilViento(h.niveles, p.ajustes.altitud);
+  if (!filas.length) return '';
+  const { comodo, limite } = umbralesViento(p);
+  const u = p.ajustes.unidades;
+  const r = (x) => x.toFixed(2);
+  return `<div class="perfil-viento"><p class="nota">Viento por alturas (límite del dron ${esc(fmtViento(limite, u))})</p><ul>${filas
+    .map(
+      (f) => `<li class="${f.vuelo ? 'vuelo' : ''}">
+        <span class="pv-altura">${f.altura} m${f.vuelo ? ' · vuelo' : ''}</span>
+        <meter min="0" max="${r(limite * 1.25)}" low="${r(comodo)}" high="${r(limite)}" optimum="0" value="${r(Math.min(f.valor, limite * 1.25))}"></meter>
+        <span class="pv-valor">${esc(fmtViento(f.valor, u))}${f.estimado ? ' (est.)' : ''}</span>
+      </li>`,
+    )
+    .join('')}</ul></div>`;
+}
+
 function pintarHoras(p) {
   const el = $('#horas');
   const dia = p?.dias.find((d) => d.clave === estado.dia);
@@ -291,7 +312,7 @@ function pintarHoras(p) {
           <span class="h-dato" title="Probabilidad de lluvia">☂ ${esc(h.probLluvia ?? '—')}%</span>
           <span class="h-dato" title="Satélites">🛰 ${esc(h.sats?.total ?? '—')}</span>
         </button>
-        ${abierta ? listaFactores(h) : ''}
+        ${abierta ? bloquePerfil(h, p) + listaFactores(h) : ''}
       </li>`;
     })
     .join('')}</ol>`;

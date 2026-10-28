@@ -32,3 +32,20 @@ export function rachaEnAltura(racha10, viento10, vientoAlt) {
   if (!Number.isFinite(viento10) || !Number.isFinite(vientoAlt)) return racha10;
   return Math.max(vientoAlt, vientoAlt + (racha10 - viento10));
 }
+
+// El perfil de una hora: el viento en cada nivel del modelo y a la altura de
+// vuelo, de arriba abajo. Si la altura de vuelo coincide con un nivel, ese
+// nivel se marca como el de vuelo en vez de repetirlo.
+export function perfilViento(niveles, altitud) {
+  const filas = NIVELES.filter((h) => Number.isFinite(niveles[h])).map((h) => ({
+    altura: h,
+    valor: niveles[h],
+    vuelo: h === altitud,
+    estimado: false,
+  }));
+  if (!filas.some((f) => f.vuelo)) {
+    const v = vientoEnAltura(niveles, altitud);
+    if (Number.isFinite(v.valor)) filas.push({ altura: altitud, valor: v.valor, vuelo: true, estimado: v.estimado });
+  }
+  return filas.sort((a, b) => b.altura - a.altura);
+}

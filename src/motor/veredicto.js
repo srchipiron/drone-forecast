@@ -7,17 +7,24 @@ const TORMENTA = new Set([95, 96, 99]);
 const NIEBLA = new Set([45, 48]);
 const NIEVE = new Set([71, 73, 75, 77, 85, 86]);
 
-function fViento(h, ctx) {
-  const { dron, ajustes, mision } = ctx;
+// Los dos umbrales del viento: hasta «comodo» es verde, hasta «limite»
+// ámbar. Los usa el factor y el perfil de viento, para que digan lo mismo.
+export function umbralesViento({ dron, ajustes, mision }) {
   const fraccion = mision.fraccionViento ?? ajustes.margenViento / 100;
-  const estado = escalonMax(h.vientoAlt, dron.maxViento * fraccion, dron.maxViento);
+  return { comodo: dron.maxViento * fraccion, limite: dron.maxViento };
+}
+
+function fViento(h, ctx) {
+  const { dron, ajustes } = ctx;
+  const { comodo, limite } = umbralesViento(ctx);
+  const estado = escalonMax(h.vientoAlt, comodo, limite);
   const dir = puntoCardinal(h.dirAlt);
   return factor(
     'viento',
     `Viento a ${ajustes.altitud} m`,
     estado,
     `${fmtViento(h.vientoAlt, ajustes.unidades)}${dir ? ` ${dir}` : ''}`,
-    `Cómodo hasta ${fmtViento(dron.maxViento * fraccion, ajustes.unidades)} · límite del dron ${fmtViento(dron.maxViento, ajustes.unidades)}${h.estimado ? ' · estimado' : ''}`,
+    `Cómodo hasta ${fmtViento(comodo, ajustes.unidades)} · límite del dron ${fmtViento(limite, ajustes.unidades)}${h.estimado ? ' · estimado' : ''}`,
   );
 }
 

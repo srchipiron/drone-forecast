@@ -21,7 +21,7 @@ bloqueada (con el motivo, y se pasa a la siguiente).
 - [x] **Resumen de favoritos** (0.5.0): en el diálogo de lugar, cada favorito con su
   mejor ventana de hoy y mañana (una descarga por favorito, con caché), para
   elegir dónde volar sin abrirlos uno a uno.
-- [ ] **Perfil de viento**: al abrir una hora, el viento a 10, 80, 120 y 180 m
+- [x] **Perfil de viento** (0.6.0): al abrir una hora, el viento a 10, 80, 120 y 180 m
   y la altura de vuelo marcada, en una barra horizontal por nivel (sin
   estilos en línea: la CSP los bloquea).
 - [ ] **Gráfica del día**: una línea SVG del viento a la altura de vuelo y de

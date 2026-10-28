@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { rachaEnAltura, vientoEnAltura } from '../src/motor/viento.js';
+import { perfilViento, rachaEnAltura, vientoEnAltura } from '../src/motor/viento.js';
 
 const niv = { 10: 4, 80: 6, 120: 7, 180: 8 };
 
@@ -32,4 +32,27 @@ test('la racha en altura suma el exceso de la de 10 m', () => {
   assert.equal(rachaEnAltura(9, 4, 7), 12);
   assert.equal(rachaEnAltura(null, 4, 7), null);
   assert.equal(rachaEnAltura(3, 4, 7), 7);
+});
+
+test('perfil: a 120 m marca ese nivel y va de arriba abajo', () => {
+  const f = perfilViento(niv, 120);
+  assert.deepEqual(f.map((x) => x.altura), [180, 120, 80, 10]);
+  assert.deepEqual(f.filter((x) => x.vuelo).map((x) => x.altura), [120]);
+});
+
+test('perfil: una altura entre niveles se añade en su sitio con su valor interpolado', () => {
+  const f = perfilViento(niv, 100);
+  assert.deepEqual(f.map((x) => x.altura), [180, 120, 100, 80, 10]);
+  const vuelo = f.find((x) => x.vuelo);
+  assert.equal(vuelo.altura, 100);
+  assert.ok(vuelo.valor > 6 && vuelo.valor < 7);
+  assert.equal(vuelo.estimado, false);
+});
+
+test('perfil: por debajo de 10 m va al final y estimado; sin niveles no inventa', () => {
+  const f = perfilViento(niv, 5);
+  assert.equal(f.at(-1).altura, 5);
+  assert.equal(f.at(-1).estimado, true);
+  assert.deepEqual(perfilViento({}, 120), []);
+  assert.deepEqual(perfilViento({ 10: 4 }, 10).map((x) => [x.altura, x.vuelo]), [[10, true]]);
 });

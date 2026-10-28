@@ -115,9 +115,24 @@ try {
   await page.getByRole('radio', { name: 'Recreativo' }).click();
   assert.ok(await page.locator('#checklist').isHidden());
 
-  // Tocar una hora la abre con sus factores.
+  // Tocar una hora la abre con su perfil de viento y sus factores.
   await page.locator('#horas .hora button').nth(3).click();
   assert.ok((await page.locator('#horas .factor').count()) >= 10);
+  const perfil = page.locator('#horas .perfil-viento li');
+  assert.equal(await perfil.count(), 4, '180, 120, 80 y 10 m');
+  assert.match(await page.textContent('#horas .perfil-viento li.vuelo'), /120 m · vuelo/);
+  const barra = page.locator('#horas .perfil-viento li.vuelo meter');
+  assert.equal(await barra.getAttribute('high'), '12.00', 'límite del Mini 5 Pro');
+  assert.equal(await barra.getAttribute('low'), '8.40', '70% del límite');
+  // Cambiar el margen en Ajustes mueve la barra igual que el semáforo.
+  const margen = async (v) => page.evaluate((x) => {
+    const i = document.querySelector('#aj-margen');
+    i.value = x;
+    i.dispatchEvent(new Event('change', { bubbles: true }));
+  }, v);
+  await margen('50');
+  assert.equal(await page.locator('#horas .perfil-viento li.vuelo meter').getAttribute('low'), '6.00', 'sigue al margen');
+  await margen('70');
 
   assert.match(await page.textContent('#fuentes'), /24 órbitas del despliegue/);
 

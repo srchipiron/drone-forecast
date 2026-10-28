@@ -136,3 +136,12 @@ test('resumen de un favorito: hoy y mañana con su ventana, desde la misma previ
   assert.deepEqual(r[1].ventana, p.dias[1].ventana);
   assert.equal(resumenDias(p, 1).length, 1);
 });
+
+test('el perfil y el semáforo usan los mismos umbrales de viento', async () => {
+  const { umbralesViento } = await import('../src/motor/veredicto.js');
+  const p = prev({}, { dron: 'mini5pro', margenViento: 70 });
+  assert.deepEqual(umbralesViento(p), { comodo: 12 * 0.7, limite: 12 });
+  const foto = prev({}, { modo: 'profesional', mision: 'fotogrametria', dron: 'mini5pro' });
+  assert.deepEqual(umbralesViento(foto), { comodo: 6, limite: 12 }, 'la fotogrametría usa el 50%');
+  assert.match(foto.actual.factores.find((f) => f.id === 'viento').detalle, /Cómodo hasta 22 km\/h/);
+});

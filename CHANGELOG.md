@@ -3,6 +3,13 @@
 Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
 `0.0.X` para correcciones. La versión sale en el pie de la app.
 
+## 0.6.0
+
+- **Perfil de viento.** Al tocar una hora, antes de los factores, sale el
+  viento a 180, 120, 80 y 10 m, con tu altura de vuelo marcada. Cada altura
+  lleva una barra verde, ámbar o roja con los mismos límites que el
+  semáforo, así ves de un vistazo si bajando un poco el viento te deja volar.
+
 ## 0.5.0
 
 - **Resumen de favoritos.** Al abrir «Lugar de vuelo», cada favorito enseña

@@ -2,7 +2,7 @@
 // La cáscara se sirve de caché; data/*.json, red primero. Las APIs de fuera
 // (Open-Meteo, NOAA) no se tocan aquí: su respaldo es la caché de almacen.js.
 
-const VERSION = '0.6.0';
+const VERSION = '0.7.1';
 const CACHE = `drone-forecast-${VERSION}`;
 const CASCARA = [
   './',
@@ -19,9 +19,11 @@ const CASCARA = [
   'src/app/ubicacion.js',
   'src/motor/astro.js',
   'src/motor/diagnostico.js',
+  'src/motor/diario.js',
   'src/motor/drones.js',
   'src/motor/enaire.js',
   'src/motor/factores.js',
+  'src/motor/grafica.js',
   'src/motor/kp.js',
   'src/motor/meteo.js',
   'src/motor/misiones.js',
@@ -34,7 +36,14 @@ const CASCARA = [
 ];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(CASCARA)).then(() => self.skipWaiting()));
+  // cache: 'reload' salta la caché HTTP de Pages (10 min): si no, dos
+  // despliegues seguidos podían mezclar ficheros de dos versiones.
+  e.waitUntil(
+    caches
+      .open(CACHE)
+      .then((c) => c.addAll(CASCARA.map((u) => new Request(u, { cache: 'reload' }))))
+      .then(() => self.skipWaiting()),
+  );
 });
 
 self.addEventListener('activate', (e) => {

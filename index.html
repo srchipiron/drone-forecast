@@ -46,10 +46,16 @@
     </section>
 
     <section id="aviso" class="aviso" hidden></section>
-    <section id="ahora" class="tarjeta veredicto" aria-live="polite"></section>
+    <section id="ahora" class="tarjeta veredicto"></section>
+    <p id="anuncio" class="visualmente-oculto" aria-live="polite"></p>
     <section id="dias" class="dias" aria-label="Mejor ventana de cada día"></section>
     <section id="horas" class="tarjeta horas"></section>
     <section id="checklist" class="tarjeta checklist" hidden></section>
+
+    <details id="diario" class="tarjeta">
+      <summary>Diario de vuelos <span id="diario-cuenta" class="nota"></span></summary>
+      <div id="diario-cuerpo"></div>
+    </details>
 
     <details id="ajustes" class="tarjeta">
       <summary>Ajustes</summary>
@@ -99,13 +105,33 @@
       <button class="icono" value="cerrar" aria-label="Cerrar">✕</button>
     </form>
     <form id="form-buscar" class="buscar">
-      <input id="txt-buscar" type="search" placeholder="Pueblo, ciudad o paraje" autocomplete="off" enterkeyhint="search">
+      <input id="txt-buscar" type="search" aria-label="Buscar lugar" placeholder="Pueblo, ciudad o paraje" autocomplete="off" enterkeyhint="search">
       <button type="submit">Buscar</button>
     </form>
     <p class="nota">También vale «40.4168, -3.7038».</p>
     <ul id="resultados" class="lista-lugares"></ul>
     <h3>Favoritos</h3>
     <ul id="favoritos" class="lista-lugares"></ul>
+  </dialog>
+
+  <dialog id="dlg-vuelo" aria-labelledby="titulo-vuelo">
+    <form id="form-vuelo">
+      <div class="dlg-cabecera">
+        <h2 id="titulo-vuelo">¿Cómo ha ido el vuelo?</h2>
+        <button type="button" class="icono" data-accion="cerrar-vuelo" aria-label="Cerrar">✕</button>
+      </div>
+      <p id="vuelo-prevision" class="nota"></p>
+      <fieldset class="valoracion">
+        <legend>Valoración</legend>
+        <label class="casilla"><input type="radio" name="valoracion" value="bien" required> Bien</label>
+        <label class="casilla"><input type="radio" name="valoracion" value="regular"> Regular</label>
+        <label class="casilla"><input type="radio" name="valoracion" value="mal"> Mal</label>
+      </fieldset>
+      <label class="nota-vuelo">Nota (opcional)
+        <textarea id="txt-vuelo" rows="3" maxlength="500" placeholder="Rachas en la cresta, el dron derivaba…"></textarea>
+      </label>
+      <div class="acciones"><button type="submit">Guardar en el diario</button></div>
+    </form>
   </dialog>
 
   <dialog id="dlg-diagnostico" aria-labelledby="titulo-diagnostico">
@@ -118,6 +144,8 @@
     <p id="estado-diagnostico" class="nota" aria-live="polite"></p>
     <div class="acciones"><button id="btn-copiar-diagnostico" type="button">Copiar otra vez</button></div>
   </dialog>
+
+  <section id="informe" aria-hidden="true"></section>
 
   <script type="module" src="src/app/main.js"></script>
 </body>

@@ -1,6 +1,8 @@
 // La interfaz. Pinta lo que devuelve construirPrevision(); no decide nada.
 
 import { informeDiagnostico } from '../motor/diagnostico.js';
+import { VALORACIONES, anadirEntrada, crearEntrada, diarioValido, resumenDiario } from '../motor/diario.js';
+import { graficaDia } from '../motor/grafica.js';
 import { DRONES } from '../motor/drones.js';
 import { MISIONES, MODOS } from '../motor/misiones.js';
 import { construirPrevision, normalizarAjustes, resumenDias } from '../motor/prevision.js';
@@ -14,6 +16,9 @@ import { mensajeUbicacion, pedirUbicacion } from './ubicacion.js';
 
 const $ = (s) => document.querySelector(s);
 const REFRESCO = 30 * 60000;
+
+// Para que el estado no dependa solo del color (daltonismo, pleno sol).
+const SIMBOLO = { ok: '✓', precaucion: '!', no: '✕', 'sin-dato': '–' };
 
 const ESTADOS = {
   ok: { texto: 'Se puede volar', corto: 'Volar' },
@@ -48,6 +53,10 @@ const estado = {
   dia: null,
   abierta: null,
   fallo: '',
+  pedido: 0,
+  vecesLugar: 0,
+  verFactores: false,
+  ultimoVeredicto: '',
   // Zonas de ENAIRE del lugar actual: null mientras se consulta.
   enaire: null,
   enaireDe: '',
@@ -61,7 +70,12 @@ export function esc(s) {
 
 function hora(ms, zona) {
   if (!Number.isFinite(ms)) return '—';
-  return new Intl.DateTimeFormat('es-ES', { hour: '2-digit', minute: '2-digit', timeZone: zona }).format(new Date(ms));
+  try {
+    return new Intl.DateTimeFormat('es-ES', { hour: '2-digit', minute: '2-digit', timeZone: zona }).format(new Date(ms));
+  } catch {
+    // Zona horaria rara en una caché vieja: mejor la hora del móvil que congelarse.
+    return new Intl.DateTimeFormat('es-ES', { hour: '2-digit', minute: '2-digit' }).format(new Date(ms));
+  }
 }
 
 function etiquetaDia(clave, k) {
@@ -82,16 +96,21 @@ function hace(ms) {
 // ---------- Datos ----------
 
 async function descargar() {
-  if (!estado.lugar || estado.cargando) return;
+  if (!estado.lugar) return;
+  // Cada descarga lleva su número: si mientras tanto se pide otra (otro lugar,
+  // recargar), la vieja no pisa a la nueva al llegar tarde.
+  const n = ++estado.pedido;
   estado.cargando = true;
   estado.error = '';
   pintar();
   const { lat, lon } = estado.lugar;
   try {
     const crudo = await cargarPrevision(lat, lon);
+    if (n !== estado.pedido) return;
     Object.assign(estado, leerDescarga(crudo), { descargado: Date.now(), desdeCache: false });
     almacen.guardarCache({ lat, lon, guardado: estado.descargado, ...crudo });
   } catch (e) {
+    if (n !== estado.pedido) return;
     const c = almacen.cache();
     if (c && c.lat === lat && c.lon === lon) {
       try {
@@ -102,12 +121,15 @@ async function descargar() {
     }
     estado.error = `No se pudo descargar la previsión (${e.message}).`;
   } finally {
-    estado.cargando = false;
-    pintar();
+    if (n === estado.pedido) {
+      estado.cargando = false;
+      pintar();
+    }
   }
 }
 
 function ponerLugar(lugar) {
+  estado.vecesLugar++;
   estado.lugar = { nombre: lugar.nombre, zona: lugar.zona ?? '', lat: lugar.lat, lon: lugar.lon };
   almacen.guardarLugar(estado.lugar);
   estado.meteo = null;
@@ -125,8 +147,11 @@ async function usarGPS() {
   }
   estado.error = '';
   $('#btn-gps').classList.add('girando');
+  // Si mientras el GPS busca se elige un lugar a mano, gana el de a mano.
+  const antes = estado.vecesLugar;
   try {
     const p = await pedirUbicacion(navigator.geolocation);
+    if (estado.vecesLugar !== antes) return;
     ponerLugar({
       nombre: 'Mi ubicación',
       zona: `${p.coords.latitude.toFixed(3)}, ${p.coords.longitude.toFixed(3)}`,
@@ -150,9 +175,15 @@ function cambiarAjustes(cambios) {
 
 // ---------- Pintar ----------
 
+// La previsión cuesta (satélites, sol de 7 días): se recalcula solo si cambia
+// algún dato, el lugar, los ajustes o la hora en curso.
+let memo = { clave: null, valor: null };
+
 function prevision() {
   if (!estado.meteo || !estado.lugar) return null;
-  return construirPrevision({
+  const clave = [estado.meteo, estado.consenso, estado.kp, estado.gnss.satelites, estado.lugar, estado.ajustes, horaEnCurso()];
+  if (memo.clave && memo.clave.every((x, i) => x === clave[i])) return memo.valor;
+  const valor = construirPrevision({
     meteo: estado.meteo,
     consenso: estado.consenso,
     kp: estado.kp,
@@ -160,6 +191,18 @@ function prevision() {
     lugar: estado.lugar,
     ajustes: estado.ajustes,
   });
+  memo = { clave, valor };
+  return valor;
+}
+
+function horaEnCurso() {
+  return Math.floor(Date.now() / 3600000);
+}
+
+// Fecha local del móvil (AAAA-MM-DD), no la UTC: la lista y el diario cambian
+// de día a medianoche, no a la 01:00 o las 02:00.
+function hoyLocal() {
+  return new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 }
 
 function chipEstado(e, texto = ESTADOS[e].corto) {
@@ -170,7 +213,7 @@ function listaFactores(h) {
   return `<ul class="factores">${h.factores
     .map(
       (f) => `<li class="factor ${f.estado}">
-        <span class="punto" aria-hidden="true"></span>
+        <span class="punto" aria-hidden="true">${SIMBOLO[f.estado]}</span><span class="visualmente-oculto">${ESTADOS[f.estado].corto}:</span>
         <span class="f-nombre">${esc(f.nombre)}</span>
         <span class="f-valor">${esc(f.valor)}</span>
         ${f.detalle ? `<span class="f-detalle">${esc(f.detalle)}</span>` : ''}
@@ -192,13 +235,20 @@ function pintarAhora(p) {
     el.innerHTML = `<p class="grande">${estado.cargando ? 'Descargando previsión…' : 'Sin previsión'}</p>`;
     return;
   }
-  const h = p.actual ?? p.horas.find((x) => x.ms > Date.now()) ?? p.horas[0];
+  const h = p.actual ?? p.horas.find((x) => x.ms > Date.now());
+  if (!h) {
+    el.className = 'tarjeta veredicto';
+    el.innerHTML = `<p class="grande">Sin previsión para ahora</p>
+      <p>La previsión guardada ya no cubre la hora actual${estado.descargado ? ` (es de ${esc(hace(estado.descargado))})` : ''}. Necesitas cobertura para descargar una nueva.</p>
+      <div class="acciones"><button type="button" data-accion="recargar">Reintentar</button></div>`;
+    return;
+  }
   const malos = h.factores.filter((f) => f.estado === h.estado && h.estado !== 'ok');
   const razon = h.estado === 'ok' ? 'Todo en verde para tu dron.' : malos.map((f) => `${f.nombre}: ${f.valor}`).join(' · ');
   const hoy = p.dias[0];
   el.className = `tarjeta veredicto ${h.estado}`;
   el.innerHTML = `
-    <p class="cuando">Ahora · ${esc(hora(h.ms, p.zona))} · ${esc(p.dron.nombre)}${p.ajustes.modo === 'profesional' ? ` · ${esc(p.mision.nombre)}` : ''}</p>
+    <p class="cuando">${p.actual ? 'Ahora' : 'Próxima hora'} · ${esc(hora(h.ms, p.zona))} · ${esc(p.dron.nombre)}${p.ajustes.modo === 'profesional' ? ` · ${esc(p.mision.nombre)}` : ''}</p>
     <p class="grande">${ESTADOS[h.estado].texto}</p>
     <p class="razon">${esc(razon)}</p>
     <div class="resumen">
@@ -214,7 +264,17 @@ function pintarAhora(p) {
     }
     <p class="sol">☀ ${esc(hora(hoy?.sol.salida, p.zona))} – ${esc(hora(hoy?.sol.puesta, p.zona))} · hora dorada desde ${esc(hora(hoy?.sol.doradaTarde, p.zona))}</p>
     ${bloqueEnaire()}
-    <details><summary>Todos los factores</summary>${listaFactores(h)}</details>`;
+    <div class="acciones acciones-ahora">
+      <button type="button" data-accion="volado" data-ms="${h.ms}">He volado</button>
+      ${p.ajustes.modo === 'profesional' ? '<button type="button" data-accion="informe">Informe para el cliente</button>' : ''}
+    </div>
+    <details class="factores-ahora"${estado.verFactores ? ' open' : ''}><summary>Todos los factores</summary>${listaFactores(h)}</details>`;
+  // El lector de pantalla solo oye el veredicto cuando cambia, no cada minuto.
+  const anuncio = `${h.ms}-${h.estado}`;
+  if (anuncio !== estado.ultimoVeredicto) {
+    estado.ultimoVeredicto = anuncio;
+    $('#anuncio').textContent = `${ESTADOS[h.estado].texto}. ${razon}`;
+  }
 }
 
 const MAPA_ENAIRE = '<a href="https://drones.enaire.es/" target="_blank" rel="noopener noreferrer">mapa de ENAIRE Drones</a>';
@@ -242,7 +302,8 @@ function bloqueEnaire() {
 async function cargarEnaire() {
   if (!estado.lugar) return;
   const clave = `${estado.lugar.lat},${estado.lugar.lon}`;
-  if (estado.enaireDe === clave && estado.enaire) return;
+  // Ya consultado y con respuesta completa: no se repite. Tras un fallo, sí.
+  if (estado.enaireDe === clave && estado.enaire && !['error', 'incompleto'].includes(estado.enaire.estado)) return;
   estado.enaireDe = clave;
   estado.enaire = null;
   const r = await consultarEnaire(estado.lugar.lat, estado.lugar.lon);
@@ -265,7 +326,7 @@ function pintarDias(p) {
       return `<button type="button" class="dia ${e}${d.clave === estado.dia ? ' activo' : ''}" data-dia="${esc(d.clave)}" aria-pressed="${d.clave === estado.dia}">
         <span class="d-nombre">${esc(etiquetaDia(d.clave, k))}</span>
         <span class="d-ventana">${v ? `${esc(hora(v.inicio, p.zona))}–${esc(hora(v.fin, p.zona))}` : 'Sin ventana'}</span>
-        <span class="d-horas">${v ? `${v.horas} h` : ''}</span>
+        <span class="d-horas">${v ? `${SIMBOLO[v.estado]} ${v.horas} h${v.estado === 'precaucion' ? ' con precaución' : ''}` : ''}</span>
       </button>`;
     })
     .join('');
@@ -290,6 +351,31 @@ function bloquePerfil(h, p) {
     .join('')}</ul></div>`;
 }
 
+// Gráfica del día en SVG (atributos de presentación y clases: la CSP no deja
+// estilos en línea). Debajo, una franja por hora con el color del semáforo.
+function svgGrafica(dia, p) {
+  const g = graficaDia(dia.horas, umbralesViento(p));
+  const u = p.ajustes.unidades;
+  const ahora = Date.now();
+  const marcaAhora = g.xDe.find((m) => ahora >= m.ms && ahora < m.ms + 3600000);
+  const etiquetas = g.xDe.filter((m, i) => i % 6 === 0);
+  const alto = g.alto + 24;
+  // La primera etiqueta se alinea a la izquierda para que no se corte.
+  const ancla = (i) => (i === 0 ? ' class="inicio"' : '');
+  return `<figure class="grafica">
+    <svg viewBox="0 0 ${g.ancho} ${alto}" role="img" aria-label="Viento y rachas a ${esc(p.ajustes.altitud)} metros a lo largo del día">
+      ${g.franjas.map((f) => `<rect class="franja ${esc(f.estado)}" x="${f.x}" y="${g.alto + 1}" width="${f.ancho}" height="5"></rect>`).join('')}
+      <line class="umbral limite" x1="0" x2="${g.ancho}" y1="${g.yLimite}" y2="${g.yLimite}"></line>
+      <line class="umbral comodo" x1="0" x2="${g.ancho}" y1="${g.yComodo}" y2="${g.yComodo}"></line>
+      ${marcaAhora ? `<line class="ahora" x1="${marcaAhora.x}" x2="${marcaAhora.x}" y1="0" y2="${g.alto}"></line>` : ''}
+      <path class="rachas" d="${g.rachas}"></path>
+      <path class="viento" d="${g.viento}"></path>
+      ${etiquetas.map((m, i) => `<text${ancla(i)} x="${m.x}" y="${alto - 3}">${esc(hora(m.ms, p.zona))}</text>`).join('')}
+    </svg>
+    <figcaption class="nota"><span class="ley viento"></span> viento · <span class="ley rachas"></span> rachas · rayas: cómodo ${esc(fmtViento(umbralesViento(p).comodo, u))} y límite ${esc(fmtViento(umbralesViento(p).limite, u))}</figcaption>
+  </figure>`;
+}
+
 function pintarHoras(p) {
   const el = $('#horas');
   const dia = p?.dias.find((d) => d.clave === estado.dia);
@@ -299,7 +385,7 @@ function pintarHoras(p) {
   }
   el.hidden = false;
   const u = p.ajustes.unidades;
-  el.innerHTML = `<h2>Hora a hora</h2><ol class="lista-horas">${dia.horas
+  el.innerHTML = `<h2>Hora a hora</h2>${svgGrafica(dia, p)}<ol class="lista-horas">${dia.horas
     .map((h) => {
       const abierta = estado.abierta === h.ms;
       const pasada = h.ms + 3600000 <= Date.now();
@@ -322,7 +408,7 @@ function pintarChecklist() {
   const el = $('#checklist');
   el.hidden = estado.ajustes.modo !== 'profesional';
   if (el.hidden) return;
-  const hoy = new Date().toISOString().slice(0, 10);
+  const hoy = hoyLocal();
   let c = almacen.checklist();
   if (c.dia !== hoy) c = { dia: hoy, hechos: [] };
   const hechos = new Set(c.hechos);
@@ -331,6 +417,12 @@ function pintarChecklist() {
       (t, i) => `<li><label class="casilla"><input type="checkbox" data-check="${i}" ${hechos.has(i) ? 'checked' : ''}> ${esc(t)}</label></li>`,
     ).join('')}</ul>
     <p class="nota">Se vacía sola cada día.</p>`;
+}
+
+// No se pisa un campo que se está escribiendo (el que tiene el foco).
+function ponerValor(sel, v) {
+  const el = $(sel);
+  if (el !== document.activeElement) el.value = v;
 }
 
 function ponerOpciones(sel, html) {
@@ -372,16 +464,16 @@ function pintarPerfil() {
   rng.value = String(Math.min(a.altitud, Number(rng.max)));
   $('#val-altitud').textContent = `${a.altitud} m`;
   $('#aj-unidades').value = a.unidades;
-  $('#aj-margen').value = a.margenViento;
-  $('#aj-sats').value = a.minSats;
-  $('#aj-kp').value = a.maxKp;
+  ponerValor('#aj-margen', a.margenViento);
+  ponerValor('#aj-sats', a.minSats);
+  ponerValor('#aj-kp', a.maxKp);
   $('#aj-noche').checked = a.permitirNoche;
-  $('#aj-interior').value = a.tempInterior;
+  ponerValor('#aj-interior', a.tempInterior);
   $('#campo-interior').hidden = a.mision !== 'termografia_edificios';
   $('#dron-personalizado').hidden = a.dron !== 'personalizado';
-  $('#pz-viento').value = a.personalizado.maxViento;
-  $('#pz-tmin').value = a.personalizado.tempMin;
-  $('#pz-tmax').value = a.personalizado.tempMax;
+  ponerValor('#pz-viento', a.personalizado.maxViento);
+  ponerValor('#pz-tmin', a.personalizado.tempMin);
+  ponerValor('#pz-tmax', a.personalizado.tempMax);
   $('#pz-ip').checked = Boolean(a.personalizado.ip);
 }
 
@@ -422,7 +514,140 @@ function pintar() {
   pintarDias(p);
   pintarHoras(p);
   pintarChecklist();
+  pintarDiario();
   pintarPie();
+}
+
+function recargarTodo() {
+  descargar();
+  cargarEnaire();
+  cargarKp().then((kp) => {
+    estado.kp = kp;
+    estado.kpDescargado = Date.now();
+    pintar();
+  });
+}
+
+// ---------- Diario de vuelos ----------
+
+const NOMBRE_ESTADO = { ok: 'verde', precaucion: 'ámbar', no: 'rojo' };
+
+function fecha(ms) {
+  return new Intl.DateTimeFormat('es-ES', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(ms));
+}
+
+function pintarDiario() {
+  const diario = diarioValido(almacen.diario());
+  $('#diario-cuenta').textContent = diario.length ? `(${diario.length})` : '';
+  if (!diario.length) {
+    $('#diario-cuerpo').innerHTML =
+      '<p class="nota">Aún no hay vuelos. Pulsa «He volado» al terminar: con el tiempo verás si el semáforo acierta con tu dron.</p>';
+    return;
+  }
+  const r = resumenDiario(diario);
+  const filas = ['ok', 'precaucion', 'no']
+    .filter((e) => r[e].total)
+    .map(
+      (e) =>
+        `<li>${chipEstado(e, `En ${NOMBRE_ESTADO[e]}`)} ${r[e].total} vuelo${r[e].total === 1 ? '' : 's'}: ${r[e].bien} bien · ${r[e].regular} regular · ${r[e].mal} mal</li>`,
+    )
+    .join('');
+  const u = estado.ajustes.unidades;
+  $('#diario-cuerpo').innerHTML = `
+    <ul class="resumen-diario">${filas}</ul>
+    <ol class="lista-vuelos">${diario
+      .slice(0, 30)
+      .map(
+        (e) => `<li>
+          <div><strong>${esc(fecha(e.ms))}</strong> · ${esc(e.lugar.nombre)} ${chipEstado(e.prevision.estado, NOMBRE_ESTADO[e.prevision.estado] ?? '—')}
+            <span class="valoracion-${esc(e.valoracion)}">${esc(VALORACIONES[e.valoracion])}</span></div>
+          <div class="nota">${esc(e.dron)} · ${esc(e.altitud)} m · viento ${esc(fmtViento(e.prevision.vientoAlt, u))} · rachas ${esc(fmtViento(e.prevision.rachaAlt, u))}${e.nota ? ` · «${esc(e.nota)}»` : ''}</div>
+          <button type="button" class="icono borrar" data-borrar-vuelo="${esc(e.id)}" aria-label="Borrar este vuelo">✕</button>
+        </li>`,
+      )
+      .join('')}</ol>
+    <div class="acciones"><button type="button" data-accion="exportar-diario">Exportar el diario (JSON)</button></div>`;
+}
+
+function abrirVuelo(ms) {
+  const p = prevision();
+  const h = p?.horas.find((x) => x.ms === ms);
+  if (!h) return;
+  estado.vueloMs = ms;
+  $('#vuelo-prevision').textContent = `La app decía: ${ESTADOS[h.estado].texto.toLowerCase()} · viento ${fmtViento(h.vientoAlt, p.ajustes.unidades)} · rachas ${fmtViento(h.rachaAlt, p.ajustes.unidades)}`;
+  $('#form-vuelo').reset();
+  $('#dlg-vuelo').showModal();
+}
+
+function guardarVuelo(e) {
+  e.preventDefault();
+  const p = prevision();
+  const h = p?.horas.find((x) => x.ms === estado.vueloMs);
+  const valoracion = new FormData($('#form-vuelo')).get('valoracion');
+  if (!h || !valoracion) return;
+  const entrada = crearEntrada(p, h, estado.lugar, { valoracion, nota: $('#txt-vuelo').value, ms: Date.now() });
+  almacen.guardarDiario(anadirEntrada(diarioValido(almacen.diario()), entrada));
+  $('#dlg-vuelo').close();
+  $('#diario').open = true;
+  pintarDiario();
+}
+
+function exportarDiario() {
+  const datos = JSON.stringify(diarioValido(almacen.diario()), null, 2);
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([datos], { type: 'application/json' }));
+  a.download = `diario-vuelos-${hoyLocal()}.json`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+}
+
+// ---------- Informe para el cliente ----------
+
+function htmlInforme(p) {
+  const dia = p.dias.find((d) => d.clave === estado.dia) ?? p.dias[0];
+  const h = p.actual ?? dia.horas[0];
+  const u = p.ajustes.unidades;
+  const z = estado.enaire;
+  const enaire = !z
+    ? 'sin consultar'
+    : z.estado === 'dentro'
+      ? z.zonas.map((x) => `${x.nombre} (${x.capa}${x.restriccion ? `, ${x.restriccion}` : ''})`).join('; ')
+      : z.estado === 'fuera'
+        ? 'no consta en ninguna zona UAS'
+        : 'no se pudo consultar';
+  const v = dia.ventana;
+  return `
+    <h1>Condiciones de vuelo</h1>
+    <p>${esc(estado.lugar.nombre)} (${esc(estado.lugar.lat.toFixed(5))}, ${esc(estado.lugar.lon.toFixed(5))}) · generado el ${esc(fecha(Date.now()))}</p>
+    <table class="datos-informe">
+      <tr><th>Misión</th><td>${esc(p.mision.nombre)}</td></tr>
+      <tr><th>Dron</th><td>${esc(p.dron.nombre)} · altura ${esc(p.ajustes.altitud)} m</td></tr>
+      <tr><th>Día</th><td>${esc(dia.clave)} · sol ${esc(hora(dia.sol.salida, p.zona))}–${esc(hora(dia.sol.puesta, p.zona))}</td></tr>
+      <tr><th>Mejor ventana</th><td>${v ? `${esc(hora(v.inicio, p.zona))}–${esc(hora(v.fin, p.zona))} (${esc(NOMBRE_ESTADO[v.estado])})` : 'ninguna'}</td></tr>
+      <tr><th>Zonas UAS (ENAIRE)</th><td>${esc(enaire)}</td></tr>
+    </table>
+    <h2>Hora a hora</h2>
+    <table class="horas-informe">
+      <tr><th>Hora</th><th>Semáforo</th><th>Viento</th><th>Rachas</th><th>Lluvia</th><th>Satélites</th></tr>
+      ${dia.horas
+        .map(
+          (x) =>
+            `<tr><td>${esc(hora(x.ms, p.zona))}</td><td>${esc(ESTADOS[x.estado].corto)}</td><td>${esc(fmtViento(x.vientoAlt, u))}</td><td>${esc(fmtViento(x.rachaAlt, u))}</td><td>${esc(x.probLluvia ?? '—')}%</td><td>${esc(x.sats?.total ?? '—')}</td></tr>`,
+        )
+        .join('')}
+    </table>
+    <h2>Factores a las ${esc(hora(h.ms, p.zona))}</h2>
+    <table class="horas-informe">${h.factores
+      .map((f) => `<tr><td>${esc(f.nombre)}</td><td>${esc(ESTADOS[f.estado].corto)}</td><td>${esc(f.valor)}</td><td>${esc(f.detalle)}</td></tr>`)
+      .join('')}</table>
+    <p class="nota">Fuentes: Open-Meteo, NOAA SWPC, CelesTrak, ENAIRE. Orientativo: la decisión y la responsabilidad del vuelo son del piloto.</p>`;
+}
+
+function imprimirInforme() {
+  const p = prevision();
+  if (!p || !estado.lugar) return;
+  $('#informe').innerHTML = htmlInforme(p);
+  window.print();
 }
 
 // ---------- Diagnóstico ----------
@@ -484,9 +709,17 @@ function resumenFavorito(l) {
   if (c.error) return '<span class="resumen-fav nota">Sin previsión</span>';
   let dias;
   try {
-    dias = resumenDias(
-      construirPrevision({ meteo: c.meteo, kp: estado.kp, satelites: estado.gnss.satelites, lugar: l, ajustes: estado.ajustes }),
-    );
+    // Se recalcula solo si cambian los datos, los ajustes o la hora.
+    const clave = [estado.kp, estado.gnss.satelites, estado.ajustes, horaEnCurso()];
+    if (!c.memo || !c.memo.clave.every((x, i) => x === clave[i])) {
+      c.memo = {
+        clave,
+        dias: resumenDias(
+          construirPrevision({ meteo: c.meteo, kp: estado.kp, satelites: estado.gnss.satelites, lugar: l, ajustes: estado.ajustes }),
+        ),
+      };
+    }
+    dias = c.memo.dias;
   } catch {
     return '<span class="resumen-fav nota">Sin previsión</span>';
   }
@@ -581,13 +814,7 @@ function enlazar() {
   window.addEventListener('unhandledrejection', (e) => {
     estado.fallo = `Promesa: ${e.reason?.message ?? e.reason}`;
   });
-  $('#btn-recargar').addEventListener('click', () => {
-    descargar();
-    cargarKp().then((kp) => {
-      estado.kp = kp;
-      pintar();
-    });
-  });
+  $('#btn-recargar').addEventListener('click', recargarTodo);
   document.querySelectorAll('[data-modo]').forEach((b) => b.addEventListener('click', () => cambiarAjustes({ modo: b.dataset.modo })));
   $('#sel-dron').addEventListener('change', (e) => cambiarAjustes({ dron: e.target.value }));
   $('#sel-mision').addEventListener('change', (e) => cambiarAjustes({ mision: e.target.value }));
@@ -615,6 +842,15 @@ function enlazar() {
     const b = e.target.closest('button');
     if (!b) return;
     if (b.dataset.accion === 'lugar') abrirLugar();
+    else if (b.dataset.accion === 'recargar') recargarTodo();
+    else if (b.dataset.accion === 'volado') abrirVuelo(Number(b.dataset.ms));
+    else if (b.dataset.accion === 'cerrar-vuelo') $('#dlg-vuelo').close();
+    else if (b.dataset.accion === 'informe') imprimirInforme();
+    else if (b.dataset.accion === 'exportar-diario') exportarDiario();
+    else if (b.dataset.borrarVuelo) {
+      almacen.guardarDiario(diarioValido(almacen.diario()).filter((e) => e.id !== b.dataset.borrarVuelo));
+      pintarDiario();
+    }
     else if (b.dataset.accion === 'gps') usarGPS();
     else if (b.dataset.dia) {
       estado.dia = b.dataset.dia;
@@ -644,7 +880,7 @@ function enlazar() {
   $('#checklist').addEventListener('change', (e) => {
     const i = e.target.dataset.check;
     if (i === undefined) return;
-    const hoy = new Date().toISOString().slice(0, 10);
+    const hoy = hoyLocal();
     let c = almacen.checklist();
     if (c.dia !== hoy) c = { dia: hoy, hechos: [] };
     const hechos = new Set(c.hechos);
@@ -653,6 +889,14 @@ function enlazar() {
     almacen.guardarChecklist({ dia: hoy, hechos: [...hechos] });
     pintarChecklist();
   });
+  $('#form-vuelo').addEventListener('submit', guardarVuelo);
+  document.addEventListener(
+    'toggle',
+    (e) => {
+      if (e.target.classList?.contains('factores-ahora')) estado.verFactores = e.target.open;
+    },
+    true,
+  );
   $('#form-buscar').addEventListener('submit', (e) => {
     e.preventDefault();
     buscar($('#txt-buscar').value);
@@ -661,10 +905,33 @@ function enlazar() {
     if (document.visibilityState === 'visible' && Date.now() - estado.descargado > REFRESCO) descargar();
   });
   // Cada hora en punto cambia «ahora»: se repinta sin descargar.
-  setInterval(pintar, 60000);
+  setInterval(tic, 60000);
+}
+
+// Cada minuto: repintar solo si ha cambiado la hora (no deshace lo que estás
+// mirando) y, con la app a la vista, refrescar lo que tenga más de 30 min.
+let horaPintada = horaEnCurso();
+
+function tic() {
+  if (horaEnCurso() !== horaPintada) {
+    horaPintada = horaEnCurso();
+    pintar();
+  }
+  if (document.visibilityState !== 'visible') return;
+  if (estado.lugar && !estado.cargando && Date.now() - estado.descargado > REFRESCO) descargar();
+  if (Date.now() - (estado.kpDescargado ?? 0) > 3 * 3600000) {
+    estado.kpDescargado = Date.now();
+    cargarKp().then((kp) => {
+      estado.kp = kp;
+      pintar();
+    });
+  }
 }
 
 async function arrancar() {
+  // El instalador primero: si se cierra la app antes de que acabe todo lo
+  // demás, que al menos quede para usarla sin cobertura.
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
   enlazar();
   pintar();
   const c = almacen.cache();
@@ -679,9 +946,9 @@ async function arrancar() {
   cargarEnaire();
   const [kp, gnss] = await Promise.all([cargarKp(), cargarSatelites(), descargar()]);
   estado.kp = kp;
+  estado.kpDescargado = Date.now();
   estado.gnss = gnss;
   pintar();
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 }
 
 arrancar();

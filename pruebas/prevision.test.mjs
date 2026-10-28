@@ -106,9 +106,10 @@ test('fotogrametría: sol bajo es precaución o no; cubierto uniforme vale', () 
 });
 
 test('consenso: modelos que discrepan dejan en precaución', () => {
-  const consenso = new Map([[Date.parse('2026-06-21T08:00:00Z'), { dispersion: 6, modelos: 4 }]]);
+  const consenso = new Map([[Date.parse('2026-06-21T08:00:00Z'), { dispersion: 6, modelos: 2, valores: { ecmwf_ifs025: 3, gfs_seamless: 9 } }]]);
   const p = prev({}, {}, { consenso });
   assert.equal(f(p.actual, 'consenso').estado, 'precaucion');
+  assert.match(f(p.actual, 'consenso').detalle, /ECMWF 11 km\/h · GFS 32 km\/h/, 'el viento de cada modelo');
 });
 
 test('mejor ventana: el tramo verde más largo; si no hay verde, el ámbar', () => {
@@ -122,7 +123,9 @@ test('mejor ventana: el tramo verde más largo; si no hay verde, el ámbar', () 
 
 test('ajustes absurdos se acotan', () => {
   const a = normalizarAjustes({ altitud: 9999, margenViento: 'x', modo: 'hacker' });
-  assert.equal(a.altitud, 500);
+  assert.equal(a.altitud, 120, 'recreativo: 120 m como mucho (categoría abierta)');
+  assert.equal(normalizarAjustes({ altitud: 9999, modo: 'profesional' }).altitud, 180);
+  assert.equal(normalizarAjustes({ altitud: 180, modo: 'recreativo' }).altitud, 120, 'al pasar a recreativo baja a 120');
   assert.equal(a.margenViento, 70);
   assert.equal(a.modo, 'recreativo');
 });
@@ -144,4 +147,13 @@ test('el perfil y el semáforo usan los mismos umbrales de viento', async () => 
   const foto = prev({}, { modo: 'profesional', mision: 'fotogrametria', dron: 'mini5pro' });
   assert.deepEqual(umbralesViento(foto), { comodo: 6, limite: 12 }, 'la fotogrametría usa el 50%');
   assert.match(foto.actual.factores.find((f) => f.id === 'viento').detalle, /Cómodo hasta 22 km\/h/);
+});
+
+test('una hora sin dato de viento nunca sale en verde', () => {
+  const crudo = respuestaOpenMeteo();
+  for (const k of ['wind_speed_10m', 'wind_speed_80m', 'wind_speed_120m', 'wind_speed_180m', 'wind_gusts_10m']) crudo.hourly[k] = crudo.hourly[k].map(() => null);
+  const p = construirPrevision({ meteo: leerPrevision(crudo), kp, satelites: sats, lugar: LUGAR, ajustes: {}, ahora: AHORA });
+  assert.equal(f(p.actual, 'viento').estado, 'precaucion');
+  assert.notEqual(p.actual.estado, 'ok');
+  assert.notEqual(p.dias[0].ventana?.estado, 'ok', 'ni una ventana verde sin viento');
 });

@@ -4,7 +4,7 @@
 import { CAPAS, leerZonas, resumenZonas, urlConsultaEnaire } from '../motor/enaire.js';
 import { URL_KP, leerKp } from '../motor/kp.js';
 import { leerBusqueda, leerConsenso, leerPrevision, urlBusqueda, urlConsenso, urlPrevision } from '../motor/meteo.js';
-import { desdeOMM, satValido } from '../motor/satelites.js';
+import { antiguedadDias, desdeOMM, satValido } from '../motor/satelites.js';
 import { almacen } from './almacen.js';
 
 async function pedir(url, ms = 15000) {
@@ -55,14 +55,21 @@ export async function cargarSatelites() {
   try {
     const j = await pedir('data/gnss.json', 15000);
     const satelites = (j.satelites ?? []).filter(satValido);
-    if (satelites.length) return { satelites, actualizado: j.actualizado ?? null, origen: 'despliegue' };
+    // Si CelesTrak lleva días bloqueando al despliegue, lo publicado envejece:
+    // con más de 3 días se piden al móvil, que sí llega.
+    if (satelites.length && antiguedadDias(satelites, Date.now()) < 3)
+      return { satelites, actualizado: j.actualizado ?? null, origen: 'despliegue' };
   } catch {
     /* siguiente fuente */
   }
   const guardadas = almacen.orbitas();
   const validas = guardadas ? (guardadas.satelites ?? []).filter(satValido) : [];
-  const deGuardadas = () => ({ satelites: validas, actualizado: new Date(guardadas.guardado).toISOString(), origen: 'guardadas' });
-  if (validas.length && Date.now() - guardadas.guardado < DOCE_HORAS) return deGuardadas();
+  const deGuardadas = () => ({
+    satelites: validas,
+    actualizado: Number.isFinite(guardadas.guardado) ? new Date(guardadas.guardado).toISOString() : null,
+    origen: 'guardadas',
+  });
+  if (validas.length && Number.isFinite(guardadas.guardado) && Date.now() - guardadas.guardado < DOCE_HORAS) return deGuardadas();
   const satelites = [];
   for (const [constelacion, grupo] of Object.entries(GRUPOS)) {
     try {

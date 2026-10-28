@@ -40,3 +40,25 @@ test('descarga: fuentes vivas, una caída rellenada con lo publicado, Kp leído'
     srv.close();
   }
 });
+
+test('descarga: si no se baja nada nuevo, conserva también la fecha de lo publicado', async () => {
+  const srv = createServer((req, res) => {
+    const u = new URL(req.url, 'http://x');
+    const enviar = (cod, cuerpo) => { res.writeHead(cod, { 'content-type': 'application/json' }); res.end(JSON.stringify(cuerpo)); };
+    if (u.pathname === '/gp.php') return enviar(503, {});
+    if (u.pathname === '/kp') return enviar(503, {});
+    if (u.pathname === '/previo/gnss.json') return enviar(200, { actualizado: '2026-09-01T00:00:00.000Z', satelites: [{ nombre: 'GPS-viejo', constelacion: 'GPS', epoca: 1, n: 2, e: 0, i: 55, raan: 0, argp: 0, M: 0 }] });
+    enviar(404, {});
+  });
+  await new Promise((r) => srv.listen(0, '127.0.0.1', r));
+  const base = `http://127.0.0.1:${srv.address().port}`;
+  const out = await mkdtemp(join(tmpdir(), 'df-'));
+  try {
+    await promisify(execFile)(process.execPath, ['scripts/descargar-datos.mjs', '--out', out, '--celestrak', `${base}/gp.php`, '--kp', `${base}/kp`, '--previo', `${base}/previo`]);
+    const gnss = JSON.parse(await readFile(join(out, 'gnss.json'), 'utf8'));
+    assert.equal(gnss.actualizado, '2026-09-01T00:00:00.000Z', 'no finge que son de hoy');
+    assert.equal(gnss.satelites.length, 1);
+  } finally {
+    srv.close();
+  }
+});

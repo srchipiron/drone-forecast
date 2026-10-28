@@ -1,6 +1,7 @@
 // El semáforo de UNA hora: los factores de siempre más los de la misión.
 
 import { escalonMax, escalonMin, factor, peor } from './factores.js';
+import { NOMBRES_MODELO } from './meteo.js';
 import { fmtViento, puntoCardinal } from './unidades.js';
 
 const TORMENTA = new Set([95, 96, 99]);
@@ -17,6 +18,9 @@ export function umbralesViento({ dron, ajustes, mision }) {
 function fViento(h, ctx) {
   const { dron, ajustes } = ctx;
   const { comodo, limite } = umbralesViento(ctx);
+  // Sin dato de viento no se puede decir que se puede volar: ámbar, nunca verde.
+  if (!Number.isFinite(h.vientoAlt))
+    return factor('viento', `Viento a ${ajustes.altitud} m`, 'precaucion', '—', 'Sin dato de viento: mira tú el viento antes de despegar');
   const estado = escalonMax(h.vientoAlt, comodo, limite);
   const dir = puntoCardinal(h.dirAlt);
   return factor(
@@ -145,7 +149,13 @@ function fConsenso(h, ctx) {
     'Acuerdo entre modelos',
     h.dispersion >= 4 ? 'precaucion' : 'ok',
     `±${fmtViento(h.dispersion / 2, ctx.ajustes.unidades)}`,
-    `${h.modelos} modelos: ${h.dispersion >= 4 ? 'discrepan en el viento, fíate menos' : 'coinciden en el viento'}`,
+    `${h.modelos} modelos: ${h.dispersion >= 4 ? 'discrepan en el viento, fíate menos' : 'coinciden en el viento'}${
+      h.valores
+        ? ` (a 10 m: ${Object.entries(h.valores)
+            .map(([m, x]) => `${NOMBRES_MODELO[m] ?? m} ${fmtViento(x, ctx.ajustes.unidades)}`)
+            .join(' · ')})`
+        : ''
+    }`,
   );
 }
 

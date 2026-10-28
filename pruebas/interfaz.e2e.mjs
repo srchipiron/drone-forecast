@@ -86,6 +86,12 @@ try {
   assert.match(await page.textContent('#ahora .resumen'), /Kp\s*2\.0/);
   assert.equal(await page.locator('#ahora .enaire a').getAttribute('href'), 'https://drones.enaire.es/', 'ENAIRE bajo el veredicto');
 
+  // Selector de dron: la gama actual agrupada por marca, Mini 5 Pro por defecto.
+  assert.equal(await page.inputValue('#sel-dron'), 'mini5pro');
+  const marcas = await page.locator('#sel-dron optgroup').evaluateAll((g) => g.map((x) => x.label));
+  assert.deepEqual(marcas, ['DJI', 'DJI Enterprise', 'Autel', 'Skydio', 'Parrot']);
+  assert.equal(await page.locator('#sel-dron option[value="mini4pro"]').count(), 0, 'sin modelos viejos');
+
   // Modo profesional: aparece misión y checklist; termografía FV mira la irradiancia.
   assert.ok(await page.locator('#campo-mision').isHidden());
   await page.getByRole('radio', { name: 'Profesional' }).click();

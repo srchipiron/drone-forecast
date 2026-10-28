@@ -3,6 +3,23 @@
 Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
 `0.0.X` para correcciones. La versión sale en el pie de la app.
 
+## 0.3.0
+
+- **Drones de la gama actual**, agrupados por marca en el selector:
+  - **DJI:** Neo, Flip, Mini 4K, Mini 5 Pro, Air 3S, Mavic 4 Pro y Avata 360.
+  - **DJI Enterprise:** Matrice 4E/4T, 4D/4TD, 5TD y 400.
+  - **Otras marcas:** Autel EVO Max 4T, Skydio X10 y Parrot ANAFI UKR.
+
+  Los límites de viento y temperatura salen de la ficha oficial de cada
+  fabricante. Si la ficha da dos vientos, vale el más bajo.
+- **Fuera los DJI viejos** (Mini 3, Mini 4 Pro, Air 3, Mavic 3, Avata 2,
+  Mavic 3 Enterprise, Matrice 30 y 350). Si tenías uno elegido, la app pasa
+  sola a su sucesor: el Mini 4 Pro al Mini 5 Pro, el Air 3 al Air 3S, el
+  Matrice 350 al 400… Revisa en el selector que es el tuyo.
+- Solo cuenta como «aguanta lluvia ligera» un IP55 o más. El IP43 del EVO Max
+  y el IP53 del ANAFI UKR protegen de salpicaduras, no de lluvia, y la app los
+  trata como drones sin protección.
+
 ## 0.2.1
 
 - **El botón de ubicación ya no dice siempre «no hay permiso».** Ahora

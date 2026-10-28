@@ -1,17 +1,32 @@
-// Límites del fabricante (resistencia al viento en m/s y rango de
-// temperatura de trabajo). Son los de la ficha técnica: revísalos con la tuya.
-// ip: si aguanta lluvia ligera (IP45 o más). El perfil «personalizado» se
-// edita en Ajustes.
+// La gama ACTUAL (octubre de 2026), con los límites de la ficha oficial de
+// cada fabricante: resistencia al viento en m/s y temperatura de trabajo.
+// Cada dron lleva la página de la que sale (fuente): si cambia, se cambia aquí.
+//
+// ip: solo si aguanta lluvia ligera (segunda cifra IP 5 o más: IP55). Un IP43
+// o IP53 aguanta salpicaduras, no lluvia, y cuenta como sin protección.
+// Cuando la ficha da dos vientos (despegue y crucero), vale el más bajo.
 
 export const DRONES = [
-  { id: 'mini4pro', marca: 'DJI', nombre: 'DJI Mini 4 Pro', maxViento: 10.7, tempMin: -10, tempMax: 40, ip: null },
-  { id: 'mini3', marca: 'DJI', nombre: 'DJI Mini 3 / 3 Pro', maxViento: 10.7, tempMin: -10, tempMax: 40, ip: null },
-  { id: 'air3', marca: 'DJI', nombre: 'DJI Air 3 / Air 3S', maxViento: 12, tempMin: -10, tempMax: 40, ip: null },
-  { id: 'mavic3', marca: 'DJI', nombre: 'DJI Mavic 3 / 3 Pro', maxViento: 12, tempMin: -10, tempMax: 40, ip: null },
-  { id: 'avata2', marca: 'DJI', nombre: 'DJI Avata 2', maxViento: 10.7, tempMin: -10, tempMax: 40, ip: null },
-  { id: 'm3e', marca: 'DJI', nombre: 'DJI Mavic 3 Enterprise / 3T', maxViento: 12, tempMin: -10, tempMax: 40, ip: null },
-  { id: 'm30', marca: 'DJI', nombre: 'DJI Matrice 30 / 30T', maxViento: 15, tempMin: -20, tempMax: 50, ip: 'IP55' },
-  { id: 'm350', marca: 'DJI', nombre: 'DJI Matrice 350 RTK', maxViento: 12, tempMin: -20, tempMax: 50, ip: 'IP55' },
+  // DJI, consumo
+  { id: 'neo', marca: 'DJI', nombre: 'DJI Neo', maxViento: 8, tempMin: -10, tempMax: 40, ip: null, fuente: 'https://www.dji.com/neo/specs' },
+  { id: 'flip', marca: 'DJI', nombre: 'DJI Flip', maxViento: 10.7, tempMin: -10, tempMax: 40, ip: null, fuente: 'https://www.dji.com/flip/specs' },
+  { id: 'mini4k', marca: 'DJI', nombre: 'DJI Mini 4K', maxViento: 10.7, tempMin: 0, tempMax: 40, ip: null, fuente: 'https://www.dji.com/mini-2-se/specs' },
+  { id: 'mini5pro', marca: 'DJI', nombre: 'DJI Mini 5 Pro', maxViento: 12, tempMin: -10, tempMax: 40, ip: null, fuente: 'https://www.dji.com/de/support/product/mini-5-pro' },
+  { id: 'air3s', marca: 'DJI', nombre: 'DJI Air 3S', maxViento: 12, tempMin: -10, tempMax: 40, ip: null, fuente: 'https://www.dji.com/air-3s/specs' },
+  { id: 'mavic4pro', marca: 'DJI', nombre: 'DJI Mavic 4 Pro', maxViento: 12, tempMin: -10, tempMax: 40, ip: null, fuente: 'https://www.dji.com/nl/support/product/mavic-4-pro' },
+  { id: 'avata360', marca: 'DJI', nombre: 'DJI Avata 360', maxViento: 10.7, tempMin: -10, tempMax: 40, ip: null, fuente: 'https://www.dji.com/nl/support/product/avata-360' },
+  // DJI, Enterprise. Su viento máximo está dado para despegue y aterrizaje.
+  { id: 'm4et', marca: 'DJI Enterprise', nombre: 'DJI Matrice 4E / 4T', maxViento: 12, tempMin: -10, tempMax: 40, ip: null, fuente: 'https://enterprise.dji.com/matrice-4-series/specs' },
+  // DJI no publica la temperatura del 4D/4TD aparte: se usa la de la serie Matrice 4.
+  { id: 'm4td', marca: 'DJI Enterprise', nombre: 'DJI Matrice 4D / 4TD', maxViento: 12, tempMin: -10, tempMax: 40, ip: 'IP55', fuente: 'https://enterprise.dji.com/dock-3/faq' },
+  { id: 'm5td', marca: 'DJI Enterprise', nombre: 'DJI Matrice 5TD', maxViento: 12, tempMin: -40, tempMax: 50, ip: 'IP55', fuente: 'https://enterprise.dji.com/dock-4/specs' },
+  { id: 'm400', marca: 'DJI Enterprise', nombre: 'DJI Matrice 400', maxViento: 12, tempMin: -20, tempMax: 50, ip: 'IP55', fuente: 'https://enterprise.dji.com/matrice-400/specs' },
+  // Otras marcas profesionales
+  // EVO Max 4T: 10,7 m/s en despegue y aterrizaje (12 en crucero); -20 a 40 °C con carga completa; IP43.
+  { id: 'evomax4t', marca: 'Autel', nombre: 'Autel EVO Max 4T', maxViento: 10.7, tempMin: -20, tempMax: 40, ip: null, fuente: 'https://www.autelrobotics.com/productdetail/evo-max-4t/' },
+  { id: 'x10', marca: 'Skydio', nombre: 'Skydio X10', maxViento: 12, tempMin: -20, tempMax: 45, ip: 'IP55', fuente: 'https://www.skydio.com/x10/technical-specs' },
+  // ANAFI UKR: IP53 (salpicaduras), no cuenta para lluvia.
+  { id: 'anafiukr', marca: 'Parrot', nombre: 'Parrot ANAFI UKR', maxViento: 15, tempMin: -36, tempMax: 50, ip: null, fuente: 'https://www.parrot.com/en/anafi-ukr-technical-specifications' },
 ];
 
 export const PERSONALIZADO = {
@@ -23,7 +38,26 @@ export const PERSONALIZADO = {
   ip: null,
 };
 
+// Los modelos que se quitaron pasan a su sucesor (o al más prudente de la
+// gama actual): quien tenía uno guardado no se queda con un dron que no existe.
+export const SUCESORES = {
+  mini4pro: 'mini5pro',
+  mini3: 'mini5pro',
+  air3: 'air3s',
+  mavic3: 'mavic4pro',
+  avata2: 'avata360',
+  m3e: 'm4et',
+  m30: 'm4et',
+  m350: 'm400',
+};
+
+export function idDron(id) {
+  if (id === 'personalizado' || DRONES.some((d) => d.id === id)) return id;
+  return SUCESORES[id] ?? DRONES[0].id;
+}
+
 export function dronPorId(id, personalizado = PERSONALIZADO) {
-  if (id === 'personalizado') return { ...PERSONALIZADO, ...personalizado, id, nombre: 'Personalizado' };
-  return DRONES.find((d) => d.id === id) ?? DRONES[0];
+  const real = idDron(id);
+  if (real === 'personalizado') return { ...PERSONALIZADO, ...personalizado, id: real, nombre: 'Personalizado' };
+  return DRONES.find((d) => d.id === real);
 }

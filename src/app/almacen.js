@@ -31,6 +31,9 @@ export const almacen = {
   // La última previsión descargada, para enseñar algo sin cobertura.
   cache: () => leer('cache', null),
   guardarCache: (c) => escribir('cache', c),
+  // Órbitas bajadas de CelesTrak desde el móvil (unos 20 kB).
+  orbitas: () => leer('orbitas', null),
+  guardarOrbitas: (o) => escribir('orbitas', o),
   checklist: () => leer('checklist', { dia: '', hechos: [] }),
   guardarChecklist: (c) => escribir('checklist', c),
 };

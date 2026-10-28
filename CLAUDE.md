@@ -22,10 +22,17 @@ nunca. Lo que no se ve en el móvil no se puede depurar.
 - **Un módulo nuevo en `src/` va en la precarga de `sw.js`** (hay prueba).
 - **Lo de fuera son datos**: lo que devuelven las APIs se valida al leerlo y
   se escapa (`esc`) antes de meterlo en la página. La CSP de `index.html` solo
-  deja hablar con Open-Meteo y NOAA; si añades una API, añádela allí y en su
-  prueba.
+  deja hablar con Open-Meteo, NOAA y CelesTrak; si añades una API, añádela
+  allí y en su prueba.
 - **Un umbral nuevo lleva su porqué** en el comentario o en el detalle del
   factor (de dónde sale: ficha del fabricante, norma, práctica).
 - Este contenedor de desarrollo puede no llegar a las APIs: las pruebas usan
   respuestas fabricadas con la forma de las reales (`pruebas/fixtures/`). Si
   cambia la forma de una respuesta real, cambia el fixture a la vez.
+
+## Mejora diaria
+
+Una tarea programada lanza cada mañana `/mejorar`
+(`.claude/commands/mejorar.md`): coge la primera línea pendiente de
+`docs/pendiente.md`, la hace con sus pruebas y abre un PR en una rama
+`auto/*`. La lista es de Javi: él decide el orden.

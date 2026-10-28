@@ -25,6 +25,12 @@ const PREVIO = opcion('previo', process.env.PREVIO_URL ?? '');
 const BASE_CELESTRAK = opcion('celestrak', CELESTRAK);
 const BASE_KP = opcion('kp', URL_KP);
 
+// «fetch failed» no dice nada: el motivo de verdad va en e.cause.
+function motivo(e) {
+  const c = e?.cause;
+  return c ? `${e.message} (${c.code ?? ''} ${c.message ?? c})`.replace(/\s+\)/, ')') : e.message;
+}
+
 async function json(url) {
   const r = await fetch(url, { headers: { 'user-agent': 'drone-forecast (GitHub Pages)' }, signal: AbortSignal.timeout(30000) });
   if (!r.ok) throw new Error(`${url}: HTTP ${r.status}`);
@@ -53,7 +59,7 @@ export async function descargarGnss() {
       console.log(`${constelacion}: ${validos.length} satélites`);
     } catch (e) {
       fallos.push(constelacion);
-      console.warn(`${constelacion}: ${e.message}`);
+      console.warn(`${constelacion}: ${motivo(e)}`);
     }
   }
   if (fallos.length) {
@@ -71,7 +77,7 @@ export async function descargarKp() {
     if (!leerKp(crudo).length) throw new Error('sin tramos legibles');
     return crudo;
   } catch (e) {
-    console.warn(`Kp: ${e.message}`);
+    console.warn(`Kp: ${motivo(e)}`);
     return (await previo('kp.json')) ?? [];
   }
 }

@@ -10,7 +10,7 @@
   <link rel="icon" href="icons/icono.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/icono-192.png">
   <link rel="stylesheet" href="styles.css">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://services.swpc.noaa.gov; img-src 'self' data:; style-src 'self'; script-src 'self'; object-src 'none'; base-uri 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://services.swpc.noaa.gov https://celestrak.org; img-src 'self' data:; style-src 'self'; script-src 'self'; object-src 'none'; base-uri 'none'">
 </head>
 <body>
   <header class="cabecera">
@@ -89,6 +89,7 @@
       <p id="fuentes" class="nota"></p>
       <p class="nota">Orientativo: la decisión y la responsabilidad del vuelo son del piloto.</p>
       <p class="nota">Drone Forecast <span id="version"></span></p>
+      <p><button id="btn-diagnostico" type="button">Diagnóstico</button></p>
     </footer>
   </main>
 
@@ -105,6 +106,17 @@
     <ul id="resultados" class="lista-lugares"></ul>
     <h3>Favoritos</h3>
     <ul id="favoritos" class="lista-lugares"></ul>
+  </dialog>
+
+  <dialog id="dlg-diagnostico" aria-labelledby="titulo-diagnostico">
+    <form method="dialog" class="dlg-cabecera">
+      <h2 id="titulo-diagnostico">Diagnóstico</h2>
+      <button class="icono" value="cerrar" aria-label="Cerrar">✕</button>
+    </form>
+    <p class="nota">Lo que la app sabe ahora mismo. Pégalo en el chat si algo sale raro.</p>
+    <textarea id="txt-diagnostico" class="diagnostico" readonly rows="14" spellcheck="false"></textarea>
+    <p id="estado-diagnostico" class="nota" aria-live="polite"></p>
+    <div class="acciones"><button id="btn-copiar-diagnostico" type="button">Copiar otra vez</button></div>
   </dialog>
 
   <script type="module" src="src/app/main.js"></script>

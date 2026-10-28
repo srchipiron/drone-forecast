@@ -14,7 +14,7 @@ navegador → «Instalar aplicación»).
 | Tiempo, viento a 10/80/120/180 m, rachas, radiación | [Open-Meteo](https://open-meteo.com) (desde el navegador) |
 | Acuerdo entre modelos | Open-Meteo: ECMWF, GFS, ICON y Météo-France |
 | Índice Kp | [NOAA SWPC](https://www.swpc.noaa.gov) (navegador; si no deja, copia del despliegue) |
-| Órbitas GNSS | [CelesTrak](https://celestrak.org), descargadas por el despliegue cada 6 h |
+| Órbitas GNSS | [CelesTrak](https://celestrak.org): las baja el despliegue cada 6 h; si no puede, el móvil directamente (se guardan 12 h) |
 | Sol, satélites visibles | Calculados en el móvil |
 
 ## Desarrollo

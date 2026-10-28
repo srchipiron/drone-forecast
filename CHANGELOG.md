@@ -3,6 +3,24 @@
 Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
 `0.0.X` para correcciones. La versión sale en el pie de la app.
 
+## 0.8.0
+
+- **Diseño nuevo al estilo de las apps de Apple:**
+  - Fondo gris agrupado de iOS y tarjetas redondeadas sin bordes.
+  - Letra San Francisco y títulos grandes.
+  - Barra superior translúcida, con desenfoque, como en iOS.
+- **El veredicto ocupa una tarjeta a todo color**, como la app Tiempo: verde,
+  naranja o roja según se pueda volar. Los datos (viento, rachas, satélites,
+  Kp) van sobre un panel translúcido y las zonas de ENAIRE y los factores, en
+  una tarjeta clara dentro.
+- **Controles de iOS**: el selector Recreativo/Profesional es un control
+  segmentado, las listas llevan separadores finos y los desplegables, la
+  flecha «›» que gira.
+- **Modo oscuro en negro puro**, como en el iPhone.
+- **Los colores de iOS**, ajustados para leerse al sol: todos los textos
+  cumplen el contraste recomendado (AA), en claro y en oscuro, y una prueba
+  automática lo vigila.
+
 ## 0.7.1
 
 Correcciones tras una revisión completa de la app:

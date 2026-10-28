@@ -51,7 +51,7 @@ const { chromium } = cargarPlaywright();
 const navegador = await chromium.launch(process.env.PLAYWRIGHT_CHROME ? { executablePath: process.env.PLAYWRIGHT_CHROME } : {});
 const errores = [];
 try {
-  const ctx = await navegador.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
+  const ctx = await navegador.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block', colorScheme: process.env.ESQUEMA === 'oscuro' ? 'dark' : 'light' });
   const page = await ctx.newPage();
   page.on('pageerror', (e) => errores.push(e.message));
   page.on('console', (m) => m.type() === 'error' && !/Failed to load resource/.test(m.text()) && errores.push(m.text()));
@@ -165,6 +165,7 @@ try {
   assert.match(await page.locator('#horas .grafica path.viento').getAttribute('d'), /^M[\d.]+,[\d.]+ L/);
   assert.ok((await page.locator('#horas .grafica rect.franja').count()) >= 23);
   if (process.env.CAPTURA_GRAFICA) await page.locator('#horas .grafica').screenshot({ path: process.env.CAPTURA_GRAFICA });
+  if (process.env.CAPTURA_HORAS) await page.locator('#horas .lista-horas > li.hora').nth(20).screenshot({ path: process.env.CAPTURA_HORAS });
 
   // Diario: «He volado» → valoración → aparece en el diario y en su resumen.
   await page.locator('[data-accion="volado"]').click();

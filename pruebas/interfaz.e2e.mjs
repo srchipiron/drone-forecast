@@ -134,6 +134,18 @@ try {
   assert.equal(await page.evaluate(() => navigator.clipboard.readText()), diag, 'el portapapeles tiene el informe');
   await page.locator('#dlg-diagnostico button[value="cerrar"]').click();
 
+  // Favorito: al guardarlo sale su resumen, y coincide con la pantalla principal.
+  await page.locator('#btn-lugar').click();
+  await page.locator('[data-accion="guardar-fav"]').click();
+  const chips = page.locator('#favoritos .resumen-fav .chip');
+  await chips.nth(1).waitFor();
+  const resumen = await chips.allTextContents();
+  assert.match(resumen[0], /^Hoy (\d\d:\d\d–\d\d:\d\d|sin ventana)$/);
+  assert.match(resumen[1], /^Mañana (\d\d:\d\d–\d\d:\d\d|sin ventana)$/);
+  const manana = (await page.locator('#dias .dia').nth(1).locator('.d-ventana').textContent()).trim();
+  assert.equal(resumen[1].replace('Mañana ', ''), manana === 'Sin ventana' ? 'sin ventana' : manana, 'mismo cálculo que la pantalla principal');
+  await page.keyboard.press('Escape');
+
   // Despliegue sin órbitas (CelesTrak no deja entrar a GitHub): el móvil las
   // pide él mismo, las guarda y, si CelesTrak cae, tira de las guardadas.
   gnssVacio = true;

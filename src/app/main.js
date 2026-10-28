@@ -3,11 +3,11 @@
 import { informeDiagnostico } from '../motor/diagnostico.js';
 import { DRONES } from '../motor/drones.js';
 import { MISIONES, MODOS } from '../motor/misiones.js';
-import { construirPrevision, normalizarAjustes } from '../motor/prevision.js';
+import { construirPrevision, normalizarAjustes, resumenDias } from '../motor/prevision.js';
 import { fmtViento } from '../motor/unidades.js';
 import { VERSION } from '../version.js';
 import { almacen } from './almacen.js';
-import { buscarLugar, cargarKp, cargarPrevision, cargarSatelites, consultarEnaire, leerDescarga } from './datos.js';
+import { buscarLugar, cargarKp, cargarPrevision, cargarSatelites, cargarSoloPrevision, consultarEnaire, leerDescarga } from './datos.js';
 import { mensajeUbicacion, pedirUbicacion } from './ubicacion.js';
 
 const $ = (s) => document.querySelector(s);
@@ -49,6 +49,8 @@ const estado = {
   // Zonas de ENAIRE del lugar actual: null mientras se consulta.
   enaire: null,
   enaireDe: '',
+  // Previsión de cada favorito para su resumen, por «lat,lon»: { meteo, t } o { error, t }.
+  favMeteo: new Map(),
 };
 
 export function esc(s) {
@@ -451,11 +453,55 @@ async function copiarDiagnostico(texto = $('#txt-diagnostico').value) {
 
 // ---------- Lugar ----------
 
+const claveLugar = (l) => `${l.lat},${l.lon}`;
+
+// «Hoy 10:00–14:00 · Mañana sin ventana», con el mismo motor y ajustes que la
+// pantalla principal (dron, misión, altura), para cada favorito.
+function resumenFavorito(l) {
+  const c = estado.favMeteo.get(claveLugar(l));
+  if (!c) return '<span class="resumen-fav nota">Calculando…</span>';
+  if (c.error) return '<span class="resumen-fav nota">Sin previsión</span>';
+  let dias;
+  try {
+    dias = resumenDias(
+      construirPrevision({ meteo: c.meteo, kp: estado.kp, satelites: estado.gnss.satelites, lugar: l, ajustes: estado.ajustes }),
+    );
+  } catch {
+    return '<span class="resumen-fav nota">Sin previsión</span>';
+  }
+  return `<span class="resumen-fav">${dias
+    .map((d, k) => {
+      const v = d.ventana;
+      const e = v ? v.estado : 'no';
+      return `<span class="chip ${e}">${k === 0 ? 'Hoy' : 'Mañana'} ${v ? `${esc(hora(v.inicio, c.meteo.zona))}–${esc(hora(v.fin, c.meteo.zona))}` : 'sin ventana'}</span>`;
+    })
+    .join(' ')}</span>`;
+}
+
+const FRESCO = 30 * 60000;
+
+async function cargarResumenFavoritos() {
+  const pendientes = estado.favoritos.filter((l) => {
+    const c = estado.favMeteo.get(claveLugar(l));
+    return !c || Date.now() - c.t > FRESCO;
+  });
+  await Promise.all(
+    pendientes.map(async (l) => {
+      try {
+        estado.favMeteo.set(claveLugar(l), { meteo: await cargarSoloPrevision(l.lat, l.lon), t: Date.now() });
+      } catch {
+        estado.favMeteo.set(claveLugar(l), { error: true, t: Date.now() });
+      }
+    }),
+  );
+  if (pendientes.length && $('#dlg-lugar').open) pintarFavoritos();
+}
+
 function pintarFavoritos() {
   const es = (l) => estado.lugar && Math.abs(l.lat - estado.lugar.lat) < 1e-4 && Math.abs(l.lon - estado.lugar.lon) < 1e-4;
   const actualEsFav = estado.lugar && estado.favoritos.some(es);
   const items = estado.favoritos.map(
-    (l, i) => `<li><button type="button" data-fav="${i}">${esc(l.nombre)} <span class="nota">${esc(l.zona)}</span></button>
+    (l, i) => `<li><button type="button" data-fav="${i}">${esc(l.nombre)} <span class="nota">${esc(l.zona)}</span>${resumenFavorito(l)}</button>
       <button type="button" class="icono" data-quitar="${i}" aria-label="Quitar ${esc(l.nombre)}">✕</button></li>`,
   );
   if (estado.lugar && !actualEsFav)
@@ -495,6 +541,7 @@ function pintarResultados() {
 
 function abrirLugar() {
   pintarFavoritos();
+  cargarResumenFavoritos();
   $('#dlg-lugar').showModal();
   $('#txt-buscar').focus();
 }
@@ -570,6 +617,7 @@ function enlazar() {
       estado.favoritos.push({ ...estado.lugar });
       almacen.guardarFavoritos(estado.favoritos);
       pintarFavoritos();
+      cargarResumenFavoritos();
     }
   });
   $('#checklist').addEventListener('change', (e) => {

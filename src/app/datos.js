@@ -19,6 +19,12 @@ export async function cargarPrevision(lat, lon) {
   return { meteo: base.value, consenso: consenso.status === 'fulfilled' ? consenso.value : null };
 }
 
+// Solo la previsión, sin el consenso entre modelos: para el resumen de los
+// favoritos basta y es la mitad de peticiones.
+export async function cargarSoloPrevision(lat, lon) {
+  return leerPrevision(await pedir(urlPrevision(lat, lon)));
+}
+
 export function leerDescarga({ meteo, consenso }) {
   return { meteo: leerPrevision(meteo), consenso: consenso ? leerConsenso(consenso) : new Map() };
 }

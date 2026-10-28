@@ -36,10 +36,12 @@ test('de noche no se vuela salvo que se permita (y entonces es precaución)', ()
 });
 
 test('el viento en altura decide con el límite del dron', () => {
-  // 10 m: 6 m/s → 120 m: 8,4 m/s. Mini (10,7): 70% = 7,5 → precaución. M30 (15): ok.
-  assert.equal(f(prev({ viento: 6, racha: 6 }).actual, 'viento').estado, 'precaucion');
-  assert.equal(f(prev({ viento: 6, racha: 6 }, { dron: 'm30' }).actual, 'viento').estado, 'ok');
-  assert.equal(f(prev({ viento: 8, racha: 8 }).actual, 'viento').estado, 'no');
+  // 10 m: 6 m/s → 120 m: 8,4 m/s. Mini 5 Pro (12): 70% = 8,4 → justo ok; Flip (10,7): 7,5 → precaución.
+  // ANAFI UKR (15): ok. A 8 m/s → 11,2 m/s: Flip no; Mini 5 Pro precaución.
+  assert.equal(f(prev({ viento: 6, racha: 6 }, { dron: 'flip' }).actual, 'viento').estado, 'precaucion');
+  assert.equal(f(prev({ viento: 6, racha: 6 }, { dron: 'anafiukr' }).actual, 'viento').estado, 'ok');
+  assert.equal(f(prev({ viento: 8, racha: 8 }, { dron: 'flip' }).actual, 'viento').estado, 'no');
+  assert.equal(f(prev({ viento: 8, racha: 8 }, { dron: 'mini5pro' }).actual, 'viento').estado, 'precaucion');
 });
 
 test('más altitud, más viento', () => {
@@ -50,7 +52,7 @@ test('más altitud, más viento', () => {
 
 test('lluvia: un dron IP55 pasa a precaución donde un Mini no vuela', () => {
   assert.equal(f(prev({ lluvia: 1, prob: 90 }).actual, 'lluvia').estado, 'no');
-  assert.equal(f(prev({ lluvia: 1, prob: 90 }, { dron: 'm350' }).actual, 'lluvia').estado, 'precaucion');
+  assert.equal(f(prev({ lluvia: 1, prob: 90 }, { dron: 'm400' }).actual, 'lluvia').estado, 'precaucion');
 });
 
 test('Kp alto bloquea; sin dato de Kp no bloquea', () => {

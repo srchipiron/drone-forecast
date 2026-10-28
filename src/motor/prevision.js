@@ -3,7 +3,7 @@
 // nada más monta el contexto por su cuenta.
 
 import { eventosSol, posicionSol } from './astro.js';
-import { dronPorId } from './drones.js';
+import { dronPorId, idDron } from './drones.js';
 import { kpEn } from './kp.js';
 import { techoNubes } from './meteo.js';
 import { misionActiva } from './misiones.js';
@@ -14,7 +14,7 @@ import { rachaEnAltura, vientoEnAltura } from './viento.js';
 
 export const AJUSTES_INICIALES = {
   modo: 'recreativo',
-  dron: 'mini4pro',
+  dron: 'mini5pro',
   personalizado: { maxViento: 10, tempMin: -10, tempMax: 40, ip: null },
   mision: 'recreativo',
   altitud: 120,
@@ -40,6 +40,7 @@ export function normalizarAjustes(a = {}) {
   r.personalizado.tempMax = acotar(r.personalizado.tempMax, 10, 60, 40);
   if (!['recreativo', 'profesional'].includes(r.modo)) r.modo = 'recreativo';
   r.mision = misionActiva(r).id;
+  r.dron = idDron(r.dron);
   r.permitirNoche = Boolean(r.permitirNoche);
   return r;
 }

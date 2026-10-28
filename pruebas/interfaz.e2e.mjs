@@ -58,8 +58,17 @@ try {
   await page.route('https://geocoding-api.open-meteo.com/**', (r) => r.fulfill({ json: { results: [{ name: 'Getafe<img src=x onerror="window.__xss=1">', admin1: 'Madrid', country: 'España', latitude: 40.3057, longitude: -3.7329 }] } }));
   await page.route('https://services.swpc.noaa.gov/**', (r) => r.fulfill({ json: [['time_tag', 'kp', 'observed'], ...Array.from({ length: 40 }, (_, k) => [new Date(inicio + k * 3 * 3600000).toISOString().slice(0, 19).replace('T', ' '), '2.00', 'predicted'])] }));
 
+  // Ubicación denegada tal como la da Android (código 1). Chromium sin
+  // permiso se queda esperando en vez de fallar, por eso se simula.
+  await page.addInitScript(() => {
+    navigator.geolocation.getCurrentPosition = (_ok, mal) => setTimeout(() => mal({ code: 1, message: 'User denied Geolocation' }), 10);
+  });
   await page.goto(url);
   await page.getByText('¿Dónde vas a volar?').waitFor();
+
+  // Ubicación denegada: el aviso dice dónde dar el permiso (no «busca a mano» a secas).
+  await page.getByRole('button', { name: 'Usar mi ubicación' }).first().click();
+  await page.locator('#aviso').filter({ hasText: 'Permisos → Ubicación → Permitir' }).waitFor();
   await page.getByRole('button', { name: 'Buscar lugar' }).click();
   await page.fill('#txt-buscar', 'Getafe');
   await page.press('#txt-buscar', 'Enter');
@@ -67,11 +76,21 @@ try {
   await page.locator('#ahora .grande').filter({ hasText: /volar|precaución|No vueles/ }).waitFor();
   assert.equal(await page.evaluate(() => window.__xss), undefined, 'XSS: el nombre del lugar se ejecutó');
   assert.match(await page.textContent('#nombre-lugar'), /Getafe<img/);
-  assert.equal(await page.locator('#dias .dia').count(), 7, 'siete días');
+  // Los datos simulados empiezan 12 h antes de ahora (no a medianoche como los
+  // reales), así que según la hora y el horario de verano caen en 7 u 8 días.
+  const dias = await page.locator('#dias .dia').count();
+  assert.ok(dias >= 7 && dias <= 8, `días: ${dias}`);
   assert.ok(await page.locator('#horas .hora').count() >= 23, 'horas del día');
   const sats = await page.textContent('#ahora .resumen');
   assert.match(sats, /Satélites\s*\d+/, `satélites: ${sats}`);
   assert.match(await page.textContent('#ahora .resumen'), /Kp\s*2\.0/);
+  assert.equal(await page.locator('#ahora .enaire a').getAttribute('href'), 'https://drones.enaire.es/', 'ENAIRE bajo el veredicto');
+
+  // Selector de dron: la gama actual agrupada por marca, Mini 5 Pro por defecto.
+  assert.equal(await page.inputValue('#sel-dron'), 'mini5pro');
+  const marcas = await page.locator('#sel-dron optgroup').evaluateAll((g) => g.map((x) => x.label));
+  assert.deepEqual(marcas, ['DJI', 'DJI Enterprise', 'Autel', 'Skydio', 'Parrot']);
+  assert.equal(await page.locator('#sel-dron option[value="mini4pro"]').count(), 0, 'sin modelos viejos');
 
   // Modo profesional: aparece misión y checklist; termografía FV mira la irradiancia.
   assert.ok(await page.locator('#campo-mision').isHidden());
@@ -133,6 +152,16 @@ try {
   await p2.locator('#fuentes').filter({ hasText: /24 órbitas guardadas/ }).waitFor();
   assert.equal(antes, 4, 'una petición por constelación');
   gnssVacio = false;
+
+  // Ubicación permitida: el botón pone «Mi ubicación» y descarga su previsión.
+  const ctx3 = await navegador.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block', permissions: ['geolocation'], geolocation: { latitude: 40.3057, longitude: -3.7329 } });
+  const p3 = await ctx3.newPage();
+  p3.on('pageerror', (e) => errores.push(e.message));
+  for (const r of ['https://api.open-meteo.com/**', 'https://services.swpc.noaa.gov/**', 'https://celestrak.org/**']) await p3.route(r, (x) => x.fulfill({ json: r.includes('open-meteo') ? meteo() : [] }));
+  await p3.goto(url);
+  await p3.getByRole('button', { name: 'Usar mi ubicación' }).first().click();
+  await p3.locator('#nombre-lugar').filter({ hasText: 'Mi ubicación' }).waitFor();
+  await p3.locator('#ahora .grande').filter({ hasText: /volar|precaución|No vueles/ }).waitFor();
 
   if (process.env.CAPTURA) await page.screenshot({ path: process.env.CAPTURA, fullPage: true });
   assert.equal(errores.length, 0, errores.join('\n'));

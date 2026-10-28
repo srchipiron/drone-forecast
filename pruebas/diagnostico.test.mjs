@@ -24,7 +24,7 @@ test('el informe lleva versión, lugar, ajustes, cada fuente con su edad y los f
   const t = informeDiagnostico(base());
   assert.match(t, /^Drone Forecast v9\.9\.9 · .*\(Europe\/Madrid\)/);
   assert.match(t, /Lugar: Madrid \(40\.4168, -3\.7038\) · 657 m/);
-  assert.match(t, /Modo profesional · misión termografia_fv · dron mini4pro \(máx 10\.7 m\/s\) · altura 120 m/);
+  assert.match(t, /Modo profesional · misión termografia_fv · dron mini5pro \(máx 12 m\/s\) · altura 120 m/);
   assert.match(t, /Previsión: de la red hace 5 min · 168 h/);
   assert.match(t, /Kp: 0 tramos · ahora sin dato/);
   assert.match(t, /Órbitas: 24 \(celestrak\) hace 3 h/);

@@ -183,6 +183,10 @@ body[data-modo="recreativo"] .perfil label:first-child { grid-column: 1 / -1; }
 
 .sol { color: var(--suave); font-size: 0.85rem; }
 
+.enaire { margin: 0.6rem 0 0; }
+
+.enaire a { color: var(--acento); font-weight: 600; }
+
 .acciones { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 
 .acciones button:first-child { background: var(--acento); color: #fff; border-color: var(--acento); }

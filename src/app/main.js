@@ -8,6 +8,7 @@ import { fmtViento } from '../motor/unidades.js';
 import { VERSION } from '../version.js';
 import { almacen } from './almacen.js';
 import { buscarLugar, cargarKp, cargarPrevision, cargarSatelites, leerDescarga } from './datos.js';
+import { mensajeUbicacion, pedirUbicacion } from './ubicacion.js';
 
 const $ = (s) => document.querySelector(s);
 const REFRESCO = 30 * 60000;
@@ -108,26 +109,29 @@ function ponerLugar(lugar) {
   descargar();
 }
 
-function usarGPS() {
+async function usarGPS() {
   if (!navigator.geolocation) {
-    estado.error = 'Este navegador no da la ubicación.';
+    estado.error = 'Este navegador no da la ubicación: busca el lugar a mano.';
     pintar();
     return;
   }
-  navigator.geolocation.getCurrentPosition(
-    (p) =>
-      ponerLugar({
-        nombre: 'Mi ubicación',
-        zona: `${p.coords.latitude.toFixed(3)}, ${p.coords.longitude.toFixed(3)}`,
-        lat: p.coords.latitude,
-        lon: p.coords.longitude,
-      }),
-    () => {
-      estado.error = 'No hay permiso para la ubicación: busca el lugar a mano.';
-      pintar();
-    },
-    { enableHighAccuracy: false, timeout: 15000, maximumAge: 600000 },
-  );
+  estado.error = '';
+  $('#btn-gps').classList.add('girando');
+  try {
+    const p = await pedirUbicacion(navigator.geolocation);
+    ponerLugar({
+      nombre: 'Mi ubicación',
+      zona: `${p.coords.latitude.toFixed(3)}, ${p.coords.longitude.toFixed(3)}`,
+      lat: p.coords.latitude,
+      lon: p.coords.longitude,
+    });
+  } catch (e) {
+    estado.error = mensajeUbicacion(e);
+    estado.fallo = `Ubicación: código ${e?.code ?? '?'} ${e?.message ?? ''}`.trim();
+    pintar();
+  } finally {
+    $('#btn-gps').classList.remove('girando');
+  }
 }
 
 function cambiarAjustes(cambios) {
@@ -201,6 +205,7 @@ function pintarAhora(p) {
         : '<p class="ventana-hoy">Hoy no queda ninguna hora volable.</p>'
     }
     <p class="sol">☀ ${esc(hora(hoy?.sol.salida, p.zona))} – ${esc(hora(hoy?.sol.puesta, p.zona))} · hora dorada desde ${esc(hora(hoy?.sol.doradaTarde, p.zona))}</p>
+    <p class="enaire"><a href="https://drones.enaire.es/" target="_blank" rel="noopener noreferrer">¿Hace falta permiso aquí? Míralo en ENAIRE Drones</a></p>
     <details><summary>Todos los factores</summary>${listaFactores(h)}</details>`;
 }
 
@@ -280,9 +285,19 @@ function pintarPerfil() {
   document.body.dataset.modo = a.modo;
   const selDron = $('#sel-dron');
   // Solo se rehacen las opciones si cambian: rehacerlas cierra el desplegable abierto.
-  ponerOpciones(selDron, [...DRONES, { id: 'personalizado', nombre: 'Personalizado…' }]
-    .map((d) => `<option value="${esc(d.id)}">${esc(d.nombre)}</option>`)
-    .join(''));
+  // Agrupados por marca, en el orden de la lista.
+  const marcas = [...new Set(DRONES.map((d) => d.marca))];
+  ponerOpciones(
+    selDron,
+    marcas
+      .map(
+        (m) =>
+          `<optgroup label="${esc(m)}">${DRONES.filter((d) => d.marca === m)
+            .map((d) => `<option value="${esc(d.id)}">${esc(d.nombre)}</option>`)
+            .join('')}</optgroup>`,
+      )
+      .join('') + '<option value="personalizado">Personalizado…</option>',
+  );
   selDron.value = a.dron;
   const misiones = MODOS[a.modo].misiones;
   $('#campo-mision').hidden = misiones.length < 2;

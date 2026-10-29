@@ -92,6 +92,7 @@ try {
   assert.match(sats, /^\d+$/, `satélites: ${sats}`);
   assert.equal(await page.textContent('#ahora [data-factor="kp"] .c-valor'), '2.0');
   assert.ok(await page.locator('#ahora .cartel').isVisible(), 'cartel del veredicto');
+  assert.match(await page.textContent('#ahora .ventana-hoy strong'), /^Ninguna en [78] días$/, 'sin nada volable en la semana, lo dice');
   // Icono de día o de noche según la hora a la que corra la prueba.
   assert.match(await page.textContent('#ahora .cartel .cielo'), /^(🌤️|🌙) Poco nuboso · 18 °C$/, 'el cielo, como en UAV Forecast');
   // La semana de un vistazo: cada día con una raya por hora de su color.
@@ -475,6 +476,13 @@ try {
   assert.ok(notif, 'el instalador no ha avisado');
   assert.equal(notif.titulo, 'Mañana se puede volar en Getafe');
   assert.match(notif.cuerpo, /^Getafe: \d\d:00–\d\d:00 \(\d+ h\)$/);
+  // Próxima ventana: dice el día y las horas, y tocarla lleva a ese día.
+  const proxima = p6.locator('#ahora .ventana-hoy button');
+  assert.match(await proxima.textContent(), /^(Hoy|Mañana) · \d\d:00–\d\d:00 ›$/);
+  const diaProxima = await proxima.getAttribute('data-dia');
+  await proxima.click();
+  assert.equal(await p6.locator('#dias .dia.activo').getAttribute('data-dia'), diaProxima, 'lleva al día de la ventana');
+
   // Mañana tiene ventana verde: sus horas llevan la raya de «mejor ventana».
   await p6.locator('#dias .dia').nth(1).click();
   const enVentana = p6.locator('#horas tr.en-ventana');

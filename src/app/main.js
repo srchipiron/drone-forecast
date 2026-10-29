@@ -1,6 +1,7 @@
 // La interfaz. Pinta lo que devuelve construirPrevision(); no decide nada.
 
 import { cielo } from '../motor/cielo.js';
+import { textoCompartir } from '../motor/compartir.js';
 import { informeDiagnostico } from '../motor/diagnostico.js';
 import { VALORACIONES, anadirEntrada, crearEntrada, diarioValido, resumenDiario } from '../motor/diario.js';
 import { graficaDia } from '../motor/grafica.js';
@@ -317,7 +318,7 @@ function pintarAhora(p) {
     ${listaCondiciones(h)}
     <ul class="filas">
       <li class="fila ventana-hoy ${esc(hoy?.ventana?.estado ?? 'no')}">${icono('ventana')}<span>Mejor ventana hoy</span>
-        <strong>${hoy?.ventana ? `${esc(hora(hoy.ventana.inicio, p.zona))}–${esc(hora(hoy.ventana.fin, p.zona))}${hoy.ventana.estado === 'precaucion' ? ' · con precaución' : ''}` : 'Hoy no queda ninguna hora volable'}</strong></li>
+        <strong>${hoy?.ventana ? `${esc(hora(hoy.ventana.inicio, p.zona))}–${esc(hora(hoy.ventana.fin, p.zona))}${hoy.ventana.estado === 'precaucion' ? ' · con precaución' : ''}` : 'Ninguna'}</strong></li>
       <li class="fila sol">${icono('amanecer')}<span>Amanecer · ocaso</span>
         <strong>${esc(hora(hoy?.sol.salida, p.zona))} · ${esc(hora(hoy?.sol.puesta, p.zona))}</strong></li>
       <li class="fila sol">${icono('sol')}<span>Hora dorada</span>
@@ -326,6 +327,7 @@ function pintarAhora(p) {
     ${bloqueEnaire()}
     <div class="acciones acciones-ahora">
       <button type="button" data-accion="volado" data-ms="${h.ms}">He volado</button>
+      <button type="button" data-accion="compartir">Compartir</button>
       ${p.ajustes.modo === 'profesional' ? '<button type="button" data-accion="informe">Informe para el cliente</button>' : ''}
     </div>`;
   // El lector de pantalla solo oye el veredicto cuando cambia, no cada minuto.
@@ -450,11 +452,12 @@ const COLUMNAS = [
   { id: 'kp', titulo: 'Kp', celda: (h) => (Number.isFinite(h.kp) ? Math.round(h.kp) : '—') },
 ];
 
-function filaHora(h, p, abierta) {
+function filaHora(h, p, abierta, ventana) {
   const ahora = Date.now();
   const u = p.ajustes.unidades;
   const porId = Object.fromEntries(h.factores.map((f) => [f.id, f.estado]));
-  const clases = ['hora', h.estado, ahora >= h.ms && ahora < h.ms + 3600000 ? 'actual' : '', porId.luz !== 'ok' ? 'noche' : '', h === abierta ? 'abierta' : '']
+  const enVentana = ventana && h.ms >= ventana.inicio && h.ms < ventana.fin;
+  const clases = ['hora', h.estado, ahora >= h.ms && ahora < h.ms + 3600000 ? 'actual' : '', porId.luz !== 'ok' ? 'noche' : '', enVentana ? `en-ventana v-${ventana.estado}` : '', h === abierta ? 'abierta' : '']
     .filter(Boolean)
     .join(' ');
   const fila = `<tr class="${clases}" data-hora="${h.ms}">
@@ -483,10 +486,10 @@ function pintarHoras(p) {
     <div class="tabla-horas-marco">
       <table class="tabla-horas">
         <thead><tr><th scope="col">Hora</th><th scope="col"><span class="visualmente-oculto">Volar</span></th>${COLUMNAS.map((c) => `<th scope="col">${c.titulo}</th>`).join('')}</tr></thead>
-        <tbody>${horas.map((h) => filaHora(h, p, abierta)).join('')}</tbody>
+        <tbody>${horas.map((h) => filaHora(h, p, abierta, dia.ventana)).join('')}</tbody>
       </table>
     </div>
-    <p class="nota pista-horas">Toca una hora para ver el detalle. En gris, las horas sin luz.</p>
+    <p class="nota pista-horas">Toca una hora para ver el detalle. En gris, las horas sin luz${dia.ventana ? '; con raya a la izquierda, la mejor ventana' : ''}.</p>
     <details class="mas-grafica"><summary>Gráfica del viento del día</summary>${svgGrafica(dia, p)}</details>`;
 }
 
@@ -744,6 +747,24 @@ function htmlInforme(p) {
       .map((f) => `<tr><td>${esc(f.nombre)}</td><td>${esc(ESTADOS[f.estado].corto)}</td><td>${esc(f.valor)}</td><td>${esc(f.detalle)}</td></tr>`)
       .join('')}</table>
     <p class="nota">Fuentes: Open-Meteo, NOAA SWPC, CelesTrak, ENAIRE. Orientativo: la decisión y la responsabilidad del vuelo son del piloto.</p>`;
+}
+
+// Compartir: el menú del móvil (WhatsApp, correo...) si lo hay; si no, al portapapeles.
+async function compartir(boton) {
+  const p = prevision();
+  if (!p || !estado.lugar) return;
+  const texto = textoCompartir(p, estado.lugar, location.href.split(/[?#]/)[0]);
+  try {
+    if (navigator.share) await navigator.share({ title: `Drone Forecast · ${estado.lugar.nombre}`, text: texto });
+    else {
+      await navigator.clipboard.writeText(texto);
+      boton.textContent = 'Copiado';
+      setTimeout(() => pintar(), 2000);
+    }
+  } catch (e) {
+    // Cerrar el menú de compartir no es un fallo.
+    if (e?.name !== 'AbortError') estado.fallo = `Compartir: ${e?.message ?? e}`;
+  }
 }
 
 function imprimirInforme() {
@@ -1040,6 +1061,7 @@ function enlazar() {
     else if (b.dataset.accion === 'volado') abrirVuelo(Number(b.dataset.ms));
     else if (b.dataset.accion === 'cerrar-vuelo') $('#dlg-vuelo').close();
     else if (b.dataset.accion === 'informe') imprimirInforme();
+    else if (b.dataset.accion === 'compartir') compartir(b);
     else if (b.dataset.accion === 'exportar-diario') exportarDiario();
     else if (b.dataset.borrarVuelo) {
       almacen.guardarDiario(diarioValido(almacen.diario()).filter((e) => e.id !== b.dataset.borrarVuelo));

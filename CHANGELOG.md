@@ -3,6 +3,18 @@
 Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
 `0.0.X` para correcciones. La versión sale en el pie de la app.
 
+## 0.13.0
+
+- **Compartir:** botón nuevo junto a «He volado». Abre el menú del móvil
+  (WhatsApp, correo…) con un resumen listo para mandar: lugar, dron y
+  altura, si se puede volar ahora (y por qué no, si no), el viento y las
+  ventanas de hoy y mañana, con el enlace a la app.
+- **La mejor ventana, marcada en la tabla:** las horas de la mejor ventana
+  del día llevan una raya verde a la izquierda (ámbar si es «con
+  precaución»), para encontrarla de un vistazo al bajar por la tabla.
+- «Mejor ventana hoy» ya no se parte en dos líneas cuando no hay ventana:
+  dice «Ninguna».
+
 ## 0.12.0
 
 **Más como UAV Forecast.**

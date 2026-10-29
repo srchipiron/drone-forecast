@@ -420,6 +420,10 @@ details[open] > summary::before { transform: rotate(45deg); }
 
 .tabla-horas tr.actual th button { color: var(--acento); }
 
+.tabla-horas tr.en-ventana th { box-shadow: inset 4px 0 0 var(--ok); }
+
+.tabla-horas tr.en-ventana.v-precaucion th { box-shadow: inset 4px 0 0 var(--precaucion); }
+
 .tabla-horas tr.actual th { box-shadow: inset 3px 0 0 var(--acento); }
 
 .tabla-horas tr.abierta th, .tabla-horas tr.abierta td { border-bottom-color: transparent; }

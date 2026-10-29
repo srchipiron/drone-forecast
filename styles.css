@@ -401,7 +401,7 @@ details[open] > summary::before { transform: rotate(45deg); }
 
 .horas-cabecera { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 0.25rem; margin: -0.4rem -0.5rem 0; }
 
-.horas-cabecera h2 { margin: 0; justify-content: center; }
+.horas-cabecera h2 { margin: 0; justify-content: center; gap: 0.35rem; }
 
 .horas-cabecera .dia-tabla { color: var(--texto); text-transform: capitalize; letter-spacing: 0; }
 
@@ -464,6 +464,10 @@ details[open] > summary::before { transform: rotate(45deg); }
 .tabla-horas td.e-no { background: var(--no-fondo); color: var(--no); font-weight: 700; }
 
 .tabla-horas td.e-precaucion .flecha, .tabla-horas td.e-no .flecha { color: inherit; }
+
+.detalle-hora .cielo { margin: 0 0 0.2rem; font-weight: 700; }
+
+.tabla-horas [role="img"] { font-size: 1.05rem; }
 
 .fila-detalle td { height: auto; padding: 0 0 0.6rem; text-align: left; white-space: normal; cursor: default; }
 

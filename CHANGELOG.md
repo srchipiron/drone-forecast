@@ -3,6 +3,16 @@
 Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
 `0.0.X` para correcciones. La versión sale en el pie de la app.
 
+## 0.16.0
+
+- **El cielo de cada hora, con su icono**, como en UAV Forecast: en la
+  tabla hora a hora, la columna «Cielo» enseña ☀️, ⛅, ☁️, 🌧️, ⛈️ o 🌙
+  según la hora, en vez del porcentaje de nubes. Si la base de las nubes
+  queda cerca de tu altura de vuelo, la celda sale en ámbar o rojo.
+- Al abrir una hora, el detalle empieza por el cielo y la temperatura
+  («⛅ Nubes y claros · 16 °C»).
+- Arreglado el título de la tabla, que salía pegado («Hora a hora ·Hoy»).
+
 ## 0.15.1
 
 - **Más rápida.** Calcular la previsión de la semana tarda menos de la

@@ -1,6 +1,7 @@
 // La interfaz. Pinta lo que devuelve construirPrevision(); no decide nada.
 
 import { cielo } from '../motor/cielo.js';
+import { sentidoDeslizar } from '../motor/gestos.js';
 import { textoCompartir } from '../motor/compartir.js';
 import { informeDiagnostico } from '../motor/diagnostico.js';
 import { VALORACIONES, anadirEntrada, crearEntrada, diarioValido, resumenDiario } from '../motor/diario.js';
@@ -486,7 +487,13 @@ function pintarHoras(p) {
   const ahora = Date.now();
   const horas = dia.horas.filter((h) => h.ms + 3600000 > ahora);
   const abierta = horas.find((h) => h.ms === estado.abierta);
-  el.innerHTML = `<h2>Hora a hora <span class="nota">viento a ${esc(p.ajustes.altitud)} m en ${esc(partesViento(0, u)[1])}</span></h2>
+  const k = p.dias.indexOf(dia);
+  el.innerHTML = `<div class="horas-cabecera">
+      <button type="button" class="icono" data-dia-paso="-1" aria-label="Día anterior"${k === 0 ? ' disabled' : ''}>‹</button>
+      <h2>Hora a hora · <span class="dia-tabla">${esc(etiquetaDia(dia.clave, k))}</span></h2>
+      <button type="button" class="icono" data-dia-paso="1" aria-label="Día siguiente"${k === p.dias.length - 1 ? ' disabled' : ''}>›</button>
+    </div>
+    <p class="nota unidades-horas">Viento a ${esc(p.ajustes.altitud)} m en ${esc(partesViento(0, u)[1])}. Desliza a los lados para cambiar de día.</p>
     <div class="tabla-horas-marco">
       <table class="tabla-horas">
         <thead><tr><th scope="col">Hora</th><th scope="col"><span class="visualmente-oculto">Volar</span></th>${COLUMNAS.map((c) => `<th scope="col">${c.titulo}</th>`).join('')}</tr></thead>
@@ -495,6 +502,49 @@ function pintarHoras(p) {
     </div>
     <p class="nota pista-horas">Toca una hora para ver el detalle. En gris, las horas sin luz${dia.ventana ? '; con raya a la izquierda, la mejor ventana' : ''}.</p>
     <details class="mas-grafica"><summary>Gráfica del viento del día</summary>${svgGrafica(dia, p)}</details>`;
+}
+
+// Pasar de día con las flechas o deslizando el dedo. La animación dice hacia
+// dónde se ha ido (y se la salta quien pide menos movimiento, por CSS).
+function cambiarDia(paso) {
+  const p = prevision();
+  if (!p) return;
+  const k = p.dias.findIndex((d) => d.clave === estado.dia);
+  const nuevo = p.dias[k + paso];
+  if (!nuevo) return;
+  estado.dia = nuevo.clave;
+  estado.abierta = null;
+  pintar();
+  const el = $('#horas');
+  el.classList.remove('entra-der', 'entra-izq');
+  void el.offsetWidth; // reinicia la animación
+  el.classList.add(paso > 0 ? 'entra-der' : 'entra-izq');
+}
+
+// Deslizar lo detectamos nosotros con touchstart/touchend: en algunos móviles
+// el desplazamiento lateral del navegador no responde al dedo.
+function alDeslizar(el, alPasar) {
+  let ini = null;
+  el.addEventListener(
+    'touchstart',
+    (e) => {
+      const t = e.touches.length === 1 ? e.touches[0] : null;
+      ini = t ? { x: t.clientX, y: t.clientY, ms: Date.now() } : null;
+    },
+    { passive: true },
+  );
+  el.addEventListener(
+    'touchend',
+    (e) => {
+      if (!ini) return;
+      const t = e.changedTouches[0];
+      const paso = sentidoDeslizar(t.clientX - ini.x, t.clientY - ini.y, Date.now() - ini.ms);
+      ini = null;
+      if (paso) alPasar(paso);
+    },
+    { passive: true },
+  );
+  el.addEventListener('touchcancel', () => (ini = null), { passive: true });
 }
 
 function pintarChecklist() {
@@ -1049,6 +1099,8 @@ function abrirLugar() {
 function enlazar() {
   $('#btn-lugar').addEventListener('click', abrirLugar);
   $('#btn-mapa').addEventListener('click', abrirMapa);
+  alDeslizar($('#horas'), cambiarDia);
+  alDeslizar($('#dias'), cambiarDia);
   $('#btn-usar-punto').addEventListener('click', usarPuntoMapa);
   $('#btn-gps').addEventListener('click', usarGPS);
   $('#btn-diagnostico').addEventListener('click', abrirDiagnostico);
@@ -1098,6 +1150,7 @@ function enlazar() {
     else if (b.dataset.accion === 'cerrar-vuelo') $('#dlg-vuelo').close();
     else if (b.dataset.accion === 'informe') imprimirInforme();
     else if (b.dataset.accion === 'compartir') compartir(b);
+    else if (b.dataset.diaPaso) cambiarDia(Number(b.dataset.diaPaso));
     else if (b.dataset.accion === 'exportar-diario') exportarDiario();
     else if (b.dataset.borrarVuelo) {
       almacen.guardarDiario(diarioValido(almacen.diario()).filter((e) => e.id !== b.dataset.borrarVuelo));

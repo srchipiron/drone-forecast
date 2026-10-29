@@ -395,6 +395,30 @@ details[open] > summary::before { transform: rotate(45deg); }
 
 .ley.rachas { border-top: 1.5px dashed var(--suave); }
 
+/* Cabecera de la tabla: ‹ día › ; deslizar de lado también cambia de día
+   (pan-y: el navegador solo se queda el gesto vertical, el lateral es nuestro). */
+.horas, .dias { touch-action: pan-y; }
+
+.horas-cabecera { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 0.25rem; margin: -0.4rem -0.5rem 0; }
+
+.horas-cabecera h2 { margin: 0; justify-content: center; }
+
+.horas-cabecera .dia-tabla { color: var(--texto); text-transform: capitalize; letter-spacing: 0; }
+
+.horas-cabecera button { font-size: 1.6rem; line-height: 1; color: var(--acento); }
+
+.horas-cabecera button:disabled { color: var(--separador); cursor: default; }
+
+.unidades-horas { text-align: center; margin: 0 0 0.4rem; }
+
+.entra-der { animation: entra-der 0.22s ease-out; }
+
+.entra-izq { animation: entra-izq 0.22s ease-out; }
+
+@keyframes entra-der { from { transform: translateX(24px); opacity: 0.4; } }
+
+@keyframes entra-izq { from { transform: translateX(-24px); opacity: 0.4; } }
+
 /* La tabla hora a hora: cabe en el ancho del móvil; si no (letra grande),
    se desliza dentro de su marco y la página no se ensancha. */
 .tabla-horas-marco { margin: 0 -0.75rem; overflow-x: auto; }
@@ -631,4 +655,5 @@ dialog h3 { font-size: 0.75rem; font-weight: 700; color: var(--suave); text-tran
 @media (prefers-reduced-motion: reduce) {
   .girando svg { animation: none; }
   button, details summary::before { transition: none; }
+  .entra-der, .entra-izq { animation: none; }
 }

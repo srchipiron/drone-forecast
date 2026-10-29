@@ -3,6 +3,18 @@
 Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
 `0.0.X` para correcciones. La versión sale en el pie de la app.
 
+## 0.15.0
+
+**Pasar de día deslizando el dedo.**
+
+- Desliza a la izquierda sobre la tabla hora a hora (o sobre los días) y
+  pasas al día siguiente; a la derecha, vuelves al anterior. La tabla
+  entra desde el lado hacia el que vas.
+- Encima de la tabla sale el día que estás viendo, con flechas ‹ › a los
+  lados para pasar de día con un toque.
+- Bajar por la página sigue funcionando igual: solo cuenta como cambio de
+  día un gesto rápido y claramente de lado.
+
 ## 0.14.1
 
 - **Todos los días a la vista, sin deslizar.** En algunos móviles la tira de

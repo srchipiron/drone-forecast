@@ -229,6 +229,37 @@ try {
   // Mañana trae el día entero.
   await page.locator('#dias .dia').nth(1).click();
   assert.ok(await page.locator('#horas tr.hora').count() >= 23, 'horas de mañana');
+  // Cambiar de día deslizando el dedo (detectado por la app, no por el
+  // desplazamiento del navegador) o con las flechas ‹ ›.
+  const deslizar = (sel, dx, dy = 0) =>
+    page.evaluate(
+      ({ sel, dx, dy }) => {
+        const el = document.querySelector(sel);
+        const r = el.getBoundingClientRect();
+        const x = r.left + r.width / 2;
+        const y = r.top + 40;
+        const t = (cx, cy) => new Touch({ identifier: 1, target: el, clientX: cx, clientY: cy });
+        el.dispatchEvent(new TouchEvent('touchstart', { touches: [t(x, y)], changedTouches: [t(x, y)], bubbles: true }));
+        el.dispatchEvent(new TouchEvent('touchend', { touches: [], changedTouches: [t(x + dx, y + dy)], bubbles: true }));
+      },
+      { sel, dx, dy },
+    );
+  const diaActivo = () => page.evaluate(() => [...document.querySelectorAll('#dias .dia')].findIndex((d) => d.classList.contains('activo')));
+  assert.equal(await page.textContent('#horas .dia-tabla'), 'Mañana');
+  await deslizar('#horas', -120);
+  assert.equal(await diaActivo(), 2, 'dedo a la izquierda: día siguiente');
+  assert.equal(await page.textContent('#horas .dia-tabla'), await page.locator('#dias .dia').nth(2).locator('.d-nombre').textContent());
+  await deslizar('#horas', -100, 90);
+  assert.equal(await diaActivo(), 2, 'en diagonal (bajando por la página) no cambia');
+  await deslizar('#dias', 120);
+  assert.equal(await diaActivo(), 1, 'sobre los días también, y a la derecha vuelve');
+  await page.locator('#horas [data-dia-paso="-1"]').click();
+  assert.equal(await diaActivo(), 0);
+  assert.ok(await page.locator('#horas [data-dia-paso="-1"]').isDisabled(), 'en hoy no hay anterior');
+  await deslizar('#horas', 120);
+  assert.equal(await diaActivo(), 0, 'antes de hoy no hay nada');
+  await page.locator('#horas [data-dia-paso="1"]').click();
+  assert.equal(await diaActivo(), 1);
 
   // Gráfica del día, plegada debajo de la tabla.
   assert.equal(await page.locator('#horas .grafica svg path.viento').count(), 1);

@@ -2,7 +2,7 @@
 
 import { informeDiagnostico } from '../motor/diagnostico.js';
 import { VALORACIONES, anadirEntrada, crearEntrada, diarioValido, resumenDiario } from '../motor/diario.js';
-import { arcoIndicador, graficaDia, puntoIndicador } from '../motor/grafica.js';
+import { graficaDia } from '../motor/grafica.js';
 import { DRONES } from '../motor/drones.js';
 import { MISIONES, MODOS } from '../motor/misiones.js';
 import { construirPrevision, normalizarAjustes, resumenDias } from '../motor/prevision.js';
@@ -30,6 +30,12 @@ const ICONOS = {
   ventana: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6"/>',
   sol: '<path d="M4 18h16M7 18a5 5 0 0 1 10 0M12 7V4M5.6 10.6 3.5 8.5M18.4 10.6l2.1-2.1"/>',
   zona: '<path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/>',
+  termometro: '<path d="M10 14V5a2 2 0 1 1 4 0v9a4 4 0 1 1-4 0Z"/><path d="M12 10v6"/>',
+  ojo: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>',
+  nube: '<path d="M7 15a5 5 0 1 1 9.6-2H17a3 3 0 0 1 0 6H8a4 4 0 0 1-1-4Z"/>',
+  modelos: '<path d="M4 18 9 9l4 6 3-4 4 7M4 6h4M4 10h2"/>',
+  mision: '<rect x="4" y="5" width="16" height="14" rx="2"/><path d="m8 12 3 3 5-6"/>',
+  amanecer: '<path d="M4 18h16M7 18a5 5 0 0 1 10 0M12 4v5M9 7l3-3 3 3"/>',
 };
 
 function icono(nombre) {
@@ -78,10 +84,8 @@ const estado = {
   fallo: '',
   pedido: 0,
   vecesLugar: 0,
-  verFactores: false,
-  // Pestaña abierta y si hay que llevar la tira de horas a la hora actual.
+  // Pestaña abierta.
   vista: 'prevision',
-  desplazarHoras: true,
   ultimoVeredicto: '',
   // Zonas de ENAIRE del lugar actual: null mientras se consulta.
   enaire: null,
@@ -133,7 +137,7 @@ async function descargar() {
   try {
     const crudo = await cargarPrevision(lat, lon);
     if (n !== estado.pedido) return;
-    Object.assign(estado, leerDescarga(crudo), { descargado: Date.now(), desdeCache: false, desplazarHoras: true });
+    Object.assign(estado, leerDescarga(crudo), { descargado: Date.now(), desdeCache: false });
     almacen.guardarCache({ lat, lon, guardado: estado.descargado, ...crudo });
   } catch (e) {
     if (n !== estado.pedido) return;
@@ -235,14 +239,37 @@ function chipEstado(e, texto = ESTADOS[e].corto) {
   return `<span class="chip ${e}">${esc(texto)}</span>`;
 }
 
-function listaFactores(h) {
-  return `<ul class="factores">${h.factores
+// Cada fila de «Condiciones ahora», como en UAV Forecast: icono, dato, valor
+// y su marca. El detalle solo sale cuando algo no está en verde: dice por qué.
+const ICONO_FACTOR = {
+  viento: 'viento',
+  rachas: 'rachas',
+  lluvia: 'lluvia',
+  temperatura: 'termometro',
+  visibilidad: 'ojo',
+  techo: 'nube',
+  luz: 'sol',
+  kp: 'kp',
+  satelites: 'satelite',
+  consenso: 'modelos',
+};
+
+// Flecha hacia donde SOPLA el viento: la dirección meteorológica dice de dónde
+// viene, y la flecha base (hacia abajo) es justo el viento del norte, 0°.
+function flecha(grados) {
+  if (!Number.isFinite(grados)) return '';
+  return `<svg class="flecha" viewBox="0 0 24 24" aria-hidden="true"><g transform="rotate(${Math.round(grados)} 12 12)"><path d="M12 4v16M6 14l6 6 6-6"/></g></svg>`;
+}
+
+function listaCondiciones(h) {
+  return `<ul class="condiciones">${h.factores
     .map(
-      (f) => `<li class="factor ${f.estado}">
-        <span class="punto" aria-hidden="true">${SIMBOLO[f.estado]}</span><span class="visualmente-oculto">${ESTADOS[f.estado].corto}:</span>
-        <span class="f-nombre">${esc(f.nombre)}</span>
-        <span class="f-valor">${esc(f.valor)}</span>
-        ${f.detalle ? `<span class="f-detalle">${esc(f.detalle)}</span>` : ''}
+      (f) => `<li class="condicion ${f.estado}" data-factor="${esc(f.id)}">
+        ${icono(ICONO_FACTOR[f.id] ?? 'mision')}
+        <span class="c-nombre">${esc(f.nombre)}</span>
+        <span class="c-valor">${f.id === 'viento' ? flecha(h.dirAlt) : ''}${esc(f.valor)}</span>
+        <span class="c-marca" aria-hidden="true">${SIMBOLO[f.estado]}</span><span class="visualmente-oculto">${ESTADOS[f.estado].corto}</span>
+        ${f.detalle && f.estado !== 'ok' ? `<span class="c-detalle">${esc(f.detalle)}</span>` : ''}
       </li>`,
     )
     .join('')}</ul>`;
@@ -272,64 +299,37 @@ function pintarAhora(p) {
   const malos = h.factores.filter((f) => f.estado === h.estado && h.estado !== 'ok');
   const razon = h.estado === 'ok' ? 'Todo en verde para tu dron.' : malos.map((f) => `${f.nombre}: ${f.valor}`).join(' · ');
   const hoy = p.dias[0];
-  const u = p.ajustes.unidades;
-  const [rachaN, rachaU] = partesViento(h.rachaAlt, u);
   el.className = `tarjeta veredicto ${h.estado}`;
   el.innerHTML = `
-    <div class="heroe">
-      ${svgIndicador(h, p)}
-      <div class="heroe-texto">
-        <p class="cuando">${p.actual ? 'Ahora' : 'Próxima hora'} · ${esc(hora(h.ms, p.zona))}</p>
-        <p class="grande"><span class="simbolo" aria-hidden="true">${SIMBOLO[h.estado]}</span>${ESTADOS[h.estado].texto}</p>
-        <p class="razon">${esc(razon)}</p>
+    <div class="cartel">
+      <span class="simbolo" aria-hidden="true">${SIMBOLO[h.estado]}</span>
+      <div>
+        <p class="grande">${ESTADOS[h.estado].texto}</p>
+        <p class="cuando">${p.actual ? 'Ahora' : 'Próxima hora'} · ${esc(hora(h.ms, p.zona))} · ${esc(p.dron.nombre)} a ${esc(p.ajustes.altitud)} m</p>
       </div>
     </div>
-    <div class="resumen">
-      <div>${icono('rachas')}<span>Rachas</span><strong>${esc(rachaN)}<small>${esc(rachaU)}</small></strong></div>
-      <div>${icono('lluvia')}<span>Lluvia</span><strong>${esc(h.probLluvia ?? '—')}<small>%</small></strong></div>
-      <div>${icono('satelite')}<span>Satélites</span><strong>${esc(h.sats?.total ?? '—')}</strong></div>
-      <div>${icono('kp')}<span>Kp</span><strong>${esc(Number.isFinite(h.kp) ? h.kp.toFixed(1) : '—')}</strong></div>
-    </div>
+    ${h.estado === 'ok' ? '' : `<p class="razon">${esc(razon)}</p>`}
+    <h2>Condiciones ahora</h2>
+    ${listaCondiciones(h)}
     <ul class="filas">
       <li class="fila ventana-hoy ${esc(hoy?.ventana?.estado ?? 'no')}">${icono('ventana')}<span>Mejor ventana hoy</span>
         <strong>${hoy?.ventana ? `${esc(hora(hoy.ventana.inicio, p.zona))}–${esc(hora(hoy.ventana.fin, p.zona))}${hoy.ventana.estado === 'precaucion' ? ' · con precaución' : ''}` : 'Hoy no queda ninguna hora volable'}</strong></li>
-      <li class="fila sol">${icono('sol')}<span>Sol</span>
-        <strong>${esc(hora(hoy?.sol.salida, p.zona))}–${esc(hora(hoy?.sol.puesta, p.zona))} · dorada ${esc(hora(hoy?.sol.doradaTarde, p.zona))}</strong></li>
+      <li class="fila sol">${icono('amanecer')}<span>Amanecer · ocaso</span>
+        <strong>${esc(hora(hoy?.sol.salida, p.zona))} · ${esc(hora(hoy?.sol.puesta, p.zona))}</strong></li>
+      <li class="fila sol">${icono('sol')}<span>Hora dorada</span>
+        <strong>${esc(hora(hoy?.sol.doradaTarde, p.zona))}</strong></li>
     </ul>
     ${bloqueEnaire()}
     <div class="acciones acciones-ahora">
       <button type="button" data-accion="volado" data-ms="${h.ms}">He volado</button>
       ${p.ajustes.modo === 'profesional' ? '<button type="button" data-accion="informe">Informe para el cliente</button>' : ''}
-    </div>
-    <details class="factores-ahora"${estado.verFactores ? ' open' : ''}><summary>Todos los factores</summary>${listaFactores(h)}</details>`;
+    </div>`;
   // El lector de pantalla solo oye el veredicto cuando cambia, no cada minuto.
   const anuncio = `${h.ms}-${h.estado}`;
   if (anuncio !== estado.ultimoVeredicto) {
     estado.ultimoVeredicto = anuncio;
     $('#anuncio').textContent = `${ESTADOS[h.estado].texto}. ${razon}`;
   }
-}
-
-// El instrumento: arco con el viento a la altura de vuelo frente al límite
-// del dron, con marcas en «cómodo» y «límite». El color lo pone el CSS.
-function svgIndicador(h, p) {
-  const { comodo, limite } = umbralesViento(p);
-  const max = limite * 1.25;
-  const v = Number.isFinite(h.vientoAlt) ? h.vientoAlt : 0;
-  const marca = (x, clase) => {
-    const a = puntoIndicador(x / max, { cx: 60, cy: 60, r: 40, desde: 150, barrido: 240 });
-    const b = puntoIndicador(x / max, { cx: 60, cy: 60, r: 56, desde: 150, barrido: 240 });
-    return `<line class="marca ${clase}" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"></line>`;
-  };
-  const [n, unidad] = partesViento(h.vientoAlt, p.ajustes.unidades);
-  return `<svg class="indicador" viewBox="0 0 120 112" role="img" aria-label="Viento a ${esc(p.ajustes.altitud)} metros: ${esc(fmtViento(h.vientoAlt, p.ajustes.unidades))}, límite del dron ${esc(fmtViento(limite, p.ajustes.unidades))}">
-    <path class="pista" d="${arcoIndicador(1)}"></path>
-    <path class="valor" d="${arcoIndicador(v / max)}"></path>
-    ${marca(comodo, 'comodo')}${marca(limite, 'limite')}
-    <text class="num" x="60" y="62">${esc(n)}</text>
-    <text class="uni" x="60" y="78">${esc(unidad)}</text>
-    <text class="alt" x="60" y="104">viento a ${esc(p.ajustes.altitud)} m</text>
-  </svg>`;
 }
 
 const MAPA_ENAIRE = '<a href="https://drones.enaire.es/" target="_blank" rel="noopener noreferrer">mapa de ENAIRE Drones</a>';
@@ -431,6 +431,35 @@ function svgGrafica(dia, p) {
   </figure>`;
 }
 
+// La tabla hora a hora, como la de UAV Forecast: una fila por hora y cada
+// dato en su columna, con el color de su factor. Tocar una fila la abre.
+const TORMENTA = new Set([95, 96, 99]);
+const COLUMNAS = [
+  { id: 'viento', titulo: 'Viento', celda: (h, u) => `${flecha(h.dirAlt)}${esc(partesViento(h.vientoAlt, u)[0])}` },
+  { id: 'rachas', titulo: 'Racha', celda: (h, u) => esc(partesViento(h.rachaAlt, u)[0]) },
+  { id: 'temperatura', titulo: '°C', celda: (h) => (Number.isFinite(h.temp) ? Math.round(h.temp) : '—') },
+  { id: 'lluvia', titulo: 'Lluvia', celda: (h) => (TORMENTA.has(h.codigo) ? '⚡' : `${h.probLluvia ?? '—'}%`) },
+  { id: 'techo', titulo: 'Nubes', celda: (h) => `${Number.isFinite(h.nubes) ? Math.round(h.nubes) : '—'}%` },
+  { id: 'satelites', titulo: 'Sats', celda: (h) => esc(h.sats?.total ?? '—') },
+  { id: 'kp', titulo: 'Kp', celda: (h) => (Number.isFinite(h.kp) ? Math.round(h.kp) : '—') },
+];
+
+function filaHora(h, p, abierta) {
+  const ahora = Date.now();
+  const u = p.ajustes.unidades;
+  const porId = Object.fromEntries(h.factores.map((f) => [f.id, f.estado]));
+  const clases = ['hora', h.estado, ahora >= h.ms && ahora < h.ms + 3600000 ? 'actual' : '', porId.luz !== 'ok' ? 'noche' : '', h === abierta ? 'abierta' : '']
+    .filter(Boolean)
+    .join(' ');
+  const fila = `<tr class="${clases}" data-hora="${h.ms}">
+    <th scope="row"><button type="button" aria-expanded="${h === abierta}" aria-label="${esc(hora(h.ms, p.zona))}: ${esc(ESTADOS[h.estado].texto)}">${esc(hora(h.ms, p.zona))}</button></th>
+    <td class="t-estado"><span aria-hidden="true">${SIMBOLO[h.estado]}</span></td>
+    ${COLUMNAS.map((c) => `<td class="e-${esc(porId[c.id] ?? 'sin-dato')}">${c.celda(h, u)}</td>`).join('')}
+  </tr>`;
+  if (h !== abierta) return fila;
+  return `${fila}<tr class="fila-detalle"><td colspan="${COLUMNAS.length + 2}"><div class="detalle-hora ${h.estado}">${bloquePerfil(h, p)}${listaCondiciones(h)}</div></td></tr>`;
+}
+
 function pintarHoras(p) {
   const el = $('#horas');
   const dia = p?.dias.find((d) => d.clave === estado.dia);
@@ -440,44 +469,19 @@ function pintarHoras(p) {
   }
   el.hidden = false;
   const u = p.ajustes.unidades;
+  // Como en UAV Forecast, hoy empieza en la hora en curso: las pasadas ya no se vuelan.
   const ahora = Date.now();
-  const abierta = dia.horas.find((h) => h.ms === estado.abierta);
-  el.innerHTML = `<h2>Hora a hora</h2>${svgGrafica(dia, p)}
-    <ol class="lista-horas" aria-label="Horas del día">${dia.horas
-      .map((h) => {
-        const [n] = partesViento(h.vientoAlt, u);
-        const [r] = partesViento(h.rachaAlt, u);
-        const clases = [
-          'hora',
-          h.estado,
-          h.ms + 3600000 <= ahora ? 'pasada' : '',
-          ahora >= h.ms && ahora < h.ms + 3600000 ? 'actual' : '',
-          h === abierta ? 'abierta' : '',
-        ].join(' ');
-        return `<li class="${clases.trim()}">
-          <button type="button" data-hora="${h.ms}" aria-pressed="${h === abierta}" aria-label="${esc(hora(h.ms, p.zona))}: ${esc(ESTADOS[h.estado].texto)}, viento ${esc(fmtViento(h.vientoAlt, u))}">
-            <span class="h-hora">${esc(hora(h.ms, p.zona))}</span>
-            <span class="h-estado" aria-hidden="true">${SIMBOLO[h.estado]}</span>
-            <span class="h-viento">${esc(n)}</span>
-            <span class="h-racha">${icono('rachas')}${esc(r)}</span>
-          </button>
-        </li>`;
-      })
-      .join('')}</ol>
-    <p class="nota unidades-horas">Viento y rachas a ${esc(p.ajustes.altitud)} m, en ${esc(partesViento(0, u)[1])}</p>
-    ${
-      abierta
-        ? `<div class="detalle-hora ${abierta.estado}"><h3>${esc(hora(abierta.ms, p.zona))} · ${ESTADOS[abierta.estado].texto}</h3>${bloquePerfil(abierta, p)}${listaFactores(abierta)}</div>`
-        : '<p class="nota pista-horas">Toca una hora para ver por qué está de ese color.</p>'
-    }`;
-  // Al cambiar de día o llegar datos nuevos, la tira empieza en la hora actual.
-  // Solo con la tira a la vista: oculta no tiene medidas y el aviso se perdería.
-  const tira = el.querySelector('.lista-horas');
-  if (estado.desplazarHoras && tira && tira.offsetParent) {
-    estado.desplazarHoras = false;
-    const desde = el.querySelector('.hora.actual') ?? el.querySelector('.hora:not(.pasada)');
-    if (desde) tira.scrollLeft = Math.max(0, desde.getBoundingClientRect().left - tira.getBoundingClientRect().left + tira.scrollLeft - 8);
-  }
+  const horas = dia.horas.filter((h) => h.ms + 3600000 > ahora);
+  const abierta = horas.find((h) => h.ms === estado.abierta);
+  el.innerHTML = `<h2>Hora a hora <span class="nota">viento a ${esc(p.ajustes.altitud)} m en ${esc(partesViento(0, u)[1])}</span></h2>
+    <div class="tabla-horas-marco">
+      <table class="tabla-horas">
+        <thead><tr><th scope="col">Hora</th><th scope="col"><span class="visualmente-oculto">Volar</span></th>${COLUMNAS.map((c) => `<th scope="col">${c.titulo}</th>`).join('')}</tr></thead>
+        <tbody>${horas.map((h) => filaHora(h, p, abierta)).join('')}</tbody>
+      </table>
+    </div>
+    <p class="nota pista-horas">Toca una hora para ver el detalle. En gris, las horas sin luz.</p>
+    <details class="mas-grafica"><summary>Gráfica del viento del día</summary>${svgGrafica(dia, p)}</details>`;
 }
 
 function pintarChecklist() {
@@ -580,10 +584,6 @@ function cambiarVista(v) {
   estado.vista = v;
   pintarVistas();
   window.scrollTo(0, 0);
-  if (v === 'prevision') {
-    estado.desplazarHoras = true;
-    pintarHoras(prevision());
-  }
 }
 
 function pintarVistas() {
@@ -932,6 +932,14 @@ function enlazar() {
   pz('#pz-ip', 'ip', (t) => (t.checked ? 'IP45' : null));
 
   document.body.addEventListener('click', (e) => {
+    // Una fila de la tabla de horas se abre tocándola entera, no solo la hora.
+    const fila = e.target.closest('tr[data-hora]');
+    if (fila) {
+      const ms = Number(fila.dataset.hora);
+      estado.abierta = estado.abierta === ms ? null : ms;
+      pintar();
+      return;
+    }
     const b = e.target.closest('button');
     if (!b) return;
     if (b.dataset.accion === 'lugar') abrirLugar();
@@ -949,11 +957,6 @@ function enlazar() {
     else if (b.dataset.dia) {
       estado.dia = b.dataset.dia;
       estado.abierta = null;
-      estado.desplazarHoras = true;
-      pintar();
-    } else if (b.dataset.hora) {
-      const ms = Number(b.dataset.hora);
-      estado.abierta = estado.abierta === ms ? null : ms;
       pintar();
     } else if (b.dataset.res) {
       ponerLugar(resultados[Number(b.dataset.res)]);
@@ -985,13 +988,6 @@ function enlazar() {
     pintarChecklist();
   });
   $('#form-vuelo').addEventListener('submit', guardarVuelo);
-  document.addEventListener(
-    'toggle',
-    (e) => {
-      if (e.target.classList?.contains('factores-ahora')) estado.verFactores = e.target.open;
-    },
-    true,
-  );
   $('#form-buscar').addEventListener('submit', (e) => {
     e.preventDefault();
     buscar($('#txt-buscar').value);

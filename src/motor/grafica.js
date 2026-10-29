@@ -38,23 +38,3 @@ export function graficaDia(horas, umbrales, { ancho = 340, alto = 120, margen = 
     xDe: horas.map((h, i) => ({ ms: h.ms, x: r(x(i)) })),
   };
 }
-
-// Indicador circular (como un instrumento de cabina): un arco de 240° que
-// empieza abajo a la izquierda y acaba abajo a la derecha, con el hueco
-// abajo. fraccion 0 → vacío, 1 → arco completo. Ángulos en grados, 0° = las 3
-// del reloj y creciendo en el sentido de las agujas (coordenadas SVG).
-export const INDICADOR = { cx: 60, cy: 60, r: 48, desde: 150, barrido: 240 };
-
-export function puntoIndicador(fraccion, { cx, cy, r, desde, barrido } = INDICADOR) {
-  const a = ((desde + barrido * Math.min(1, Math.max(0, fraccion))) * Math.PI) / 180;
-  return { x: Math.round((cx + r * Math.cos(a)) * 100) / 100, y: Math.round((cy + r * Math.sin(a)) * 100) / 100 };
-}
-
-export function arcoIndicador(fraccion, geo = INDICADOR) {
-  const f = Math.min(1, Math.max(0, fraccion));
-  if (!(f > 0)) return '';
-  const p0 = puntoIndicador(0, geo);
-  const p1 = puntoIndicador(f, geo);
-  const grande = geo.barrido * f > 180 ? 1 : 0;
-  return `M${p0.x},${p0.y} A${geo.r},${geo.r} 0 ${grande} 1 ${p1.x},${p1.y}`;
-}

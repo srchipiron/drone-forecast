@@ -3,6 +3,19 @@
 Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
 `0.0.X` para correcciones. La versión sale en el pie de la app.
 
+## 0.14.0
+
+**Elegir el punto de vuelo en el mapa**, como en UAV Forecast.
+
+- En el buscador de lugares, **Elegir en el mapa** abre un mapa de
+  OpenStreetMap centrado donde estás mirando. Arrástralo con el dedo,
+  acércate con + y −, y toca el sitio exacto donde vas a volar: sale una
+  marca roja y sus coordenadas. **Usar este punto** lo pone como lugar
+  («Punto del mapa») y descarga su previsión y sus zonas de ENAIRE.
+- Sirve para parajes, fincas o cubiertas que el buscador no encuentra por
+  nombre, y afina la consulta de ENAIRE, que depende del punto exacto.
+- Se puede guardar en favoritos como cualquier otro lugar.
+
 ## 0.13.0
 
 - **Compartir:** botón nuevo junto a «He volado». Abre el menú del móvil

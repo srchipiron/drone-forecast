@@ -247,6 +247,41 @@ try {
   assert.equal(resumen[1].replace('Mañana ', ''), manana === 'Sin ventana' ? 'sin ventana' : manana, 'mismo cálculo que la pantalla principal');
   await page.keyboard.press('Escape');
 
+  // Mapa: arrastrar, acercar, tocar el punto y usarlo como lugar.
+  const tesela = await readFile(join(raiz, 'icons/icono-192.png'));
+  const teselasPedidas = [];
+  await page.route('https://tile.openstreetmap.org/**', (x) => {
+    teselasPedidas.push(x.request().url());
+    return x.fulfill({ body: tesela, contentType: 'image/png' });
+  });
+  await page.locator('#btn-lugar').click();
+  await page.locator('#btn-mapa').click();
+  const caja = await page.locator('#mapa').boundingBox();
+  assert.ok((await page.locator('#mapa .mapa-teselas img').count()) >= 4, 'teselas que tapan el mapa');
+  assert.ok(teselasPedidas.every((u) => /^https:\/\/tile\.openstreetmap\.org\/13\/\d+\/\d+\.png$/.test(u)), 'teselas de OSM en z13');
+  const centroX = caja.x + caja.width / 2;
+  const centroY = caja.y + caja.height / 2;
+  // Tocar el centro marca el lugar actual (Getafe).
+  await page.mouse.click(centroX, centroY);
+  assert.equal(await page.textContent('#punto-mapa'), 'Punto: 40.3057, -3.7329');
+  assert.ok(await page.locator('#mapa .mapa-marca').isVisible());
+  // Arrastrar 100 px a la derecha lleva el centro al oeste.
+  await page.mouse.move(centroX, centroY);
+  await page.mouse.down();
+  await page.mouse.move(centroX + 50, centroY, { steps: 3 });
+  await page.mouse.move(centroX + 100, centroY, { steps: 3 });
+  await page.mouse.up();
+  assert.equal(await page.textContent('#punto-mapa'), 'Punto: 40.3057, -3.7329', 'arrastrar no mueve la marca');
+  await page.mouse.click(centroX, centroY);
+  const [, latM, lonM] = (await page.textContent('#punto-mapa')).match(/Punto: ([\d.-]+), ([\d.-]+)/).map(Number);
+  assert.ok(Math.abs(latM - 40.3057) < 1e-3 && lonM < -3.74, `el centro se fue al oeste: ${lonM}`);
+  await page.locator('#mapa [data-zoom="1"]').click();
+  assert.ok(teselasPedidas.some((u) => u.includes('/14/')), 'acercar pide teselas de z14');
+  await page.locator('#btn-usar-punto').click();
+  await page.locator('#nombre-lugar').filter({ hasText: 'Punto del mapa' }).waitFor();
+  assert.equal(await page.locator('#dlg-lugar').isVisible(), false);
+  await page.locator('#ahora .cartel').waitFor();
+
   // Despliegue sin órbitas (CelesTrak no deja entrar a GitHub): el móvil las
   // pide él mismo, las guarda y, si CelesTrak cae, tira de las guardadas.
   gnssVacio = true;

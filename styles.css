@@ -238,6 +238,8 @@ main { max-width: 720px; margin: 0 auto; padding: 0.75rem 12px calc(5.5rem + env
 
 .veredicto .cartel .cuando { color: inherit; margin: 0.1rem 0 0; text-transform: none; letter-spacing: 0; font-weight: 600; font-size: 0.85rem; }
 
+.veredicto .cartel .cielo { margin: 0.15rem 0 0; font-size: 0.95rem; font-weight: 700; }
+
 .veredicto .grande { font-size: 1.85rem; font-weight: 800; margin: 0.15rem 0 0.2rem; letter-spacing: -0.03em; line-height: 1.1; }
 
 .veredicto .razon { margin: 0 0 0.75rem; font-size: 0.95rem; font-weight: 600; }
@@ -338,12 +340,6 @@ details[open] > summary::before { transform: rotate(45deg); }
   overflow: hidden;
 }
 
-.dia::after { content: ""; position: absolute; inset: auto 0 0; height: 4px; background: var(--separador); }
-
-.dia.ok::after { background: var(--ok); }
-
-.dia.precaucion::after { background: var(--precaucion); }
-
 .dia.activo { border-color: var(--acento); box-shadow: inset 0 0 0 1px var(--acento); }
 
 .d-nombre { font-weight: 750; text-transform: capitalize; font-size: 0.9rem; }
@@ -353,6 +349,19 @@ details[open] > summary::before { transform: rotate(45deg); }
 .dia.no .d-ventana { font-weight: 500; color: var(--suave); }
 
 .d-horas { font-size: 0.72rem; color: var(--suave); }
+
+/* La semana de un vistazo: una raya por hora con el color de su semáforo. */
+.d-barra { display: flex; gap: 1px; height: 6px; margin-top: 0.3rem; }
+
+.d-barra i { flex: 1; border-radius: 1px; background: var(--separador); }
+
+.d-barra i.ok { background: var(--ok); }
+
+.d-barra i.precaucion { background: var(--precaucion); }
+
+.d-barra i.no { background: var(--no); }
+
+.d-barra i.pasada { opacity: 0.3; }
 
 /* ── Hora a hora: tabla + gráfica ────────────────────────────────── */
 .grafica { margin: 0 0 0.6rem; }

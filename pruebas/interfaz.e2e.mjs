@@ -92,6 +92,11 @@ try {
   assert.match(sats, /^\d+$/, `satélites: ${sats}`);
   assert.equal(await page.textContent('#ahora [data-factor="kp"] .c-valor'), '2.0');
   assert.ok(await page.locator('#ahora .cartel').isVisible(), 'cartel del veredicto');
+  // Icono de día o de noche según la hora a la que corra la prueba.
+  assert.match(await page.textContent('#ahora .cartel .cielo'), /^(🌤️|🌙) Poco nuboso · 18 °C$/, 'el cielo, como en UAV Forecast');
+  // La semana de un vistazo: cada día con una raya por hora de su color.
+  assert.ok((await page.locator('#dias .dia').nth(1).locator('.d-barra i').count()) >= 23, 'barra de horas de mañana');
+  assert.ok((await page.locator('#dias .dia').nth(1).locator('.d-barra i.ok, .d-barra i.precaucion, .d-barra i.no').count()) >= 23, 'cada raya con su estado');
   await page.locator('#ahora .enaire.dentro').waitFor();
   const enaire = await page.textContent('#ahora .enaire');
   assert.match(enaire, /Dentro de 1 zona UAS de ENAIRE/);

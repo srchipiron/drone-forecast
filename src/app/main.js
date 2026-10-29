@@ -614,8 +614,7 @@ function filaOtrosDrones(p) {
 
 function pintarPerfil() {
   const a = estado.ajustes;
-  document.querySelectorAll('[data-modo]').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.modo === a.modo)));
-  document.body.dataset.modo = a.modo;
+  document.querySelectorAll('.modo [data-modo]').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.modo === a.modo)));
   const selDron = $('#sel-dron');
   // Solo se rehacen las opciones si cambian: rehacerlas cierra el desplegable abierto.
   // Agrupados por marca, en el orden de la lista.
@@ -1151,7 +1150,7 @@ function enlazar() {
     estado.fallo = `Promesa: ${e.reason?.message ?? e.reason}`;
   });
   $('#btn-recargar').addEventListener('click', recargarTodo);
-  document.querySelectorAll('[data-modo]').forEach((b) => b.addEventListener('click', () => cambiarAjustes({ modo: b.dataset.modo })));
+  document.querySelectorAll('.modo [data-modo]').forEach((b) => b.addEventListener('click', () => cambiarAjustes({ modo: b.dataset.modo })));
   $('#sel-dron').addEventListener('change', (e) => cambiarAjustes({ dron: e.target.value }));
   $('#sel-mision').addEventListener('change', (e) => cambiarAjustes({ mision: e.target.value }));
   $('#sel-altitud').addEventListener('change', (e) => cambiarAjustes({ altitud: Number(e.target.value) }));

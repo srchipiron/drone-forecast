@@ -104,6 +104,17 @@ try {
   assert.equal(await page.locator('#ahora .enaire script').count(), 0);
   assert.equal(await page.locator('#ahora .enaire a').getAttribute('href'), 'https://drones.enaire.es/', 'ENAIRE bajo el veredicto');
 
+  // Compartir: el menú del móvil con lugar, dron y ventanas.
+  await page.evaluate(() => {
+    navigator.share = async (d) => {
+      window.__compartido = d;
+    };
+  });
+  await page.locator('[data-accion="compartir"]').click();
+  const compartido = await page.evaluate(() => window.__compartido);
+  assert.match(compartido.title, /^Drone Forecast · Getafe/);
+  assert.match(compartido.text, /^🚁 Getafe<img[^\n]* · DJI Mini 5 Pro a 120 m\nAhora \(\d\d:00\): [^\n]+\nViento \d+ km\/h, rachas \d+ km\/h\nMejor ventana hoy: [^\n]+\nMañana: [^\n]+\nhttp:\/\/127\.0\.0\.1:\d+\/$/);
+
   // Selector de dron: la gama actual agrupada por marca, Mini 5 Pro por defecto.
   assert.equal(await page.inputValue('#sel-dron'), 'mini5pro');
   const marcas = await page.locator('#sel-dron optgroup').evaluateAll((g) => g.map((x) => x.label));
@@ -339,6 +350,7 @@ try {
   await ctx6.addInitScript(() => {
     localStorage.setItem('drone-forecast:favoritos', JSON.stringify([{ nombre: 'Getafe', zona: 'Madrid', lat: 40.3, lon: -3.73 }]));
     localStorage.setItem('drone-forecast:aviso', 'true');
+    localStorage.setItem('drone-forecast:lugar', JSON.stringify({ nombre: 'Getafe', zona: 'Madrid', lat: 40.3, lon: -3.73 }));
     // Con los 24 satélites de prueba se ven unos 7: el aviso usa estos ajustes, no los de fábrica.
     localStorage.setItem('drone-forecast:ajustes', JSON.stringify({ minSats: 4 }));
   });
@@ -372,6 +384,13 @@ try {
   assert.ok(notif, 'el instalador no ha avisado');
   assert.equal(notif.titulo, 'Mañana se puede volar en Getafe');
   assert.match(notif.cuerpo, /^Getafe: \d\d:00–\d\d:00 \(\d+ h\)$/);
+  // Mañana tiene ventana verde: sus horas llevan la raya de «mejor ventana».
+  await p6.locator('#dias .dia').nth(1).click();
+  const enVentana = p6.locator('#horas tr.en-ventana');
+  assert.ok((await enVentana.count()) >= 2, 'horas de la mejor ventana marcadas');
+  assert.equal(await p6.locator('#horas tr.en-ventana:not(.ok)').count(), 0, 'en una ventana verde todas sus horas son verdes');
+  assert.equal(await p6.locator('#horas tr.en-ventana.v-ok').count(), await enVentana.count());
+
   // Sin red, la app abre desde lo guardado por el instalador.
   await ctx6.setOffline(true);
   await p6.reload();

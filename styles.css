@@ -526,6 +526,16 @@ details[open] > summary::before { transform: rotate(45deg); }
 
 .rejilla-ajustes .casilla, fieldset .casilla { display: flex; color: var(--texto); font-size: 0.95rem; }
 
+#mis-drones { grid-template-columns: 1fr; }
+
+#mis-drones .nota { margin: 0; }
+
+.lista-mis-drones { display: grid; grid-template-columns: 1fr 1fr; column-gap: 0.75rem; }
+
+.otros-drones { margin-top: 0.6rem; padding-top: 0.4rem; border-top: 1px solid var(--separador); }
+
+.otros-drones ul { list-style: none; padding: 0; margin: 0.25rem 0 0; display: grid; gap: 0.35rem; font-size: 0.9rem; }
+
 fieldset { border: 1px solid var(--borde); border-radius: 14px; padding: 0.85rem; margin-top: 0.85rem; }
 
 legend { font-weight: 700; padding: 0 0.3rem; font-size: 0.9rem; }

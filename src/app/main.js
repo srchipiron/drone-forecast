@@ -329,6 +329,7 @@ function pintarAhora(p) {
     ${h.estado === 'ok' ? '' : `<p class="razon">${esc(razon)}</p>`}
     <h2>Condiciones ahora</h2>
     ${listaCondiciones(h)}
+    ${filaOtrosDrones(p)}
     <ul class="filas">
       ${filaProxima(p)}
       <li class="fila sol">${icono('amanecer')}<span>Amanecer · ocaso</span>
@@ -593,6 +594,24 @@ function ponerOpciones(sel, html) {
   }
 }
 
+// Ajustes → Mis drones: una casilla por dron de la lista (y el personalizado).
+function pintarMisDrones() {
+  const el = $('#lista-mis-drones');
+  if (el.contains(document.activeElement)) return; // no se repinta bajo el dedo
+  const mios = new Set(estado.ajustes.misDrones);
+  el.innerHTML = [...DRONES, { id: 'personalizado', nombre: 'Personalizado' }]
+    .map((d) => `<label class="casilla"><input type="checkbox" data-mi-dron="${esc(d.id)}"${mios.has(d.id) ? ' checked' : ''}> ${esc(d.nombre)}</label>`)
+    .join('');
+}
+
+// En el cartel: el veredicto de ahora con cada uno de tus otros drones.
+function filaOtrosDrones(p) {
+  if (!p.otrosDrones.length) return '';
+  return `<div class="otros-drones"><p class="nota">Ahora, con tus otros drones:</p><ul>${p.otrosDrones
+    .map((d) => `<li>${chipEstado(d.estado, `${SIMBOLO[d.estado]} ${ESTADOS[d.estado].corto}`)} <span>${esc(d.nombre)}</span>${d.motivos.length ? ` <span class="nota">(${esc(d.motivos.join(', ').toLowerCase())})</span>` : ''}</li>`)
+    .join('')}</ul></div>`;
+}
+
 function pintarPerfil() {
   const a = estado.ajustes;
   document.querySelectorAll('[data-modo]').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.modo === a.modo)));
@@ -692,6 +711,7 @@ function pintar() {
   pintarChecklist();
   pintarVistas();
   pintarDiario();
+  pintarMisDrones();
   pintarAvisoVentana();
   pintarPie();
 }
@@ -1142,6 +1162,14 @@ function enlazar() {
   numero('#aj-kp', 'maxKp');
   numero('#aj-interior', 'tempInterior');
   $('#aj-noche').addEventListener('change', (e) => cambiarAjustes({ permitirNoche: e.target.checked }));
+  $('#lista-mis-drones').addEventListener('change', (e) => {
+    const id = e.target.dataset.miDron;
+    if (!id) return;
+    const mios = new Set(estado.ajustes.misDrones);
+    if (e.target.checked) mios.add(id);
+    else mios.delete(id);
+    cambiarAjustes({ misDrones: [...mios] });
+  });
   const pz = (id, clave, leer = (t) => Number(t.value)) =>
     $(id).addEventListener('change', (e) =>
       cambiarAjustes({ personalizado: { ...estado.ajustes.personalizado, [clave]: leer(e.target) } }),

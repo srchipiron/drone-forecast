@@ -197,6 +197,15 @@ try {
   await page.locator('#aj-aviso').click();
   await page.locator('#estado-aviso').filter({ hasText: 'Sin permiso de notificaciones' }).waitFor();
   assert.equal(await page.locator('#aj-aviso').isChecked(), false, 'sin permiso no se queda activado');
+  // Mis drones: marcar uno en Ajustes lo compara en el cartel; el elegido no se repite.
+  await page.locator('[data-mi-dron="neo"]').check();
+  await page.locator('[data-mi-dron="mini5pro"]').check();
+  assert.deepEqual(await page.evaluate(() => JSON.parse(localStorage.getItem('drone-forecast:ajustes')).misDrones), ['neo', 'mini5pro'], 'se guarda');
+  const otros = page.locator('#ahora .otros-drones li');
+  assert.equal(await otros.count(), 1, 'solo el Neo: el Mini 5 Pro es el que ya está elegido');
+  assert.match(await otros.first().textContent(), /(Volar|Ojo|No)\s+DJI Neo/);
+  await page.locator('[data-mi-dron="neo"]').uncheck();
+  assert.equal(await page.locator('#ahora .otros-drones').count(), 0, 'sin otros drones, no sale');
   await page.getByRole('button', { name: 'Diagnóstico' }).click();
   const diag = await page.inputValue('#txt-diagnostico');
   assert.match(diag, /^Drone Forecast v\d+\.\d+\.\d+/);

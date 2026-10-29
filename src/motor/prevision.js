@@ -3,7 +3,7 @@
 // nada más monta el contexto por su cuenta.
 
 import { eventosSol, posicionSol } from './astro.js';
-import { dronPorId, idDron } from './drones.js';
+import { DRONES, SUCESORES, dronPorId, idDron } from './drones.js';
 import { kpEn } from './kp.js';
 import { techoNubes } from './meteo.js';
 import { misionActiva } from './misiones.js';
@@ -24,6 +24,8 @@ export const AJUSTES_INICIALES = {
   maxKp: 4,
   permitirNoche: false,
   tempInterior: 20,
+  // Los drones que tiene el piloto, para comparar el veredicto de ahora con cada uno.
+  misDrones: [],
 };
 
 export function normalizarAjustes(a = {}) {
@@ -44,6 +46,9 @@ export function normalizarAjustes(a = {}) {
   r.mision = misionActiva(r).id;
   r.dron = idDron(r.dron);
   r.permitirNoche = Boolean(r.permitirNoche);
+  // Solo ids conocidos (o de modelos retirados, que pasan a su sucesor), sin repetir.
+  const conocido = (id) => id === 'personalizado' || DRONES.some((d) => d.id === id) || id in SUCESORES;
+  r.misDrones = [...new Set((Array.isArray(a.misDrones) ? a.misDrones : []).filter((id) => typeof id === 'string' && conocido(id)).map(idDron))].slice(0, 10);
   return r;
 }
 
@@ -125,6 +130,17 @@ export function construirPrevision({ meteo, consenso = new Map(), kp = [], satel
     });
 
   const actual = horas.find((h) => ahora >= h.ms && ahora < h.ms + 3600000) ?? null;
+  // La hora de ahora, con cada uno de los otros drones del piloto: el mismo
+  // juicio (evaluarHora) con otro dron en el contexto.
+  const otrosDrones = actual
+    ? aj.misDrones
+        .filter((id) => id !== aj.dron)
+        .map((id) => {
+          const d = dronPorId(id, aj.personalizado);
+          const { estado, factores } = evaluarHora(actual, { ...ctx, dron: d });
+          return { id, nombre: d.nombre, estado, motivos: factores.filter((f) => f.estado === estado && estado !== 'ok').map((f) => f.nombre) };
+        })
+    : [];
   return {
     ajustes: aj,
     dron,
@@ -135,6 +151,7 @@ export function construirPrevision({ meteo, consenso = new Map(), kp = [], satel
     actual,
     // La primera ventana verde de aquí en adelante (o ámbar, si no hay verde).
     proxima: proximaVentana(dias),
+    otrosDrones,
     satelitesDisponibles: sats.length > 0,
   };
 }

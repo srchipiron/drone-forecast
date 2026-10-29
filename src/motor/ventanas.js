@@ -32,3 +32,17 @@ export function mejorVentana(horas) {
   if (ambar) return { inicio: ambar.inicio, fin: ambar.ultima + 3600000, horas: ambar.horas, estado: 'precaucion' };
   return null;
 }
+
+/**
+ * La próxima ventana a partir de hoy: la primera VERDE de los días que vienen
+ * (la de hoy ya cuenta solo desde la hora en curso); si en toda la previsión
+ * no hay ninguna verde, la primera en ámbar. null si no hay nada volable.
+ * @param {Array<{clave: string, ventana: object|null}>} dias  construirPrevision().dias
+ */
+export function proximaVentana(dias) {
+  for (const estado of ['ok', 'precaucion']) {
+    const k = dias.findIndex((d) => d.ventana?.estado === estado);
+    if (k >= 0) return { k, clave: dias[k].clave, ventana: dias[k].ventana };
+  }
+  return null;
+}

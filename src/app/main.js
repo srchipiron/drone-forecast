@@ -281,6 +281,17 @@ function lineaCielo(h) {
   return `<p class="cielo">${c ? `<span aria-hidden="true">${c.icono}</span> ${esc(c.texto)}` : ''}${c && t ? ' · ' : ''}${esc(t)}</p>`;
 }
 
+// «Próxima ventana»: la de hoy si queda; si no, el primer día con verde, y
+// tocarla lleva a ese día en la tabla.
+function filaProxima(p) {
+  const x = p.proxima;
+  const clase = x ? x.ventana.estado : 'no';
+  if (!x) return `<li class="fila ventana-hoy no">${icono('ventana')}<span>Próxima ventana</span><strong>Ninguna en ${p.dias.length} días</strong></li>`;
+  const texto = `${etiquetaDia(x.clave, x.k)} · ${hora(x.ventana.inicio, p.zona)}–${hora(x.ventana.fin, p.zona)}${x.ventana.estado === 'precaucion' ? ' · con precaución' : ''}`;
+  return `<li class="fila ventana-hoy ${esc(clase)}">${icono('ventana')}<span>Próxima ventana</span>
+    <strong><button type="button" class="enlace" data-dia="${esc(x.clave)}" data-ir="horas">${esc(texto)} ›</button></strong></li>`;
+}
+
 function pintarAhora(p) {
   const el = $('#ahora');
   if (!estado.lugar) {
@@ -319,8 +330,7 @@ function pintarAhora(p) {
     <h2>Condiciones ahora</h2>
     ${listaCondiciones(h)}
     <ul class="filas">
-      <li class="fila ventana-hoy ${esc(hoy?.ventana?.estado ?? 'no')}">${icono('ventana')}<span>Mejor ventana hoy</span>
-        <strong>${hoy?.ventana ? `${esc(hora(hoy.ventana.inicio, p.zona))}–${esc(hora(hoy.ventana.fin, p.zona))}${hoy.ventana.estado === 'precaucion' ? ' · con precaución' : ''}` : 'Ninguna'}</strong></li>
+      ${filaProxima(p)}
       <li class="fila sol">${icono('amanecer')}<span>Amanecer · ocaso</span>
         <strong>${esc(hora(hoy?.sol.salida, p.zona))} · ${esc(hora(hoy?.sol.puesta, p.zona))}</strong></li>
       <li class="fila sol">${icono('sol')}<span>Hora dorada</span>
@@ -1170,6 +1180,7 @@ function enlazar() {
       estado.dia = b.dataset.dia;
       estado.abierta = null;
       pintar();
+      if (b.dataset.ir) $(`#${b.dataset.ir}`).scrollIntoView({ behavior: 'smooth', block: 'start' });
     } else if (b.dataset.res) {
       ponerLugar(resultados[Number(b.dataset.res)]);
       $('#dlg-lugar').close();

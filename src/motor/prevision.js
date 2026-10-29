@@ -9,7 +9,7 @@ import { techoNubes } from './meteo.js';
 import { misionActiva } from './misiones.js';
 import { antiguedadDias, contarVisibles } from './satelites.js';
 import { evaluarHora } from './veredicto.js';
-import { mejorVentana } from './ventanas.js';
+import { mejorVentana, proximaVentana } from './ventanas.js';
 import { rachaEnAltura, vientoEnAltura } from './viento.js';
 
 export const AJUSTES_INICIALES = {
@@ -133,6 +133,8 @@ export function construirPrevision({ meteo, consenso = new Map(), kp = [], satel
     horas,
     dias,
     actual,
+    // La primera ventana verde de aquí en adelante (o ámbar, si no hay verde).
+    proxima: proximaVentana(dias),
     satelitesDisponibles: sats.length > 0,
   };
 }

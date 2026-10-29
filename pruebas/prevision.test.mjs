@@ -157,3 +157,12 @@ test('una hora sin dato de viento nunca sale en verde', () => {
   assert.notEqual(p.actual.estado, 'ok');
   assert.notEqual(p.dias[0].ventana?.estado, 'ok', 'ni una ventana verde sin viento');
 });
+
+test('próxima ventana: la primera verde de los días que vienen; si no hay verde, la primera ámbar', async () => {
+  const { proximaVentana } = await import('../src/motor/ventanas.js');
+  const v = (estado) => ({ inicio: 1, fin: 2, horas: 1, estado });
+  assert.equal(proximaVentana([{ clave: 'a', ventana: null }, { clave: 'b', ventana: v('precaucion') }, { clave: 'c', ventana: v('ok') }]).clave, 'c', 'verde antes que un ámbar más cercano');
+  assert.equal(proximaVentana([{ clave: 'a', ventana: v('ok') }, { clave: 'b', ventana: v('ok') }]).k, 0, 'la más cercana');
+  assert.equal(proximaVentana([{ clave: 'a', ventana: null }, { clave: 'b', ventana: v('precaucion') }]).clave, 'b');
+  assert.equal(proximaVentana([{ clave: 'a', ventana: null }]), null);
+});

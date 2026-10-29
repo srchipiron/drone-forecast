@@ -3,6 +3,14 @@
 Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
 `0.0.X` para correcciones. La versión sale en el pie de la app.
 
+## 0.17.0
+
+- **Próxima ventana**, en lugar de «Mejor ventana hoy». Si hoy queda una
+  ventana, sale la de hoy; si no, el primer día de la semana con horas en
+  verde, por ejemplo «Sáb 31 · 08:00–14:00». Tócala y la tabla salta a ese
+  día. Si en toda la semana no hay verde, sale la primera «con
+  precaución»; y si no hay nada volable, lo dice («Ninguna en 7 días»).
+
 ## 0.16.0
 
 - **El cielo de cada hora, con su icono**, como en UAV Forecast: en la

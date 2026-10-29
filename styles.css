@@ -280,6 +280,8 @@ main { max-width: 720px; margin: 0 auto; padding: 0.75rem 12px calc(5.5rem + env
 
 .fila strong { font-variant-numeric: tabular-nums; text-align: right; font-weight: 700; }
 
+.enlace { border: 0; background: none; padding: 0; min-height: 44px; color: inherit; font: inherit; font-weight: 700; text-align: right; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+
 .fila.ventana-hoy.ok .ico, .fila.ventana-hoy.ok strong { color: var(--ok); }
 
 .fila.ventana-hoy.precaucion .ico, .fila.ventana-hoy.precaucion strong { color: var(--precaucion); }

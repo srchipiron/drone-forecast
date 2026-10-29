@@ -3,6 +3,26 @@
 Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
 `0.0.X` para correcciones. La versión sale en el pie de la app.
 
+## 0.11.0
+
+**Aviso de ventana:** la app te avisa cuando mañana haya horas en verde en
+alguno de tus favoritos.
+
+- En **Ajustes → Aviso de ventana**, activa la casilla y da permiso de
+  notificaciones. A partir de ahí, el móvil mira tus favoritos una o dos
+  veces al día, con tu dron, tu altura y tus ajustes, y si mañana alguno
+  tiene ventana verde te llega una notificación: «Mañana se puede volar en
+  Getafe — Getafe: 08:00–14:00 (6 h)». Como mucho un aviso al día, y solo
+  por ventanas verdes (las de «con precaución» no avisan).
+- Tocar la notificación abre la app.
+- **Probar ahora** mira los favoritos en el momento y te manda la
+  notificación, haya ventana o no, para comprobar que llega.
+- Funciona en Chrome de Android **con la app instalada** (menú ⋮ →
+  «Instalar aplicación»). En los navegadores que no pueden mirar en segundo
+  plano, la tarjeta no sale.
+- El botón Diagnóstico dice si el aviso está activo y qué día avisó por
+  última vez.
+
 ## 0.10.0
 
 **La previsión se lee como en UAV Forecast.**

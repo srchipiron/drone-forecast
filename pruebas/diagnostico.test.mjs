@@ -50,3 +50,10 @@ test('sin lugar ni previsión no rompe', () => {
   assert.match(t, /Error: HTTP 503/);
   assert.doesNotMatch(t, /Ahora/);
 });
+
+test('el informe dice si el aviso de ventana está activo y cuándo avisó', () => {
+  assert.match(informeDiagnostico(base({ aviso: { disponible: true, activo: true, ultimo: '2026-06-21' } })), /Aviso de ventana: activo · último aviso 2026-06-21/);
+  assert.match(informeDiagnostico(base({ aviso: { disponible: true, activo: true, ultimo: '' } })), /Aviso de ventana: activo · último aviso nunca/);
+  assert.match(informeDiagnostico(base({ aviso: { disponible: false, activo: false } })), /Aviso de ventana: no disponible en este navegador/);
+  assert.doesNotMatch(informeDiagnostico(base()), /Aviso de ventana/);
+});

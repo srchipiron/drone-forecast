@@ -159,6 +159,9 @@ try {
   // Tocar una fila (cualquier celda, no solo la hora) la abre con su perfil de viento y sus factores.
   await page.locator('#horas tr.hora').first().locator('td').nth(2).click();
   assert.ok((await page.locator('#horas .fila-detalle .condicion').count()) >= 10);
+  assert.match(await page.textContent('#horas .fila-detalle .cielo'), /Poco nuboso · 18 °C/, 'el detalle dice el cielo');
+  // La columna del cielo: un icono por hora con su nombre para el lector de pantalla.
+  assert.match(await page.locator('#horas tr.hora').first().locator('[role="img"]').getAttribute('aria-label'), /^Poco nuboso$/);
   assert.equal(await page.locator('#horas tr.hora').first().locator('button').getAttribute('aria-expanded'), 'true');
   const perfil = page.locator('#horas .perfil-viento li');
   assert.equal(await perfil.count(), 4, '180, 120, 80 y 10 m');

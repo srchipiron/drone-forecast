@@ -452,7 +452,15 @@ const COLUMNAS = [
   { id: 'rachas', titulo: 'Racha', celda: (h, u) => esc(partesViento(h.rachaAlt, u)[0]) },
   { id: 'temperatura', titulo: '°C', celda: (h) => (Number.isFinite(h.temp) ? Math.round(h.temp) : '—') },
   { id: 'lluvia', titulo: 'Lluvia', celda: (h) => (TORMENTA.has(h.codigo) ? '⚡' : `${h.probLluvia ?? '—'}%`) },
-  { id: 'techo', titulo: 'Nubes', celda: (h) => `${Number.isFinite(h.nubes) ? Math.round(h.nubes) : '—'}%` },
+  // El cielo con su icono, como UAV Forecast; el color de la celda es el del techo de nubes.
+  {
+    id: 'techo',
+    titulo: 'Cielo',
+    celda: (h) => {
+      const c = cielo(h.codigo, h.solElev >= -0.833);
+      return c ? `<span role="img" aria-label="${esc(c.texto)}" title="${esc(c.texto)}">${c.icono}</span>` : `${Number.isFinite(h.nubes) ? Math.round(h.nubes) : '—'}%`;
+    },
+  },
   { id: 'satelites', titulo: 'Sats', celda: (h) => esc(h.sats?.total ?? '—') },
   { id: 'kp', titulo: 'Kp', celda: (h) => (Number.isFinite(h.kp) ? Math.round(h.kp) : '—') },
 ];
@@ -471,7 +479,7 @@ function filaHora(h, p, abierta, ventana) {
     ${COLUMNAS.map((c) => `<td class="e-${esc(porId[c.id] ?? 'sin-dato')}">${c.celda(h, u)}</td>`).join('')}
   </tr>`;
   if (h !== abierta) return fila;
-  return `${fila}<tr class="fila-detalle"><td colspan="${COLUMNAS.length + 2}"><div class="detalle-hora ${h.estado}">${bloquePerfil(h, p)}${listaCondiciones(h)}</div></td></tr>`;
+  return `${fila}<tr class="fila-detalle"><td colspan="${COLUMNAS.length + 2}"><div class="detalle-hora ${h.estado}">${lineaCielo(h)}${bloquePerfil(h, p)}${listaCondiciones(h)}</div></td></tr>`;
 }
 
 function pintarHoras(p) {

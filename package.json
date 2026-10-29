@@ -1,6 +1,6 @@
 {
   "name": "drone-forecast",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "private": true,
   "description": "Previsión de vuelo para drones: semáforo por horas, viento en altura, Kp, satélites GNSS y mejor ventana del día.",
   "type": "module",

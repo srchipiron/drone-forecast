@@ -2,7 +2,7 @@
 
 import { informeDiagnostico } from '../motor/diagnostico.js';
 import { VALORACIONES, anadirEntrada, crearEntrada, diarioValido, resumenDiario } from '../motor/diario.js';
-import { graficaDia } from '../motor/grafica.js';
+import { arcoIndicador, graficaDia, puntoIndicador } from '../motor/grafica.js';
 import { DRONES } from '../motor/drones.js';
 import { MISIONES, MODOS } from '../motor/misiones.js';
 import { construirPrevision, normalizarAjustes, resumenDias } from '../motor/prevision.js';
@@ -19,6 +19,29 @@ const REFRESCO = 30 * 60000;
 
 // Para que el estado no dependa solo del color (daltonismo, pleno sol).
 const SIMBOLO = { ok: '✓', precaucion: '!', no: '✕', 'sin-dato': '–' };
+
+// Iconos de línea (24×24), mismo trazo que los de la cabecera.
+const ICONOS = {
+  viento: '<path d="M3 8h11a3 3 0 1 0-3-3M3 12h16a3 3 0 1 1-3 3M3 16h8"/>',
+  rachas: '<path d="M13 3 6 13h5l-1 8 7-10h-5z"/>',
+  lluvia: '<path d="M7 15a5 5 0 1 1 9.6-2H17a3 3 0 0 1 0 6H8a4 4 0 0 1-1-4Z"/><path d="M9 21l1-2M13 21l1-2"/>',
+  satelite: '<path d="m13 7 4 4-6 6-4-4z"/><path d="m16 4 4 4-2 2-4-4zM6 14l4 4-2 2-4-4zM15 15a4 4 0 0 1-2 3M19 15a8 8 0 0 1-4 6"/>',
+  kp: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  ventana: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6"/>',
+  sol: '<path d="M4 18h16M7 18a5 5 0 0 1 10 0M12 7V4M5.6 10.6 3.5 8.5M18.4 10.6l2.1-2.1"/>',
+  zona: '<path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/>',
+};
+
+function icono(nombre) {
+  return `<svg class="ico" viewBox="0 0 24 24" aria-hidden="true">${ICONOS[nombre]}</svg>`;
+}
+
+// «13 km/h» → ['13', 'km/h'], para enseñar el número grande y la unidad pequeña.
+function partesViento(ms, u) {
+  const t = fmtViento(ms, u);
+  const i = t.indexOf(' ');
+  return i < 0 ? [t, ''] : [t.slice(0, i), t.slice(i + 1)];
+}
 
 const ESTADOS = {
   ok: { texto: 'Se puede volar', corto: 'Volar' },
@@ -56,6 +79,9 @@ const estado = {
   pedido: 0,
   vecesLugar: 0,
   verFactores: false,
+  // Pestaña abierta y si hay que llevar la tira de horas a la hora actual.
+  vista: 'prevision',
+  desplazarHoras: true,
   ultimoVeredicto: '',
   // Zonas de ENAIRE del lugar actual: null mientras se consulta.
   enaire: null,
@@ -107,7 +133,7 @@ async function descargar() {
   try {
     const crudo = await cargarPrevision(lat, lon);
     if (n !== estado.pedido) return;
-    Object.assign(estado, leerDescarga(crudo), { descargado: Date.now(), desdeCache: false });
+    Object.assign(estado, leerDescarga(crudo), { descargado: Date.now(), desdeCache: false, desplazarHoras: true });
     almacen.guardarCache({ lat, lon, guardado: estado.descargado, ...crudo });
   } catch (e) {
     if (n !== estado.pedido) return;
@@ -246,23 +272,30 @@ function pintarAhora(p) {
   const malos = h.factores.filter((f) => f.estado === h.estado && h.estado !== 'ok');
   const razon = h.estado === 'ok' ? 'Todo en verde para tu dron.' : malos.map((f) => `${f.nombre}: ${f.valor}`).join(' · ');
   const hoy = p.dias[0];
+  const u = p.ajustes.unidades;
+  const [rachaN, rachaU] = partesViento(h.rachaAlt, u);
   el.className = `tarjeta veredicto ${h.estado}`;
   el.innerHTML = `
-    <p class="cuando">${p.actual ? 'Ahora' : 'Próxima hora'} · ${esc(hora(h.ms, p.zona))} · ${esc(p.dron.nombre)}${p.ajustes.modo === 'profesional' ? ` · ${esc(p.mision.nombre)}` : ''}</p>
-    <p class="grande">${ESTADOS[h.estado].texto}</p>
-    <p class="razon">${esc(razon)}</p>
-    <div class="resumen">
-      <div><span>Viento ${esc(p.ajustes.altitud)} m</span><strong>${esc(fmtViento(h.vientoAlt, p.ajustes.unidades))}</strong></div>
-      <div><span>Rachas</span><strong>${esc(fmtViento(h.rachaAlt, p.ajustes.unidades))}</strong></div>
-      <div><span>Satélites</span><strong>${esc(h.sats?.total ?? '—')}</strong></div>
-      <div><span>Kp</span><strong>${esc(Number.isFinite(h.kp) ? h.kp.toFixed(1) : '—')}</strong></div>
+    <div class="heroe">
+      ${svgIndicador(h, p)}
+      <div class="heroe-texto">
+        <p class="cuando">${p.actual ? 'Ahora' : 'Próxima hora'} · ${esc(hora(h.ms, p.zona))}</p>
+        <p class="grande"><span class="simbolo" aria-hidden="true">${SIMBOLO[h.estado]}</span>${ESTADOS[h.estado].texto}</p>
+        <p class="razon">${esc(razon)}</p>
+      </div>
     </div>
-    ${
-      hoy?.ventana
-        ? `<p class="ventana-hoy">Mejor ventana hoy: <strong>${esc(hora(hoy.ventana.inicio, p.zona))}–${esc(hora(hoy.ventana.fin, p.zona))}</strong>${hoy.ventana.estado === 'precaucion' ? ' (con precaución)' : ''}</p>`
-        : '<p class="ventana-hoy">Hoy no queda ninguna hora volable.</p>'
-    }
-    <p class="sol">☀ ${esc(hora(hoy?.sol.salida, p.zona))} – ${esc(hora(hoy?.sol.puesta, p.zona))} · hora dorada desde ${esc(hora(hoy?.sol.doradaTarde, p.zona))}</p>
+    <div class="resumen">
+      <div>${icono('rachas')}<span>Rachas</span><strong>${esc(rachaN)}<small>${esc(rachaU)}</small></strong></div>
+      <div>${icono('lluvia')}<span>Lluvia</span><strong>${esc(h.probLluvia ?? '—')}<small>%</small></strong></div>
+      <div>${icono('satelite')}<span>Satélites</span><strong>${esc(h.sats?.total ?? '—')}</strong></div>
+      <div>${icono('kp')}<span>Kp</span><strong>${esc(Number.isFinite(h.kp) ? h.kp.toFixed(1) : '—')}</strong></div>
+    </div>
+    <ul class="filas">
+      <li class="fila ventana-hoy ${esc(hoy?.ventana?.estado ?? 'no')}">${icono('ventana')}<span>Mejor ventana hoy</span>
+        <strong>${hoy?.ventana ? `${esc(hora(hoy.ventana.inicio, p.zona))}–${esc(hora(hoy.ventana.fin, p.zona))}${hoy.ventana.estado === 'precaucion' ? ' · con precaución' : ''}` : 'Hoy no queda ninguna hora volable'}</strong></li>
+      <li class="fila sol">${icono('sol')}<span>Sol</span>
+        <strong>${esc(hora(hoy?.sol.salida, p.zona))}–${esc(hora(hoy?.sol.puesta, p.zona))} · dorada ${esc(hora(hoy?.sol.doradaTarde, p.zona))}</strong></li>
+    </ul>
     ${bloqueEnaire()}
     <div class="acciones acciones-ahora">
       <button type="button" data-accion="volado" data-ms="${h.ms}">He volado</button>
@@ -277,14 +310,36 @@ function pintarAhora(p) {
   }
 }
 
+// El instrumento: arco con el viento a la altura de vuelo frente al límite
+// del dron, con marcas en «cómodo» y «límite». El color lo pone el CSS.
+function svgIndicador(h, p) {
+  const { comodo, limite } = umbralesViento(p);
+  const max = limite * 1.25;
+  const v = Number.isFinite(h.vientoAlt) ? h.vientoAlt : 0;
+  const marca = (x, clase) => {
+    const a = puntoIndicador(x / max, { cx: 60, cy: 60, r: 40, desde: 150, barrido: 240 });
+    const b = puntoIndicador(x / max, { cx: 60, cy: 60, r: 56, desde: 150, barrido: 240 });
+    return `<line class="marca ${clase}" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"></line>`;
+  };
+  const [n, unidad] = partesViento(h.vientoAlt, p.ajustes.unidades);
+  return `<svg class="indicador" viewBox="0 0 120 112" role="img" aria-label="Viento a ${esc(p.ajustes.altitud)} metros: ${esc(fmtViento(h.vientoAlt, p.ajustes.unidades))}, límite del dron ${esc(fmtViento(limite, p.ajustes.unidades))}">
+    <path class="pista" d="${arcoIndicador(1)}"></path>
+    <path class="valor" d="${arcoIndicador(v / max)}"></path>
+    ${marca(comodo, 'comodo')}${marca(limite, 'limite')}
+    <text class="num" x="60" y="62">${esc(n)}</text>
+    <text class="uni" x="60" y="78">${esc(unidad)}</text>
+    <text class="alt" x="60" y="104">viento a ${esc(p.ajustes.altitud)} m</text>
+  </svg>`;
+}
+
 const MAPA_ENAIRE = '<a href="https://drones.enaire.es/" target="_blank" rel="noopener noreferrer">mapa de ENAIRE Drones</a>';
 
 function bloqueEnaire() {
   const z = estado.enaire;
-  if (!z) return `<div class="enaire"><p>Zonas UAS: consultando ENAIRE…</p></div>`;
+  if (!z) return `<div class="enaire">${icono('zona')}<div><p>Zonas UAS: consultando ENAIRE…</p></div></div>`;
   if (z.estado === 'dentro') {
     const n = z.zonas.length;
-    return `<div class="enaire dentro"><p><strong>Dentro de ${n} zona${n === 1 ? '' : 's'} UAS de ENAIRE</strong>${z.fallidas.length ? ' (y alguna capa no respondió)' : ''}:</p>
+    return `<div class="enaire dentro">${icono('zona')}<div><p><strong>Dentro de ${n} zona${n === 1 ? '' : 's'} UAS de ENAIRE</strong>${z.fallidas.length ? ' (y alguna capa no respondió)' : ''}:</p>
       <ul>${z.zonas
         .slice(0, 6)
         .map(
@@ -292,11 +347,11 @@ function bloqueEnaire() {
             `<li><strong>${esc(x.nombre)}</strong> · ${esc(x.capa)}${x.restriccion ? ` · ${esc(x.restriccion)}` : ''}${x.motivo ? ` · ${esc(x.motivo)}` : ''}${x.mensaje ? `<br><span class="nota">${esc(x.mensaje)}</span>` : ''}</li>`,
         )
         .join('')}</ul>
-      <p>Revisa las condiciones en el ${MAPA_ENAIRE} antes de volar.</p></div>`;
+      <p>Revisa las condiciones en el ${MAPA_ENAIRE} antes de volar.</p></div></div>`;
   }
   if (z.estado === 'fuera')
-    return `<div class="enaire fuera"><p>No consta en ninguna zona UAS de ENAIRE. Compruébalo igualmente en el ${MAPA_ENAIRE} (NOTAM y zonas temporales).</p></div>`;
-  return `<div class="enaire sin-dato"><p>${z.estado === 'incompleto' ? 'No se pudo consultar ENAIRE del todo' : 'No se pudo consultar ENAIRE'}: míralo en el ${MAPA_ENAIRE} antes de volar.</p></div>`;
+    return `<div class="enaire fuera">${icono('zona')}<div><p>No consta en ninguna zona UAS de ENAIRE. Compruébalo igualmente en el ${MAPA_ENAIRE} (NOTAM y zonas temporales).</p></div></div>`;
+  return `<div class="enaire sin-dato">${icono('zona')}<div><p>${z.estado === 'incompleto' ? 'No se pudo consultar ENAIRE del todo' : 'No se pudo consultar ENAIRE'}: míralo en el ${MAPA_ENAIRE} antes de volar.</p></div></div>`;
 }
 
 async function cargarEnaire() {
@@ -385,23 +440,44 @@ function pintarHoras(p) {
   }
   el.hidden = false;
   const u = p.ajustes.unidades;
-  el.innerHTML = `<h2>Hora a hora</h2>${svgGrafica(dia, p)}<ol class="lista-horas">${dia.horas
-    .map((h) => {
-      const abierta = estado.abierta === h.ms;
-      const pasada = h.ms + 3600000 <= Date.now();
-      return `<li class="hora ${h.estado}${pasada ? ' pasada' : ''}">
-        <button type="button" data-hora="${h.ms}" aria-expanded="${abierta}">
-          <span class="h-hora">${esc(hora(h.ms, p.zona))}</span>
-          ${chipEstado(h.estado)}
-          <span class="h-dato" title="Viento a la altura de vuelo">${esc(fmtViento(h.vientoAlt, u))}</span>
-          <span class="h-dato" title="Rachas">↯ ${esc(fmtViento(h.rachaAlt, u))}</span>
-          <span class="h-dato" title="Probabilidad de lluvia">☂ ${esc(h.probLluvia ?? '—')}%</span>
-          <span class="h-dato" title="Satélites">🛰 ${esc(h.sats?.total ?? '—')}</span>
-        </button>
-        ${abierta ? bloquePerfil(h, p) + listaFactores(h) : ''}
-      </li>`;
-    })
-    .join('')}</ol>`;
+  const ahora = Date.now();
+  const abierta = dia.horas.find((h) => h.ms === estado.abierta);
+  el.innerHTML = `<h2>Hora a hora</h2>${svgGrafica(dia, p)}
+    <ol class="lista-horas" aria-label="Horas del día">${dia.horas
+      .map((h) => {
+        const [n] = partesViento(h.vientoAlt, u);
+        const [r] = partesViento(h.rachaAlt, u);
+        const clases = [
+          'hora',
+          h.estado,
+          h.ms + 3600000 <= ahora ? 'pasada' : '',
+          ahora >= h.ms && ahora < h.ms + 3600000 ? 'actual' : '',
+          h === abierta ? 'abierta' : '',
+        ].join(' ');
+        return `<li class="${clases.trim()}">
+          <button type="button" data-hora="${h.ms}" aria-pressed="${h === abierta}" aria-label="${esc(hora(h.ms, p.zona))}: ${esc(ESTADOS[h.estado].texto)}, viento ${esc(fmtViento(h.vientoAlt, u))}">
+            <span class="h-hora">${esc(hora(h.ms, p.zona))}</span>
+            <span class="h-estado" aria-hidden="true">${SIMBOLO[h.estado]}</span>
+            <span class="h-viento">${esc(n)}</span>
+            <span class="h-racha">${icono('rachas')}${esc(r)}</span>
+          </button>
+        </li>`;
+      })
+      .join('')}</ol>
+    <p class="nota unidades-horas">Viento y rachas a ${esc(p.ajustes.altitud)} m, en ${esc(partesViento(0, u)[1])}</p>
+    ${
+      abierta
+        ? `<div class="detalle-hora ${abierta.estado}"><h3>${esc(hora(abierta.ms, p.zona))} · ${ESTADOS[abierta.estado].texto}</h3>${bloquePerfil(abierta, p)}${listaFactores(abierta)}</div>`
+        : '<p class="nota pista-horas">Toca una hora para ver por qué está de ese color.</p>'
+    }`;
+  // Al cambiar de día o llegar datos nuevos, la tira empieza en la hora actual.
+  // Solo con la tira a la vista: oculta no tiene medidas y el aviso se perdería.
+  const tira = el.querySelector('.lista-horas');
+  if (estado.desplazarHoras && tira && tira.offsetParent) {
+    estado.desplazarHoras = false;
+    const desde = el.querySelector('.hora.actual') ?? el.querySelector('.hora:not(.pasada)');
+    if (desde) tira.scrollLeft = Math.max(0, desde.getBoundingClientRect().left - tira.getBoundingClientRect().left + tira.scrollLeft - 8);
+  }
 }
 
 function pintarChecklist() {
@@ -458,11 +534,13 @@ function pintarPerfil() {
   ponerOpciones(selMision, misiones.map((id) => `<option value="${esc(id)}">${esc(MISIONES[id].nombre)}</option>`).join(''));
   selMision.value = a.mision;
   $('#desc-mision').textContent = MISIONES[a.mision].descripcion;
-  const rng = $('#rng-altitud');
   // En categoría abierta el tope son 120 m; el modo profesional deja hasta 180.
-  rng.max = a.modo === 'profesional' ? '180' : '120';
-  rng.value = String(Math.min(a.altitud, Number(rng.max)));
-  $('#val-altitud').textContent = `${a.altitud} m`;
+  const alturas = [20, 30, 40, 50, 60, 80, 100, 120, ...(a.modo === 'profesional' ? [150, 180] : [])];
+  if (!alturas.includes(a.altitud)) alturas.push(a.altitud);
+  alturas.sort((x, y) => x - y);
+  const selAlt = $('#sel-altitud');
+  ponerOpciones(selAlt, alturas.map((x) => `<option value="${x}">${x} m</option>`).join(''));
+  selAlt.value = String(a.altitud);
   $('#aj-unidades').value = a.unidades;
   ponerValor('#aj-margen', a.margenViento);
   ponerValor('#aj-sats', a.minSats);
@@ -498,6 +576,23 @@ function pintarPie() {
   $('#fuentes').textContent = partes.join(' · ');
 }
 
+function cambiarVista(v) {
+  estado.vista = v;
+  pintarVistas();
+  window.scrollTo(0, 0);
+  if (v === 'prevision') {
+    estado.desplazarHoras = true;
+    pintarHoras(prevision());
+  }
+}
+
+function pintarVistas() {
+  for (const v of ['prevision', 'diario', 'ajustes']) {
+    $(`#vista-${v}`).hidden = estado.vista !== v;
+    $(`#pestana-${v}`).setAttribute('aria-selected', String(estado.vista === v));
+  }
+}
+
 function pintar() {
   const nombre = estado.lugar ? estado.lugar.nombre : 'Elegir lugar';
   $('#nombre-lugar').textContent = nombre;
@@ -514,6 +609,7 @@ function pintar() {
   pintarDias(p);
   pintarHoras(p);
   pintarChecklist();
+  pintarVistas();
   pintarDiario();
   pintarPie();
 }
@@ -588,8 +684,8 @@ function guardarVuelo(e) {
   const entrada = crearEntrada(p, h, estado.lugar, { valoracion, nota: $('#txt-vuelo').value, ms: Date.now() });
   almacen.guardarDiario(anadirEntrada(diarioValido(almacen.diario()), entrada));
   $('#dlg-vuelo').close();
-  $('#diario').open = true;
   pintarDiario();
+  cambiarVista('diario');
 }
 
 function exportarDiario() {
@@ -818,10 +914,7 @@ function enlazar() {
   document.querySelectorAll('[data-modo]').forEach((b) => b.addEventListener('click', () => cambiarAjustes({ modo: b.dataset.modo })));
   $('#sel-dron').addEventListener('change', (e) => cambiarAjustes({ dron: e.target.value }));
   $('#sel-mision').addEventListener('change', (e) => cambiarAjustes({ mision: e.target.value }));
-  $('#rng-altitud').addEventListener('input', (e) => {
-    $('#val-altitud').textContent = `${e.target.value} m`;
-  });
-  $('#rng-altitud').addEventListener('change', (e) => cambiarAjustes({ altitud: Number(e.target.value) }));
+  $('#sel-altitud').addEventListener('change', (e) => cambiarAjustes({ altitud: Number(e.target.value) }));
   $('#aj-unidades').addEventListener('change', (e) => cambiarAjustes({ unidades: e.target.value }));
   const numero = (id, clave) => $(id).addEventListener('change', (e) => cambiarAjustes({ [clave]: Number(e.target.value) }));
   numero('#aj-margen', 'margenViento');
@@ -852,9 +945,11 @@ function enlazar() {
       pintarDiario();
     }
     else if (b.dataset.accion === 'gps') usarGPS();
+    else if (b.dataset.vista) cambiarVista(b.dataset.vista);
     else if (b.dataset.dia) {
       estado.dia = b.dataset.dia;
       estado.abierta = null;
+      estado.desplazarHoras = true;
       pintar();
     } else if (b.dataset.hora) {
       const ms = Number(b.dataset.hora);

@@ -3,6 +3,16 @@
 Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
 `0.0.X` para correcciones. La versión sale en el pie de la app.
 
+## 0.18.1
+
+- **Accesibilidad revisada con axe** (la herramienta estándar de
+  auditoría), en todas las pantallas y en claro y oscuro: ahora sale sin
+  ningún problema. Arreglado: la página entera se anunciaba como un botón
+  «marcado» (la marca del modo Recreativo/Profesional se colaba donde no
+  debía); faltaba un título principal para los lectores de pantalla, y la
+  barra de abajo no contaba como zona de navegación. A la vista no cambia
+  nada.
+
 ## 0.18.0
 
 **Tus otros drones.**

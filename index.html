@@ -31,6 +31,7 @@
   </header>
 
   <main>
+    <h1 class="visualmente-oculto">Drone Forecast: ¿se puede volar?</h1>
     <!-- Previsión: lo que se mira antes de cada vuelo -->
     <div id="vista-prevision" class="vista" role="tabpanel" aria-labelledby="pestana-prevision">
       <section class="perfil" aria-label="Tu vuelo">
@@ -120,7 +121,8 @@
     </div>
   </main>
 
-  <nav class="pestanas" role="tablist" aria-label="Secciones">
+  <nav class="pestanas" aria-label="Secciones">
+    <div role="tablist">
     <button id="pestana-prevision" type="button" role="tab" data-vista="prevision" aria-controls="vista-prevision">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h3l3-8 4 16 3-8h5"/></svg>
       <span>Previsión</span>
@@ -133,6 +135,7 @@
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>
       <span>Ajustes</span>
     </button>
+    </div>
   </nav>
 
   <dialog id="dlg-lugar" aria-labelledby="titulo-lugar">

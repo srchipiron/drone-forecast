@@ -92,6 +92,11 @@ try {
   assert.match(sats, /^\d+$/, `satélites: ${sats}`);
   assert.equal(await page.textContent('#ahora [data-factor="kp"] .c-valor'), '2.0');
   assert.ok(await page.locator('#ahora .cartel').isVisible(), 'cartel del veredicto');
+  // Accesibilidad (lo que encontró axe-core): un h1 para orientarse, la barra
+  // de pestañas como zona de navegación y el aria-checked solo en los botones del modo.
+  assert.equal(await page.locator('h1').count(), 1);
+  assert.equal(await page.locator('nav[aria-label="Secciones"] > [role="tablist"] [role="tab"]').count(), 3);
+  assert.deepEqual(await page.locator('[aria-checked]').evaluateAll((xs) => xs.map((x) => x.dataset.modo)), ['recreativo', 'profesional']);
   assert.match(await page.textContent('#ahora .ventana-hoy strong'), /^Ninguna en [78] días$/, 'sin nada volable en la semana, lo dice');
   // Icono de día o de noche según la hora a la que corra la prueba.
   assert.match(await page.textContent('#ahora .cartel .cielo'), /^(🌤️|🌙) Poco nuboso · 18 °C$/, 'el cielo, como en UAV Forecast');

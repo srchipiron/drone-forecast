@@ -551,14 +551,14 @@ legend { font-weight: 700; padding: 0 0.3rem; font-size: 0.9rem; }
   position: fixed;
   inset: auto 0 0;
   z-index: 6;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
   padding: 0.3rem 8px calc(0.3rem + env(safe-area-inset-bottom));
   background: var(--cabecera);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border-top: 1px solid var(--borde);
 }
+
+.pestanas [role="tablist"] { display: grid; grid-template-columns: repeat(3, 1fr); }
 
 .pestanas button { border: 0; background: transparent; color: var(--suave); display: grid; justify-items: center; gap: 0.1rem; padding: 0.3rem; min-height: 52px; font-size: 0.7rem; font-weight: 650; }
 

@@ -36,8 +36,14 @@ test('el motor no importa de la app ni usa el navegador o Node', () => {
   }
 });
 
-test('solo almacen.js toca localStorage', () => {
-  for (const f of recorrer('src/app')) if (!f.endsWith('almacen.js')) assert.doesNotMatch(leer(f), /localStorage/, f);
+test('solo almacen.js toca localStorage y Cache Storage', () => {
+  for (const f of recorrer('src/app')) if (!f.endsWith('almacen.js')) assert.doesNotMatch(leer(f), /localStorage|\bcaches\./, f);
+});
+
+test('el instalador con aviso lleva dentro el de siempre', () => {
+  const m = leer('sw-modulo.js');
+  assert.match(m, /^import '\.\/sw\.js';$/m, 'sw-modulo.js tiene que importar sw.js');
+  for (const [, ruta] of m.matchAll(/from '\.\/([^']+)'/g)) assert.ok(existsSync(ruta), `${ruta} no existe`);
 });
 
 test('la política de contenido solo deja hablar con las APIs que se usan', () => {

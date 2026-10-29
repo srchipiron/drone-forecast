@@ -6,11 +6,12 @@ import { graficaDia } from '../motor/grafica.js';
 import { DRONES } from '../motor/drones.js';
 import { MISIONES, MODOS } from '../motor/misiones.js';
 import { construirPrevision, normalizarAjustes, resumenDias } from '../motor/prevision.js';
-import { fmtViento } from '../motor/unidades.js';
+import { fmtHora as hora, fmtViento } from '../motor/unidades.js';
 import { umbralesViento } from '../motor/veredicto.js';
 import { perfilViento } from '../motor/viento.js';
 import { VERSION } from '../version.js';
 import { almacen } from './almacen.js';
+import { ETIQUETA, INTERVALO, comprobarAvisos } from './aviso.js';
 import { buscarLugar, cargarKp, cargarPrevision, cargarSatelites, cargarSoloPrevision, consultarEnaire, leerDescarga } from './datos.js';
 import { mensajeUbicacion, pedirUbicacion } from './ubicacion.js';
 
@@ -92,20 +93,12 @@ const estado = {
   enaireDe: '',
   // Previsión de cada favorito para su resumen, por «lat,lon»: { meteo, t } o { error, t }.
   favMeteo: new Map(),
+  // Último día que el instalador miró los favoritos (aviso de ventana).
+  avisoUltimo: '',
 };
 
 export function esc(s) {
   return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
-}
-
-function hora(ms, zona) {
-  if (!Number.isFinite(ms)) return '—';
-  try {
-    return new Intl.DateTimeFormat('es-ES', { hour: '2-digit', minute: '2-digit', timeZone: zona }).format(new Date(ms));
-  } catch {
-    // Zona horaria rara en una caché vieja: mejor la hora del móvil que congelarse.
-    return new Intl.DateTimeFormat('es-ES', { hour: '2-digit', minute: '2-digit' }).format(new Date(ms));
-  }
 }
 
 function etiquetaDia(clave, k) {
@@ -200,6 +193,7 @@ async function usarGPS() {
 function cambiarAjustes(cambios) {
   estado.ajustes = normalizarAjustes({ ...estado.ajustes, ...cambios });
   almacen.guardarAjustes(estado.ajustes);
+  sincronizarAviso();
   pintar();
 }
 
@@ -611,6 +605,7 @@ function pintar() {
   pintarChecklist();
   pintarVistas();
   pintarDiario();
+  pintarAvisoVentana();
   pintarPie();
 }
 
@@ -748,7 +743,7 @@ function imprimirInforme() {
 
 // ---------- Diagnóstico ----------
 
-function textoDiagnostico() {
+function textoDiagnostico(aviso = null) {
   let p = null;
   try {
     p = prevision();
@@ -769,13 +764,14 @@ function textoDiagnostico() {
     kp: { tramos: estado.kp.length },
     orbitas: { total: estado.gnss.satelites.length, origen: estado.gnss.origen, actualizado: estado.gnss.actualizado },
     enaire: estado.enaire,
+    aviso,
     error: [estado.error, estado.fallo].filter(Boolean).join(' | '),
     navegador: navigator.userAgent,
   });
 }
 
 async function abrirDiagnostico() {
-  const texto = textoDiagnostico();
+  const texto = textoDiagnostico({ disponible: CON_AVISO, activo: almacen.aviso(), ultimo: estado.avisoUltimo });
   $('#txt-diagnostico').value = texto;
   $('#estado-diagnostico').textContent = '';
   $('#dlg-diagnostico').showModal();
@@ -790,6 +786,91 @@ async function copiarDiagnostico(texto = $('#txt-diagnostico').value) {
     // Sin permiso de portapapeles: se deja seleccionado para copiarlo a mano.
     $('#txt-diagnostico').select();
     $('#estado-diagnostico').textContent = 'Mantén pulsado el texto y elige «Copiar».';
+  }
+}
+
+// ---------- Aviso de ventana ----------
+
+// Solo donde el navegador puede despertar a la app en segundo plano (Chrome
+// de Android con la app instalada); en el resto la tarjeta no sale.
+const CON_AVISO =
+  'serviceWorker' in navigator &&
+  'Notification' in window &&
+  'periodicSync' in (window.ServiceWorkerRegistration?.prototype ?? {}) &&
+  'showNotification' in (window.ServiceWorkerRegistration?.prototype ?? {});
+
+// El instalador no ve lo guardado por la página: se le copia lo que necesita cada vez que cambia.
+async function sincronizarAviso() {
+  if (!CON_AVISO) return;
+  const antes = (await almacen.configAviso()) ?? {};
+  // Para el Diagnóstico, que se monta sin esperas (el portapapeles no espera).
+  estado.avisoUltimo = antes.ultimo ?? '';
+  await almacen.guardarConfigAviso({ ultimo: antes.ultimo ?? '', activo: almacen.aviso(), ajustes: estado.ajustes, favoritos: estado.favoritos });
+}
+
+function pintarAvisoVentana(texto) {
+  $('#avisos').hidden = !CON_AVISO;
+  if (!CON_AVISO) return;
+  const activo = almacen.aviso();
+  $('#aj-aviso').checked = activo;
+  const n = estado.favoritos.length;
+  $('#estado-aviso').textContent =
+    texto ??
+    (!activo
+      ? 'Mira tus favoritos un par de veces al día, con tu dron y tus ajustes, y te avisa si mañana alguno tiene horas en verde.'
+      : n
+        ? `Activo: mira ${n} favorito${n === 1 ? '' : 's'}. El móvil decide cuándo (suele ser una o dos veces al día) y avisa como mucho una vez al día.`
+        : 'Activo, pero aún no tienes favoritos: guarda algún lugar con ☆ en el buscador de lugares.');
+}
+
+async function activarAviso(si) {
+  const reg = await navigator.serviceWorker.getRegistration();
+  if (si) {
+    const permiso = await Notification.requestPermission();
+    if (permiso !== 'granted') {
+      pintarAvisoVentana('Sin permiso de notificaciones. Dalo en los ajustes del navegador (Configuración de sitios → Notificaciones) y vuelve a intentarlo.');
+      $('#aj-aviso').checked = false;
+      return;
+    }
+    try {
+      if (!reg?.periodicSync) throw new Error('sin instalador');
+      await reg.periodicSync.register(ETIQUETA, { minInterval: INTERVALO });
+    } catch (e) {
+      estado.fallo = `Aviso: ${e?.name ?? ''} ${e?.message ?? e}`.trim();
+      pintarAvisoVentana('El navegador no deja mirar en segundo plano. Instala la app (menú ⋮ → «Instalar aplicación» o «Añadir a pantalla de inicio») y vuelve a activarlo.');
+      $('#aj-aviso').checked = false;
+      return;
+    }
+  } else await reg?.periodicSync?.unregister(ETIQUETA).catch(() => {});
+  almacen.guardarAviso(si);
+  await sincronizarAviso();
+  pintarAvisoVentana();
+}
+
+async function probarAviso() {
+  const reg = await navigator.serviceWorker.getRegistration();
+  if (!reg) {
+    pintarAvisoVentana('El instalador aún no está listo: recarga la app y prueba otra vez.');
+    return;
+  }
+  if ((await Notification.requestPermission()) !== 'granted') {
+    pintarAvisoVentana('Sin permiso de notificaciones: no se puede probar.');
+    return;
+  }
+  await sincronizarAviso();
+  pintarAvisoVentana('Mirando tus favoritos…');
+  try {
+    const r = await comprobarAvisos(reg, { forzar: true });
+    const textos = {
+      'sin-favoritos': 'No tienes favoritos: guarda algún lugar con ☆ en el buscador de lugares.',
+      'sin-datos': 'No se pudo descargar la previsión de ningún favorito. ¿Hay cobertura?',
+      avisado: 'Hecho: te ha llegado la notificación con las ventanas de mañana.',
+      'sin-ventana': 'Hecho: mañana ningún favorito tiene ventana verde (te ha llegado la notificación que lo dice).',
+    };
+    pintarAvisoVentana(textos[r.estado] ?? r.estado);
+  } catch (e) {
+    estado.fallo = `Aviso: ${e?.message ?? e}`;
+    pintarAvisoVentana(`No se pudo probar: ${e?.message ?? e}`);
   }
 }
 
@@ -968,10 +1049,12 @@ function enlazar() {
       estado.favoritos.splice(Number(b.dataset.quitar), 1);
       almacen.guardarFavoritos(estado.favoritos);
       pintarFavoritos();
+      sincronizarAviso();
     } else if (b.dataset.accion === 'guardar-fav') {
       estado.favoritos.push({ ...estado.lugar });
       almacen.guardarFavoritos(estado.favoritos);
       pintarFavoritos();
+      sincronizarAviso();
       cargarResumenFavoritos();
     }
   });
@@ -988,6 +1071,8 @@ function enlazar() {
     pintarChecklist();
   });
   $('#form-vuelo').addEventListener('submit', guardarVuelo);
+  $('#aj-aviso').addEventListener('change', (e) => activarAviso(e.target.checked));
+  $('#btn-probar-aviso').addEventListener('click', probarAviso);
   $('#form-buscar').addEventListener('submit', (e) => {
     e.preventDefault();
     buscar($('#txt-buscar').value);
@@ -1022,7 +1107,15 @@ function tic() {
 async function arrancar() {
   // El instalador primero: si se cierra la app antes de que acabe todo lo
   // demás, que al menos quede para usarla sin cobertura.
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+  // Con aviso de ventana, el instalador de tipo módulo (lleva sw.js dentro);
+  // en el resto, sw.js como siempre.
+  if ('serviceWorker' in navigator)
+    navigator.serviceWorker
+      .register(CON_AVISO ? 'sw-modulo.js' : 'sw.js', CON_AVISO ? { type: 'module' } : undefined)
+      .then(() => sincronizarAviso())
+      .catch((e) => {
+        estado.fallo = `Instalador: ${e?.message ?? e}`;
+      });
   enlazar();
   pintar();
   const c = almacen.cache();

@@ -31,6 +31,7 @@ function fecha(ms, zona) {
  * @param {{tramos: number}} d.kp
  * @param {{total: number, origen: string | null, actualizado: string | null}} d.orbitas
  * @param {{estado: string, zonas: object[], motivos?: string[]} | null} [d.enaire]
+ * @param {{disponible: boolean, activo: boolean, ultimo?: string} | null} [d.aviso]  aviso de ventana
  * @param {string} d.error
  * @param {string} [d.navegador]
  * @param {number} [d.ahora]
@@ -77,6 +78,10 @@ export function informeDiagnostico(d) {
   }
   const v = p?.dias[0]?.ventana;
   if (p) l.push(`Ventana hoy: ${v ? `${hora(v.inicio, zona)}–${hora(v.fin, zona)} (${v.estado}, ${v.horas} h)` : 'ninguna'}`);
+  if (d.aviso)
+    l.push(
+      `Aviso de ventana: ${!d.aviso.disponible ? 'no disponible en este navegador' : d.aviso.activo ? `activo · último aviso ${d.aviso.ultimo || 'nunca'}` : 'apagado'}`,
+    );
   l.push(`Error: ${d.error || 'ninguno'}`);
   if (d.navegador) l.push(`Navegador: ${String(d.navegador).slice(0, 160)}`);
   return l.join('\n');

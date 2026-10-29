@@ -19,3 +19,14 @@ export function puntoCardinal(grados) {
   if (!Number.isFinite(grados)) return '';
   return PUNTOS[Math.round((((grados % 360) + 360) % 360) / 45) % 8];
 }
+
+// «14:00» en la hora del lugar. Una zona rara (de una caché vieja) no congela
+// nada: se usa la hora del móvil.
+export function fmtHora(ms, zona) {
+  if (!Number.isFinite(ms)) return '—';
+  try {
+    return new Intl.DateTimeFormat('es-ES', { hour: '2-digit', minute: '2-digit', timeZone: zona }).format(new Date(ms));
+  } catch {
+    return new Intl.DateTimeFormat('es-ES', { hour: '2-digit', minute: '2-digit' }).format(new Date(ms));
+  }
+}

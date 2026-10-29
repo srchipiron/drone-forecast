@@ -47,6 +47,8 @@ const srv = createServer(async (req, res) => {
 await new Promise((r) => srv.listen(0, '127.0.0.1', r));
 const url = `http://127.0.0.1:${srv.address().port}/`;
 
+// Para que context.route también sirva las peticiones del instalador (aviso de ventana).
+process.env.PW_EXPERIMENTAL_SERVICE_WORKER_NETWORK_EVENTS = '1';
 const { chromium } = cargarPlaywright();
 const navegador = await chromium.launch(process.env.PLAYWRIGHT_CHROME ? { executablePath: process.env.PLAYWRIGHT_CHROME } : {});
 const errores = [];
@@ -156,6 +158,15 @@ try {
   await page.locator('[data-vista="ajustes"]').click();
   assert.equal(await page.locator('#vista-prevision').isHidden(), true);
   assert.equal(await page.locator('[data-vista="ajustes"]').getAttribute('aria-selected'), 'true');
+  // Aviso de ventana: Chromium tiene Periodic Background Sync, así que la
+  // tarjeta sale; sin permiso de notificaciones no se queda activado.
+  assert.ok(await page.locator('#avisos').isVisible(), 'tarjeta del aviso de ventana');
+  await page.evaluate(() => {
+    Notification.requestPermission = async () => 'denied';
+  });
+  await page.locator('#aj-aviso').click();
+  await page.locator('#estado-aviso').filter({ hasText: 'Sin permiso de notificaciones' }).waitFor();
+  assert.equal(await page.locator('#aj-aviso').isChecked(), false, 'sin permiso no se queda activado');
   await page.getByRole('button', { name: 'Diagnóstico' }).click();
   const diag = await page.inputValue('#txt-diagnostico');
   assert.match(diag, /^Drone Forecast v\d+\.\d+\.\d+/);
@@ -163,6 +174,7 @@ try {
   assert.match(diag, /Órbitas: 24 \(despliegue\)/);
   assert.match(diag, /Ahora \d\d:\d\d → /);
   assert.match(diag, /ENAIRE: dentro · 1 zonas \(CTR Madrid<script>\)/);
+  assert.match(diag, /Aviso de ventana: apagado/);
   await page.locator('#estado-diagnostico').filter({ hasText: /Copiado|Copiar/ }).waitFor();
   assert.equal(await page.evaluate(() => navigator.clipboard.readText()), diag, 'el portapapeles tiene el informe');
   await page.locator('#dlg-diagnostico button[value="cerrar"]').click();
@@ -305,6 +317,60 @@ try {
   await p5.goto(url);
   await p5.locator('#ahora .grande').filter({ hasText: 'Sin previsión para ahora' }).waitFor();
   assert.equal(await p5.locator('#ahora [data-accion="recargar"]').count(), 1);
+
+  // El instalador de verdad (sin bloquear): con Periodic Background Sync se
+  // registra el de tipo módulo, guarda la app para abrir sin red y, al
+  // despertar, avisa de la ventana verde de mañana en un favorito.
+  const ctx6 = await navegador.newContext({ viewport: { width: 390, height: 844 } });
+  await ctx6.grantPermissions(['notifications'], { origin: url.replace(/\/$/, '') });
+  const tranquilo = () => {
+    const m = meteo();
+    for (const k of ['wind_speed_10m', 'wind_speed_80m', 'wind_speed_120m', 'wind_speed_180m']) m.hourly[k] = m.hourly[k].map(() => 3);
+    return m;
+  };
+  await ctx6.route('https://api.open-meteo.com/**', (x) => x.fulfill({ json: tranquilo() }));
+  for (const r of ['https://services.swpc.noaa.gov/**', 'https://celestrak.org/**']) await ctx6.route(r, (x) => x.fulfill({ json: [] }));
+  await ctx6.route('https://servais.enaire.es/**', (x) => x.fulfill({ json: { features: [] } }));
+  await ctx6.addInitScript(() => {
+    localStorage.setItem('drone-forecast:favoritos', JSON.stringify([{ nombre: 'Getafe', zona: 'Madrid', lat: 40.3, lon: -3.73 }]));
+    localStorage.setItem('drone-forecast:aviso', 'true');
+    // Con los 24 satélites de prueba se ven unos 7: el aviso usa estos ajustes, no los de fábrica.
+    localStorage.setItem('drone-forecast:ajustes', JSON.stringify({ minSats: 4 }));
+  });
+  const p6 = await ctx6.newPage();
+  p6.on('pageerror', (e) => errores.push(e.message));
+  await p6.goto(url);
+  const sw6 = await p6.evaluate(async () => (await navigator.serviceWorker.ready).active.scriptURL);
+  assert.match(sw6, /\/sw-modulo\.js$/, 'en Chromium va el instalador con aviso');
+  assert.ok(await p6.evaluate(async () => (await (await caches.open((await caches.keys()).find((k) => k.startsWith('drone-forecast-')))).keys()).length >= 25), 'el de tipo módulo también guarda la app');
+  // La página le deja al instalador favoritos y ajustes.
+  for (let i = 0; i < 40; i++) {
+    const n = await p6.evaluate(async () => {
+      const r = await caches.match(new URL('aviso-config.json', location.href).href, { cacheName: 'df-aviso' });
+      return r ? ((await r.json()).favoritos ?? []).length : 0;
+    });
+    if (n === 1) break;
+    assert.ok(i < 39, 'la página no le ha dejado los favoritos al instalador');
+    await p6.waitForTimeout(250);
+  }
+  const cdp = await ctx6.newCDPSession(p6);
+  const registros = new Promise((ok) => cdp.on('ServiceWorker.workerRegistrationUpdated', (e) => e.registrations.length && ok(e.registrations)));
+  await cdp.send('ServiceWorker.enable');
+  const [reg6] = await registros;
+  await cdp.send('ServiceWorker.dispatchPeriodicSyncEvent', { origin: url.replace(/\/$/, ''), registrationId: reg6.registrationId, tag: 'aviso-ventana' });
+  // getNotifications() es asíncrona: se pregunta hasta que llega (15 s como mucho).
+  let notif;
+  for (let i = 0; i < 60 && !notif; i++) {
+    [notif] = await p6.evaluate(async () => (await (await navigator.serviceWorker.ready).getNotifications()).map((n) => ({ titulo: n.title, cuerpo: n.body })));
+    if (!notif) await p6.waitForTimeout(250);
+  }
+  assert.ok(notif, 'el instalador no ha avisado');
+  assert.equal(notif.titulo, 'Mañana se puede volar en Getafe');
+  assert.match(notif.cuerpo, /^Getafe: \d\d:00–\d\d:00 \(\d+ h\)$/);
+  // Sin red, la app abre desde lo guardado por el instalador.
+  await ctx6.setOffline(true);
+  await p6.reload();
+  await p6.locator('#ahora').waitFor();
 
   if (process.env.CAPTURA) await page.screenshot({ path: process.env.CAPTURA, fullPage: true });
   assert.equal(errores.length, 0, errores.join('\n'));

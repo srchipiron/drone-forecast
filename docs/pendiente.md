@@ -36,6 +36,6 @@ bloqueada (con el motivo, y se pasa a la siguiente).
   la tabla de factores, para guardarla como PDF desde el móvil.
 - [x] **Detalle por modelo** (0.7.0): en «Acuerdo entre modelos», el viento de cada
   modelo (ECMWF, GFS, ICON, Météo-France) en vez de solo la dispersión.
-- [ ] **Aviso de ventana**: con la app instalada, si el navegador lo permite
+- [x] **Aviso de ventana** (0.11.0): con la app instalada, si el navegador lo permite
   (Periodic Background Sync), una notificación cuando mañana haya una ventana
   verde en un favorito. Si no lo permite, el botón no sale.

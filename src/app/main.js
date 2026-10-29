@@ -1,5 +1,6 @@
 // La interfaz. Pinta lo que devuelve construirPrevision(); no decide nada.
 
+import { cielo } from '../motor/cielo.js';
 import { informeDiagnostico } from '../motor/diagnostico.js';
 import { VALORACIONES, anadirEntrada, crearEntrada, diarioValido, resumenDiario } from '../motor/diario.js';
 import { graficaDia } from '../motor/grafica.js';
@@ -269,6 +270,14 @@ function listaCondiciones(h) {
     .join('')}</ul>`;
 }
 
+// «☀️ Despejado · 18 °C», como la cabecera de UAV Forecast.
+function lineaCielo(h) {
+  const c = cielo(h.codigo, h.solElev >= -0.833);
+  const t = Number.isFinite(h.temp) ? `${Math.round(h.temp)} °C` : '';
+  if (!c && !t) return '';
+  return `<p class="cielo">${c ? `<span aria-hidden="true">${c.icono}</span> ${esc(c.texto)}` : ''}${c && t ? ' · ' : ''}${esc(t)}</p>`;
+}
+
 function pintarAhora(p) {
   const el = $('#ahora');
   if (!estado.lugar) {
@@ -300,6 +309,7 @@ function pintarAhora(p) {
       <div>
         <p class="grande">${ESTADOS[h.estado].texto}</p>
         <p class="cuando">${p.actual ? 'Ahora' : 'Próxima hora'} · ${esc(hora(h.ms, p.zona))} · ${esc(p.dron.nombre)} a ${esc(p.ajustes.altitud)} m</p>
+        ${lineaCielo(h)}
       </div>
     </div>
     ${h.estado === 'ok' ? '' : `<p class="razon">${esc(razon)}</p>`}
@@ -368,6 +378,7 @@ function pintarDias(p) {
     return;
   }
   if (!p.dias.some((d) => d.clave === estado.dia)) estado.dia = p.dias[0]?.clave ?? null;
+  const ahora = Date.now();
   el.innerHTML = p.dias
     .map((d, k) => {
       const v = d.ventana;
@@ -376,6 +387,7 @@ function pintarDias(p) {
         <span class="d-nombre">${esc(etiquetaDia(d.clave, k))}</span>
         <span class="d-ventana">${v ? `${esc(hora(v.inicio, p.zona))}–${esc(hora(v.fin, p.zona))}` : 'Sin ventana'}</span>
         <span class="d-horas">${v ? `${SIMBOLO[v.estado]} ${v.horas} h${v.estado === 'precaucion' ? ' con precaución' : ''}` : ''}</span>
+        <span class="d-barra" aria-hidden="true">${d.horas.map((h) => `<i class="${esc(h.estado)}${h.ms + 3600000 <= ahora ? ' pasada' : ''}"></i>`).join('')}</span>
       </button>`;
     })
     .join('');

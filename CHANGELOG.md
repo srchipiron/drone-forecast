@@ -3,6 +3,16 @@
 Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
 `0.0.X` para correcciones. La versión sale en el pie de la app.
 
+## 0.12.0
+
+**Más como UAV Forecast.**
+
+- **La semana de un vistazo:** cada día de la tira lleva debajo una raya por
+  hora con el color de su semáforo. Sin abrir el día ya ves si hay verde y
+  a qué horas (las horas que ya han pasado salen apagadas).
+- **El cielo en el cartel:** debajo del veredicto, cómo está el cielo y la
+  temperatura, por ejemplo «☀️ Despejado · 18 °C» (de noche, con luna).
+
 ## 0.11.0
 
 **Aviso de ventana:** la app te avisa cuando mañana haya horas en verde en

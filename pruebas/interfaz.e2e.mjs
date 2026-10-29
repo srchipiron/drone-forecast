@@ -127,6 +127,16 @@ try {
   assert.ok(await page.locator('#campo-mision').isVisible());
   assert.ok(await page.locator('#checklist').isVisible());
   await page.selectOption('#sel-mision', 'termografia_fv');
+  // En profesional son tres selectores: a 360 px bajan de línea en vez de salirse.
+  await page.setViewportSize({ width: 360, height: 844 });
+  assert.ok(
+    await page.evaluate(() => {
+      const t = document.querySelector('.selectores').getBoundingClientRect();
+      return [...document.querySelectorAll('.selectores select')].every((x) => x.getBoundingClientRect().right <= t.right + 1);
+    }),
+    'los selectores caben a 360 px',
+  );
+  await page.setViewportSize({ width: 390, height: 844 });
   // Informe para el cliente: se rellena y se manda a imprimir.
   await page.evaluate(() => {
     window.__impreso = 0;
@@ -202,6 +212,18 @@ try {
     await page.setViewportSize({ width: ancho, height: 844 });
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `sin desbordamiento horizontal a ${ancho} px`);
     assert.ok(await page.evaluate(() => { const t = document.querySelector('#horas .tabla-horas-marco'); return t.scrollWidth <= t.clientWidth; }), `la tabla de horas cabe a ${ancho} px`);
+    // Todos los días a la vista sin deslizar (en algunos móviles las tiras no se deslizan).
+    assert.ok(
+      await page.evaluate(() => {
+        const t = document.querySelector('#dias').getBoundingClientRect();
+        return [...document.querySelectorAll('#dias .dia')].every((d) => {
+          const r = d.getBoundingClientRect();
+          return r.left >= t.left - 1 && r.right <= t.right + 1 && r.width > 0;
+        });
+      }),
+      `todos los días caben a ${ancho} px`,
+    );
+    assert.ok(await page.evaluate(() => [...document.querySelectorAll('#dias .dia .d-ventana, #dias .dia .d-nombre')].every((x) => x.scrollWidth <= x.clientWidth + 1)), `el texto de los días no se corta a ${ancho} px`);
   }
   await page.setViewportSize({ width: 390, height: 844 });
   // Mañana trae el día entero.
@@ -243,7 +265,7 @@ try {
   const resumen = await chips.allTextContents();
   assert.match(resumen[0], /^Hoy (\d\d:\d\d–\d\d:\d\d|sin ventana)$/);
   assert.match(resumen[1], /^Mañana (\d\d:\d\d–\d\d:\d\d|sin ventana)$/);
-  const manana = (await page.locator('#dias .dia').nth(1).locator('.d-ventana').textContent()).trim();
+  const manana = await page.locator('#dias .dia').nth(1).getAttribute('data-ventana');
   assert.equal(resumen[1].replace('Mañana ', ''), manana === 'Sin ventana' ? 'sin ventana' : manana, 'mismo cálculo que la pantalla principal');
   await page.keyboard.press('Escape');
 

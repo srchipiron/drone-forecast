@@ -3,6 +3,17 @@
 Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
 `0.0.X` para correcciones. La versión sale en el pie de la app.
 
+## 0.14.1
+
+- **Todos los días a la vista, sin deslizar.** En algunos móviles la tira de
+  días no se movía con el dedo y no había forma de llegar a los últimos
+  (por ejemplo, al miércoles). Ahora salen en filas de cuatro, todos a la
+  vez: cada uno con su nombre, su ventana en corto («10–14 h», o «Sin
+  vuelo») y la raya de colores de sus horas. Toca el que quieras.
+- Lo mismo con los selectores de dron, misión y altura: en modo
+  profesional, si no caben en una línea bajan a la siguiente en vez de
+  esconderse por la derecha.
+
 ## 0.14.0
 
 **Elegir el punto de vuelo en el mapa**, como en UAV Forecast.

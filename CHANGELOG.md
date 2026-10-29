@@ -3,6 +3,27 @@
 Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
 `0.0.X` para correcciones. La versión sale en el pie de la app.
 
+## 0.10.0
+
+**La previsión se lee como en UAV Forecast.**
+
+- **Cartel arriba del todo** con el veredicto en grande y del color del
+  estado («Se puede volar», «Con precaución», «No vueles»), la hora, tu dron
+  y la altura.
+- **Condiciones ahora**: una fila por dato (viento con su flecha, rachas,
+  lluvia, temperatura, visibilidad, nubes, luz, Kp, satélites, acuerdo
+  entre modelos) con su marca ✓ ! ✕. Si algo no está en verde, debajo
+  dice por qué. Ya no hay que abrir «Todos los factores».
+- **Tabla hora a hora** en vez de la tira que había que deslizar de lado
+  (y que en algunos móviles no se deslizaba): una fila por hora con viento
+  y su dirección, racha, temperatura, lluvia, nubes, satélites y Kp. Cada
+  dato que falla sale en ámbar o rojo, y las horas sin luz, en gris. Hoy
+  empieza en la hora en curso. Cabe entera en un móvil de 360 px.
+- Toca cualquier parte de una fila para ver su perfil de viento por
+  alturas y el detalle de esa hora. La gráfica del día sigue ahí, plegada
+  debajo de la tabla.
+- Fuera el indicador circular.
+
 ## 0.9.0
 
 **Pantalla nueva, pensada como un instrumento de vuelo:** se mira y se

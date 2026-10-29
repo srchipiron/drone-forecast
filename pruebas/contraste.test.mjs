@@ -34,6 +34,10 @@ const TEXTO = [
   ['ok', 'tarjeta'], ['precaucion', 'tarjeta'], ['no', 'tarjeta'], ['sin-dato', 'tarjeta-2'],
   ['ok', 'ok-fondo'], ['precaucion', 'precaucion-fondo'], ['no', 'no-fondo'],
   ['texto', 'precaucion-fondo'], ['acento', 'fondo'],
+  // El cartel del veredicto: texto en --tarjeta sobre el color del estado.
+  ['tarjeta', 'ok'], ['tarjeta', 'precaucion'], ['tarjeta', 'no'], ['tarjeta', 'sin-dato'],
+  // Las horas sin luz de la tabla.
+  ['texto', 'separador'], ['suave', 'separador'],
 ];
 const SIMBOLOS = [['tarjeta', 'ok'], ['tarjeta', 'precaucion'], ['tarjeta', 'no'], ['tarjeta', 'sin-dato'], ['ok', 'tarjeta-2'], ['precaucion', 'tarjeta-2'], ['no', 'tarjeta-2']];
 

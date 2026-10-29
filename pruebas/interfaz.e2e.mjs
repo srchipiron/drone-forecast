@@ -83,10 +83,13 @@ try {
   // reales), así que según la hora y el horario de verano caen en 7 u 8 días.
   const dias = await page.locator('#dias .dia').count();
   assert.ok(dias >= 7 && dias <= 8, `días: ${dias}`);
-  assert.ok(await page.locator('#horas .hora').count() >= 23, 'horas del día');
-  const sats = await page.textContent('#ahora .resumen');
-  assert.match(sats, /Satélites\s*\d+/, `satélites: ${sats}`);
-  assert.match(await page.textContent('#ahora .resumen'), /Kp\s*2\.0/);
+  // Como UAV Forecast: hoy empieza en la hora en curso; mañana trae sus 24 horas.
+  assert.ok(await page.locator('#horas tr.hora').count() >= 1, 'horas de hoy');
+  assert.match(await page.locator('#horas tr.hora').first().getAttribute('class'), /\bactual\b/, 'hoy empieza en la hora actual');
+  const sats = await page.textContent('#ahora [data-factor="satelites"] .c-valor');
+  assert.match(sats, /^\d+$/, `satélites: ${sats}`);
+  assert.equal(await page.textContent('#ahora [data-factor="kp"] .c-valor'), '2.0');
+  assert.ok(await page.locator('#ahora .cartel').isVisible(), 'cartel del veredicto');
   await page.locator('#ahora .enaire.dentro').waitFor();
   const enaire = await page.textContent('#ahora .enaire');
   assert.match(enaire, /Dentro de 1 zona UAS de ENAIRE/);
@@ -117,8 +120,7 @@ try {
   assert.match(informe, /Condiciones de vuelo[^]*Termografía fotovoltaica[^]*DJI Mini 5 Pro[^]*CTR Madrid/);
   assert.match(informe, /Irradiancia/);
   assert.equal(await page.locator('#informe').isVisible(), false, 'en pantalla no se ve');
-  await page.locator('#ahora summary').click();
-  await page.getByText('Irradiancia').first().waitFor();
+  await page.locator('#ahora .condicion').filter({ hasText: 'Irradiancia' }).waitFor();
   await page.locator('[data-check="0"]').check();
   await page.reload();
   assert.ok(await page.locator('[data-check="0"]').isChecked(), 'la checklist se guarda');
@@ -126,9 +128,10 @@ try {
   await page.getByRole('radio', { name: 'Recreativo' }).click();
   assert.ok(await page.locator('#checklist').isHidden());
 
-  // Tocar una hora la abre con su perfil de viento y sus factores.
-  await page.locator('#horas .hora button').nth(3).click();
-  assert.ok((await page.locator('#horas .factor').count()) >= 10);
+  // Tocar una fila (cualquier celda, no solo la hora) la abre con su perfil de viento y sus factores.
+  await page.locator('#horas tr.hora').first().locator('td').nth(2).click();
+  assert.ok((await page.locator('#horas .fila-detalle .condicion').count()) >= 10);
+  assert.equal(await page.locator('#horas tr.hora').first().locator('button').getAttribute('aria-expanded'), 'true');
   const perfil = page.locator('#horas .perfil-viento li');
   assert.equal(await perfil.count(), 4, '180, 120, 80 y 10 m');
   assert.match(await page.textContent('#horas .perfil-viento li.vuelo'), /120 m · vuelo/);
@@ -165,24 +168,24 @@ try {
   await page.locator('#dlg-diagnostico button[value="cerrar"]').click();
   await page.locator('[data-vista="prevision"]').click();
 
-  // Nada ensancha la página más que la pantalla del móvil: las tiras se deslizan.
-  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'sin desbordamiento horizontal');
-  assert.ok(await page.evaluate(() => { const t = document.querySelector('#horas .lista-horas'); return t.scrollWidth > t.clientWidth; }), 'la tira de horas se desliza');
-  assert.ok(
-    await page.evaluate(() => {
-      const t = document.querySelector('#horas .lista-horas').getBoundingClientRect();
-      const a = document.querySelector('#horas .hora.actual').getBoundingClientRect();
-      return a.left >= t.left - 1 && a.right <= t.right + 1;
-    }),
-    'la tira empieza en la hora actual, a la vista',
-  );
+  // Nada ensancha la página, y la tabla de horas cabe entera sin deslizarla
+  // de lado, también en un móvil estrecho de 360 px.
+  for (const ancho of [390, 360]) {
+    await page.setViewportSize({ width: ancho, height: 844 });
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `sin desbordamiento horizontal a ${ancho} px`);
+    assert.ok(await page.evaluate(() => { const t = document.querySelector('#horas .tabla-horas-marco'); return t.scrollWidth <= t.clientWidth; }), `la tabla de horas cabe a ${ancho} px`);
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+  // Mañana trae el día entero.
+  await page.locator('#dias .dia').nth(1).click();
+  assert.ok(await page.locator('#horas tr.hora').count() >= 23, 'horas de mañana');
 
-  // Gráfica del día encima de la lista de horas.
+  // Gráfica del día, plegada debajo de la tabla.
   assert.equal(await page.locator('#horas .grafica svg path.viento').count(), 1);
   assert.match(await page.locator('#horas .grafica path.viento').getAttribute('d'), /^M[\d.]+,[\d.]+ L/);
   assert.ok((await page.locator('#horas .grafica rect.franja').count()) >= 23);
   if (process.env.CAPTURA_GRAFICA) await page.locator('#horas .grafica').screenshot({ path: process.env.CAPTURA_GRAFICA });
-  if (process.env.CAPTURA_HORAS) await page.locator('#horas .lista-horas > li.hora').nth(20).screenshot({ path: process.env.CAPTURA_HORAS });
+  if (process.env.CAPTURA_HORAS) await page.locator('#horas .tabla-horas').screenshot({ path: process.env.CAPTURA_HORAS });
 
   // Diario: «He volado» → valoración → aparece en el diario y en su resumen.
   await page.locator('[data-accion="volado"]').click();
@@ -237,7 +240,7 @@ try {
   await p2.goto(url);
   await p2.locator('#fuentes').filter({ hasText: /24 órbitas de CelesTrak/ }).waitFor({ state: 'attached' });
   await p2.locator('#ahora .enaire.sin-dato').filter({ hasText: 'No se pudo consultar ENAIRE' }).waitFor();
-  assert.match(await p2.textContent('#ahora .resumen'), /Satélites\s*\d+/);
+  assert.match(await p2.textContent('#ahora [data-factor="satelites"] .c-valor'), /^\d+$/);
   const antes = pedidasCelestrak;
   await p2.unroute('https://celestrak.org/**');
   await p2.route('https://celestrak.org/**', (x) => x.abort());

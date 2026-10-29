@@ -3,6 +3,27 @@
 Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
 `0.0.X` para correcciones. La versión sale en el pie de la app.
 
+## 0.9.0
+
+**Pantalla nueva, pensada como un instrumento de vuelo:** se mira y se
+decide en un segundo, a pleno sol.
+
+- **Indicador circular de viento**: el viento a tu altura de vuelo frente al
+  límite de tu dron, con marcas en «cómodo» y «límite», y el veredicto al
+  lado en grande.
+- **Lo importante, arriba del todo.** Modo, dron y altura van en una sola
+  fila compacta; la altura se elige de una lista (20 a 120 m, o hasta 180 en
+  profesional).
+- **Horas en una tira deslizable**, que empieza en la hora actual, en vez de
+  una lista larga de 24 filas. Al tocar una hora, debajo sale su perfil de
+  viento y sus factores.
+- **Pestañas abajo**: Previsión, Diario y Ajustes. Al guardar un vuelo, la
+  app te lleva al diario.
+- **El color solo marca el estado**: verde, ámbar o rojo. Todo lo demás es
+  neutro, con bordes finos que al sol se ven mejor que las sombras. Las
+  cifras son grandes y no bailan al cambiar.
+- **Modo oscuro en azul noche**, como una cabina.
+
 ## 0.8.0
 
 - **Diseño nuevo al estilo de las apps de Apple:**

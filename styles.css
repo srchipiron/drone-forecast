@@ -1,84 +1,77 @@
-/* Lenguaje visual de iOS: fondos agrupados, tarjetas redondeadas sin borde,
-   colores del sistema, San Francisco, materiales translúcidos. Cada color de
-   texto pasa el contraste AA (4,5:1) contra su fondo: lo vigila
-   pruebas/contraste.test.mjs. */
+/* Drone Forecast · lenguaje «instrumento»
+   Inspirado en las apps de vuelo profesionales: se mira y se decide en un
+   segundo, a pleno sol. Superficies neutras con borde fino (al sol se ven
+   mejor que las sombras), el color solo para el estado, cifras grandes y
+   tabulares, etiquetas pequeñas en versalitas. Cada color de texto pasa AA
+   contra su fondo en claro y en oscuro: lo vigila pruebas/contraste.test.mjs. */
 
 :root {
-  --fondo: #f2f2f7;
+  --fondo: #eef1f5;
   --tarjeta: #ffffff;
-  --tarjeta-2: #f2f2f7;
-  --texto: #000000;
-  --suave: #6e6e73;
-  --borde: #e5e5ea;
-  --separador: #d1d1d6;
-  --acento: #0066cc;
-  --boton: #0071e3;
+  --tarjeta-2: #f4f6f9;
+  --texto: #0b1220;
+  --suave: #5b6475;
+  --borde: #dde2ea;
+  --separador: #e6e9ef;
+  --acento: #0b5fc4;
+  --boton: #0b5fc4;
   --sobre-boton: #ffffff;
-  --ok: #1d7a35;
-  --ok-fondo: #e3f5e8;
-  --precaucion: #b33100;
-  --precaucion-fondo: #fff0e0;
-  --no: #c8001a;
-  --no-fondo: #ffe6e7;
-  --sin-dato: #6e6e73;
-  --heroe-ok: #15803d;
-  --heroe-ok-2: #14532d;
-  --heroe-precaucion: #c2410c;
-  --heroe-precaucion-2: #7c2d12;
-  --heroe-no: #dc2626;
-  --heroe-no-2: #7f1d1d;
-  --cabecera: rgba(242, 242, 247, 0.78);
-  --sombra: 0 1px 2px rgba(0, 0, 0, 0.04), 0 4px 16px rgba(0, 0, 0, 0.05);
-  --radio: 20px;
+  --ok: #157a3a;
+  --ok-fondo: #e4f4e9;
+  --precaucion: #a84a00;
+  --precaucion-fondo: #fdf0e1;
+  --no: #c01c28;
+  --no-fondo: #fde7e9;
+  --sin-dato: #5b6475;
+  --cabecera: rgba(238, 241, 245, 0.85);
+  --radio: 18px;
   --radio-pequeno: 12px;
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --fondo: #000000;
-    --tarjeta: #1c1c1e;
-    --tarjeta-2: #2c2c2e;
-    --texto: #ffffff;
-    --suave: #98989d;
-    --borde: #38383a;
-    --separador: #38383a;
-    --acento: #409cff;
-    --boton: #0071e3;
+    --fondo: #070b14;
+    --tarjeta: #0f1626;
+    --tarjeta-2: #172036;
+    --texto: #e8edf6;
+    --suave: #9aa6bd;
+    --borde: #222c42;
+    --separador: #1c2538;
+    --acento: #6cb6ff;
+    --boton: #1d64c9;
     --sobre-boton: #ffffff;
-    --ok: #30d158;
-    --ok-fondo: #0f2e18;
-    --precaucion: #ff9f0a;
-    --precaucion-fondo: #33230a;
-    --no: #ff6961;
-    --no-fondo: #3a1416;
-    --sin-dato: #98989d;
-    --cabecera: rgba(0, 0, 0, 0.72);
-    --sombra: none;
+    --ok: #3ddc84;
+    --ok-fondo: #0e2a1a;
+    --precaucion: #ffb547;
+    --precaucion-fondo: #33240b;
+    --no: #ff7b7b;
+    --no-fondo: #3a1517;
+    --sin-dato: #9aa6bd;
+    --cabecera: rgba(7, 11, 20, 0.85);
     color-scheme: dark;
   }
 }
 
 :root[data-theme="dark"] {
-  --fondo: #000000;
-  --tarjeta: #1c1c1e;
-  --tarjeta-2: #2c2c2e;
-  --texto: #ffffff;
-  --suave: #98989d;
-  --borde: #38383a;
-  --separador: #38383a;
-  --acento: #409cff;
-  --boton: #0071e3;
+  --fondo: #070b14;
+  --tarjeta: #0f1626;
+  --tarjeta-2: #172036;
+  --texto: #e8edf6;
+  --suave: #9aa6bd;
+  --borde: #222c42;
+  --separador: #1c2538;
+  --acento: #6cb6ff;
+  --boton: #1d64c9;
   --sobre-boton: #ffffff;
-  --ok: #30d158;
-  --ok-fondo: #0f2e18;
-  --precaucion: #ff9f0a;
-  --precaucion-fondo: #33230a;
-  --no: #ff6961;
-  --no-fondo: #3a1416;
-  --sin-dato: #98989d;
-  --cabecera: rgba(0, 0, 0, 0.72);
-  --sombra: none;
+  --ok: #3ddc84;
+  --ok-fondo: #0e2a1a;
+  --precaucion: #ffb547;
+  --precaucion-fondo: #33240b;
+  --no: #ff7b7b;
+  --no-fondo: #3a1517;
+  --sin-dato: #9aa6bd;
+  --cabecera: rgba(7, 11, 20, 0.85);
   color-scheme: dark;
 }
 
@@ -90,206 +83,271 @@ body {
   margin: 0;
   background: var(--fondo);
   color: var(--texto);
-  font: 17px/1.4 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, system-ui, sans-serif;
-  letter-spacing: -0.01em;
+  font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
 }
 
-button, select, input, textarea { font: inherit; color: inherit; letter-spacing: inherit; }
+button, select, input, textarea { font: inherit; color: inherit; }
 
 button {
   cursor: pointer;
-  border: 0;
-  background: var(--tarjeta-2);
+  border: 1px solid var(--borde);
+  background: var(--tarjeta);
   color: var(--acento);
   border-radius: var(--radio-pequeno);
   padding: 0.6rem 1rem;
   min-height: 44px;
   font-weight: 600;
-  transition: transform 0.12s ease, opacity 0.12s ease;
+  transition: transform 0.1s ease, background 0.15s ease;
 }
 
-button:active { transform: scale(0.97); opacity: 0.85; }
+button:active { transform: scale(0.97); }
 
-button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus-visible {
-  outline: 3px solid var(--acento);
-  outline-offset: 2px;
-}
+:focus-visible { outline: 3px solid var(--acento); outline-offset: 2px; }
 
 select, input[type="number"], input[type="search"] {
   width: 100%;
   min-height: 44px;
   padding: 0.55rem 0.75rem;
-  border: 0;
+  border: 1px solid var(--borde);
   border-radius: var(--radio-pequeno);
-  background: var(--tarjeta-2);
+  background: var(--tarjeta);
   appearance: none;
 }
 
 select {
   background-image: linear-gradient(45deg, transparent 50%, var(--suave) 50%), linear-gradient(135deg, var(--suave) 50%, transparent 50%);
-  background-position: calc(100% - 18px) 50%, calc(100% - 13px) 50%;
+  background-position: calc(100% - 16px) 52%, calc(100% - 11px) 52%;
   background-size: 5px 5px;
   background-repeat: no-repeat;
-  padding-right: 2rem;
+  padding-right: 1.9rem;
 }
 
 svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+.ico { width: 18px; height: 18px; flex: none; color: var(--suave); }
 
 [hidden] { display: none !important; }
 
 .visualmente-oculto { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
-.nota { color: var(--suave); font-size: 0.8rem; margin: 0.25rem 0; letter-spacing: 0; }
+.nota { color: var(--suave); font-size: 0.8rem; margin: 0.25rem 0; }
 
-/* Barra superior translúcida, como las de iOS */
+/* ── Cabecera: el lugar es el título ─────────────────────────────── */
 .cabecera {
   position: sticky;
   top: 0;
   z-index: 5;
   display: flex;
-  gap: 0.5rem;
+  gap: 0.25rem;
   align-items: center;
-  padding: calc(0.5rem + env(safe-area-inset-top)) 16px 0.5rem;
+  padding: calc(0.4rem + env(safe-area-inset-top)) 12px 0.4rem;
   background: var(--cabecera);
-  backdrop-filter: saturate(180%) blur(20px);
-  -webkit-backdrop-filter: saturate(180%) blur(20px);
-  border-bottom: 0.5px solid var(--separador);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--borde);
 }
 
 .lugar {
   flex: 1;
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.35rem;
   min-width: 0;
+  border: 0;
   background: transparent;
   color: var(--texto);
-  font-size: 1.15rem;
-  font-weight: 700;
-  padding: 0.4rem 0.2rem;
+  font-size: 1.2rem;
+  font-weight: 750;
+  letter-spacing: -0.01em;
+  padding: 0.35rem 0.3rem;
   text-align: left;
 }
 
 .lugar svg { color: var(--acento); flex: none; }
 
+.lugar .abre { width: 18px; height: 18px; color: var(--suave); }
+
 .lugar span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-.icono { padding: 0.5rem; min-width: 44px; display: grid; place-items: center; background: transparent; color: var(--acento); }
+.icono { padding: 0.5rem; min-width: 44px; display: grid; place-items: center; border: 0; background: transparent; color: var(--acento); }
 
 .girando svg { animation: girar 1s linear infinite; }
 
 @keyframes girar { to { transform: rotate(360deg); } }
 
-main { max-width: 760px; margin: 0 auto; padding: 0.75rem 16px 2.5rem; display: grid; gap: 1rem; }
+main { max-width: 720px; margin: 0 auto; padding: 0.75rem 12px calc(5.5rem + env(safe-area-inset-bottom)); }
 
-.tarjeta { background: var(--tarjeta); border-radius: var(--radio); padding: 1rem 1.1rem; box-shadow: var(--sombra); }
+/* minmax(0, 1fr): la columna no crece con lo que tiene dentro; la tira de
+   horas y la de días se deslizan en su sitio en vez de ensanchar la página. */
+.vista { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.75rem; }
 
-.tarjeta h2 { font-size: 1.3rem; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 0.6rem; display: flex; justify-content: space-between; align-items: baseline; }
+.vista > * { min-width: 0; }
 
-/* Control segmentado de iOS */
-.modo { display: grid; grid-template-columns: 1fr 1fr; background: var(--borde); border-radius: 10px; padding: 2px; gap: 2px; }
 
-.modo button { background: transparent; color: var(--texto); font-weight: 500; font-size: 0.95rem; border-radius: 8px; min-height: 36px; padding: 0.35rem; }
 
-.modo button[aria-checked="true"] { background: var(--tarjeta); font-weight: 600; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15), 0 1px 1px rgba(0, 0, 0, 0.06); }
+.tarjeta { background: var(--tarjeta); border: 1px solid var(--borde); border-radius: var(--radio); padding: 1rem; }
 
-/* Perfil: dron, misión, altura */
-.perfil { display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem; }
+.tarjeta h2 { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--suave); margin: 0 0 0.6rem; display: flex; justify-content: space-between; align-items: baseline; }
 
-.perfil label { display: grid; gap: 0.35rem; font-size: 0.8rem; font-weight: 500; color: var(--suave); text-transform: uppercase; letter-spacing: 0.02em; }
+/* ── Perfil: modo + píldoras ─────────────────────────────────────── */
+.perfil { display: grid; gap: 0.5rem; }
 
-.perfil .altitud, .perfil .nota { grid-column: 1 / -1; }
+.modo { display: grid; grid-template-columns: 1fr 1fr; background: var(--tarjeta-2); border: 1px solid var(--borde); border-radius: 12px; padding: 3px; gap: 3px; }
 
-.perfil .nota { text-transform: none; }
+.modo button { border: 0; background: transparent; color: var(--suave); font-weight: 600; font-size: 0.9rem; border-radius: 9px; min-height: 38px; padding: 0.3rem; }
 
-.perfil output { color: var(--texto); font-weight: 700; font-size: 1rem; text-transform: none; }
+.modo button[aria-checked="true"] { background: var(--tarjeta); color: var(--texto); box-shadow: 0 0 0 1px var(--borde); }
 
-input[type="range"] { width: 100%; accent-color: var(--boton); min-height: 32px; }
+.selectores { display: flex; gap: 0.5rem; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
 
-body[data-modo="recreativo"] .perfil label:first-child { grid-column: 1 / -1; }
+.selectores::-webkit-scrollbar { display: none; }
 
-/* Avisos */
-.aviso { background: var(--precaucion-fondo); color: var(--texto); border-radius: var(--radio-pequeno); padding: 0.7rem 1rem; font-size: 0.9rem; border-left: 4px solid var(--precaucion); }
+.selector { position: relative; flex: 0 0 auto; display: block; }
 
-.aviso p { margin: 0.2rem 0; }
+.selector span { position: absolute; left: 0.85rem; top: 0.35rem; font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--suave); pointer-events: none; }
 
-/* Veredicto: tarjeta a todo color, como la app Tiempo */
-.veredicto { padding: 1.25rem 1.25rem 1rem; }
+.selector select { width: auto; min-width: 7.5rem; max-width: 15rem; padding: 1.15rem 2rem 0.35rem 0.85rem; min-height: 48px; border-radius: 14px; font-weight: 650; font-size: 0.95rem; text-overflow: ellipsis; }
 
-.veredicto.ok, .veredicto.precaucion, .veredicto.no { color: #ffffff; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12); }
+.selector.altitud select { min-width: 6.5rem; }
 
-.veredicto.ok { background: linear-gradient(165deg, var(--heroe-ok), var(--heroe-ok-2)); }
+.perfil .nota { margin: 0 0.25rem; }
 
-.veredicto.precaucion { background: linear-gradient(165deg, var(--heroe-precaucion), var(--heroe-precaucion-2)); }
+/* ── Avisos ──────────────────────────────────────────────────────── */
+.aviso { background: var(--precaucion-fondo); color: var(--texto); border: 1px solid var(--borde); border-left: 4px solid var(--precaucion); border-radius: var(--radio-pequeno); padding: 0.65rem 0.9rem; font-size: 0.9rem; }
 
-.veredicto.no { background: linear-gradient(165deg, var(--heroe-no), var(--heroe-no-2)); }
+.aviso p { margin: 0.15rem 0; }
 
-.veredicto .cuando { margin: 0; font-size: 0.85rem; font-weight: 600; opacity: 0.95; letter-spacing: 0; }
+/* ── Veredicto: el instrumento ───────────────────────────────────── */
+.veredicto { position: relative; overflow: hidden; padding-top: 1.1rem; }
 
-.veredicto .grande { font-size: 2.3rem; font-weight: 800; margin: 0.15rem 0 0.1rem; letter-spacing: -0.03em; line-height: 1.1; }
+.veredicto::before { content: ""; position: absolute; inset: 0 0 auto; height: 5px; background: var(--sin-dato); }
 
-.veredicto .razon { margin: 0 0 1rem; font-size: 0.95rem; }
+.veredicto.ok::before { background: var(--ok); }
 
-.veredicto:not(.ok):not(.precaucion):not(.no) .razon { color: var(--suave); }
+.veredicto.precaucion::before { background: var(--precaucion); }
 
-/* Datos sobre material translúcido */
-.resumen { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; }
+.veredicto.no::before { background: var(--no); }
 
-.resumen div { background: var(--tarjeta-2); border-radius: 14px; padding: 0.6rem 0.65rem; display: grid; gap: 0.1rem; }
+.veredicto:not(.ok):not(.precaucion):not(.no)::before { display: none; }
 
-.veredicto.ok .resumen div, .veredicto.precaucion .resumen div, .veredicto.no .resumen div { background: rgba(0, 0, 0, 0.22); }
+.heroe { display: grid; grid-template-columns: 9.5rem 1fr; gap: 0.75rem; align-items: center; }
 
-.resumen span { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; opacity: 0.9; }
+.indicador { width: 100%; height: auto; }
 
-.resumen strong { font-size: 1.2rem; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.indicador .pista { stroke: var(--tarjeta-2); stroke-width: 11; }
 
-.ventana-hoy, .sol { margin: 0.85rem 0 0; }
+.indicador .valor { stroke: var(--sin-dato); stroke-width: 11; }
 
-.sol { font-size: 0.85rem; opacity: 0.95; }
+.veredicto.ok .indicador .valor { stroke: var(--ok); }
 
-/* Lo que va dentro del veredicto en tarjeta clara (texto normal) */
-.enaire, .veredicto details {
-  margin: 0.85rem 0 0;
-  padding: 0.7rem 0.85rem;
-  border-radius: 14px;
-  background: var(--tarjeta);
-  color: var(--texto);
-  font-size: 0.9rem;
-}
+.veredicto.precaucion .indicador .valor { stroke: var(--precaucion); }
 
-.enaire p { margin: 0.2rem 0; }
+.veredicto.no .indicador .valor { stroke: var(--no); }
+
+.indicador .marca { stroke-width: 2.5; stroke-linecap: butt; }
+
+.indicador .marca.comodo { stroke: var(--precaucion); }
+
+.indicador .marca.limite { stroke: var(--no); }
+
+.indicador text { fill: var(--texto); stroke: none; text-anchor: middle; font-family: inherit; }
+
+.indicador .num { font-size: 30px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -0.03em; }
+
+.indicador .uni { font-size: 11px; font-weight: 600; fill: var(--suave); }
+
+.indicador .alt { font-size: 9.5px; font-weight: 600; fill: var(--suave); }
+
+.heroe-texto { min-width: 0; }
+
+.veredicto .cuando { margin: 0; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--suave); }
+
+.veredicto .grande { display: flex; align-items: center; gap: 0.45rem; font-size: 1.85rem; font-weight: 800; margin: 0.15rem 0 0.2rem; letter-spacing: -0.03em; line-height: 1.1; }
+
+.veredicto.ok .grande { color: var(--ok); }
+
+.veredicto.precaucion .grande { color: var(--precaucion); }
+
+.veredicto.no .grande { color: var(--no); }
+
+.grande .simbolo { display: inline-grid; place-items: center; width: 1.6rem; height: 1.6rem; border-radius: 50%; background: var(--sin-dato); color: var(--tarjeta); font-size: 0.95rem; flex: none; }
+
+.veredicto.ok .grande .simbolo { background: var(--ok); }
+
+.veredicto.precaucion .grande .simbolo { background: var(--precaucion); }
+
+.veredicto.no .grande .simbolo { background: var(--no); }
+
+.veredicto .razon { margin: 0; font-size: 0.9rem; color: var(--suave); }
+
+.veredicto > p { margin: 0.3rem 0; }
+
+/* Los cuatro datos, como esferas pequeñas */
+.resumen { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.4rem; margin-top: 0.9rem; }
+
+.resumen div { background: var(--tarjeta-2); border-radius: 12px; padding: 0.55rem 0.5rem; display: grid; gap: 0.1rem; justify-items: start; }
+
+.resumen .ico { width: 16px; height: 16px; }
+
+.resumen span { font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--suave); }
+
+.resumen strong { font-size: 1.25rem; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; line-height: 1.1; }
+
+.resumen small { font-size: 0.65rem; font-weight: 600; color: var(--suave); margin-left: 0.15rem; }
+
+/* Filas tipo lista de instrumentos */
+.filas { list-style: none; padding: 0; margin: 0.75rem 0 0; }
+
+.fila { display: grid; grid-template-columns: auto auto 1fr; gap: 0.6rem; align-items: center; padding: 0.55rem 0; border-top: 1px solid var(--separador); font-size: 0.9rem; }
+
+.fila span { color: var(--suave); white-space: nowrap; }
+
+.fila strong { font-variant-numeric: tabular-nums; text-align: right; font-weight: 700; }
+
+.fila.ventana-hoy.ok .ico, .fila.ventana-hoy.ok strong { color: var(--ok); }
+
+.fila.ventana-hoy.precaucion .ico, .fila.ventana-hoy.precaucion strong { color: var(--precaucion); }
+
+.enaire { display: grid; grid-template-columns: auto 1fr; gap: 0.6rem; align-items: start; margin-top: 0.25rem; padding: 0.65rem 0.75rem; border-radius: 12px; background: var(--tarjeta-2); font-size: 0.875rem; }
+
+.enaire .ico { margin-top: 0.1rem; }
+
+.enaire.dentro { background: var(--precaucion-fondo); }
+
+.enaire.dentro .ico { color: var(--precaucion); }
+
+.enaire.fuera .ico { color: var(--ok); }
+
+.enaire p { margin: 0.1rem 0; }
 
 .enaire ul { margin: 0.3rem 0; padding-left: 1.1rem; }
-
-.enaire.dentro { box-shadow: inset 4px 0 0 var(--precaucion); }
 
 .enaire a { color: var(--acento); font-weight: 600; }
 
 .acciones { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 
-.acciones button:first-child { background: var(--boton); color: var(--sobre-boton); }
-
-.veredicto.ok .acciones button, .veredicto.precaucion .acciones button, .veredicto.no .acciones button {
-  background: rgba(255, 255, 255, 0.2);
-  color: #ffffff;
-}
+.acciones button:first-child { background: var(--boton); border-color: var(--boton); color: var(--sobre-boton); }
 
 .acciones-ahora { margin-top: 0.85rem; }
 
-details summary { cursor: pointer; font-weight: 600; padding: 0.3rem 0; min-height: 44px; display: flex; align-items: center; gap: 0.4rem; list-style: none; }
+.acciones-ahora button { flex: 1; }
+
+details summary { cursor: pointer; font-weight: 650; padding: 0.3rem 0; min-height: 44px; display: flex; align-items: center; gap: 0.45rem; list-style: none; }
 
 details summary::-webkit-details-marker { display: none; }
 
-details summary::before { content: "›"; display: inline-block; width: 1rem; color: var(--suave); font-size: 1.3rem; line-height: 1; transition: transform 0.2s ease; }
+details summary::before { content: ""; width: 0.45rem; height: 0.45rem; border-right: 2px solid var(--suave); border-bottom: 2px solid var(--suave); transform: rotate(-45deg); transition: transform 0.2s ease; margin: 0 0.2rem; }
 
-details[open] > summary::before { transform: rotate(90deg); }
+details[open] > summary::before { transform: rotate(45deg); }
 
-/* Factores: lista agrupada con separadores interiores */
-.factores { list-style: none; padding: 0; margin: 0.2rem 0 0; display: grid; }
+.veredicto details { margin-top: 0.6rem; border-top: 1px solid var(--separador); padding-top: 0.2rem; }
 
-.factor { display: grid; grid-template-columns: 20px 1fr auto; column-gap: 0.6rem; align-items: center; padding: 0.55rem 0; border-top: 0.5px solid var(--separador); }
+/* ── Factores ────────────────────────────────────────────────────── */
+.factores { list-style: none; padding: 0; margin: 0; display: grid; }
+
+.factor { display: grid; grid-template-columns: 20px 1fr auto; column-gap: 0.6rem; align-items: center; padding: 0.55rem 0; border-top: 1px solid var(--separador); }
 
 .factor:first-child { border-top: 0; }
 
@@ -301,91 +359,52 @@ details[open] > summary::before { transform: rotate(90deg); }
 
 .factor.no .punto { background: var(--no); }
 
-.f-nombre { font-weight: 500; }
+.f-nombre { font-weight: 550; }
 
-.f-valor { font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
+.f-valor { font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; }
 
 .f-detalle { grid-column: 2 / -1; color: var(--suave); font-size: 0.8rem; }
 
-/* Días: fila deslizable de píldoras */
-.dias { display: flex; gap: 0.6rem; overflow-x: auto; padding: 0.15rem 0.1rem 0.4rem; scroll-snap-type: x mandatory; scrollbar-width: none; }
+/* ── Días: pestañas con la ventana ───────────────────────────────── */
+.dias { display: flex; gap: 0.5rem; overflow-x: auto; padding: 0 0 0.2rem; scroll-snap-type: x mandatory; scrollbar-width: none; }
 
 .dias::-webkit-scrollbar { display: none; }
 
 .dia {
   flex: 0 0 auto;
   display: grid;
-  gap: 0.1rem;
+  gap: 0.05rem;
   text-align: left;
-  min-width: 118px;
+  min-width: 112px;
   scroll-snap-align: start;
   background: var(--tarjeta);
   color: var(--texto);
-  border-radius: 16px;
-  padding: 0.65rem 0.8rem;
-  box-shadow: var(--sombra), inset 0 3px 0 var(--sin-dato);
-  font-weight: 400;
+  border: 1px solid var(--borde);
+  border-radius: 14px;
+  padding: 0.6rem 0.75rem 0.55rem;
+  font-weight: 500;
+  position: relative;
+  overflow: hidden;
 }
 
-.dia.ok { box-shadow: var(--sombra), inset 0 3px 0 var(--ok); }
+.dia::after { content: ""; position: absolute; inset: auto 0 0; height: 4px; background: var(--separador); }
 
-.dia.precaucion { box-shadow: var(--sombra), inset 0 3px 0 var(--precaucion); }
+.dia.ok::after { background: var(--ok); }
 
-.dia.no { color: var(--suave); }
+.dia.precaucion::after { background: var(--precaucion); }
 
-.dia.activo { outline: 2.5px solid var(--boton); outline-offset: 0; }
+.dia.activo { border-color: var(--acento); box-shadow: inset 0 0 0 1px var(--acento); }
 
-.d-nombre { font-weight: 700; text-transform: capitalize; }
+.d-nombre { font-weight: 750; text-transform: capitalize; font-size: 0.9rem; }
 
-.d-ventana { font-variant-numeric: tabular-nums; font-size: 0.95rem; font-weight: 600; }
+.d-ventana { font-variant-numeric: tabular-nums; font-size: 0.95rem; font-weight: 700; }
 
-.dia.no .d-ventana { font-weight: 500; }
+.dia.no .d-ventana { font-weight: 500; color: var(--suave); }
 
-.d-horas { font-size: 0.75rem; color: var(--suave); }
+.d-horas { font-size: 0.72rem; color: var(--suave); }
 
-/* Hora a hora */
-.lista-horas { list-style: none; padding: 0; margin: 0; }
-
-.hora { border-top: 0.5px solid var(--separador); }
-
-.hora:first-child { border-top: 0; }
-
-.hora > button {
-  width: 100%;
-  background: transparent;
-  color: var(--texto);
-  font-weight: 400;
-  border-radius: 0;
-  display: grid;
-  grid-template-columns: 3.2rem 3.8rem repeat(4, 1fr);
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.6rem 0;
-  text-align: left;
-  font-variant-numeric: tabular-nums;
-  font-size: 0.9rem;
-}
-
-.hora > button:active { transform: none; background: var(--tarjeta-2); }
-
-.hora.pasada { opacity: 0.45; }
-
-.h-hora { font-weight: 700; }
-
-.h-dato { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--suave); }
-
-.hora .factores { padding-bottom: 0.6rem; }
-
-.chip { display: inline-block; text-align: center; padding: 0.15rem 0.55rem; border-radius: 999px; font-size: 0.75rem; font-weight: 700; background: var(--tarjeta-2); color: var(--sin-dato); }
-
-.chip.ok { background: var(--ok-fondo); color: var(--ok); }
-
-.chip.precaucion { background: var(--precaucion-fondo); color: var(--precaucion); }
-
-.chip.no { background: var(--no-fondo); color: var(--no); }
-
-/* Gráfica del día */
-.grafica { margin: 0 0 0.75rem; padding: 0.6rem 0.6rem 0.4rem; background: var(--tarjeta-2); border-radius: 14px; }
+/* ── Hora a hora: gráfica + tira deslizable + detalle ────────────── */
+.grafica { margin: 0 0 0.6rem; }
 
 .grafica svg { width: 100%; height: auto; display: block; }
 
@@ -399,7 +418,7 @@ details[open] > summary::before { transform: rotate(90deg); }
 
 .grafica .umbral.limite { stroke: var(--no); }
 
-.grafica .ahora { stroke: var(--texto); stroke-width: 1; opacity: 0.4; }
+.grafica .ahora { stroke: var(--texto); stroke-width: 1; opacity: 0.45; }
 
 .grafica .franja { fill: var(--separador); }
 
@@ -409,33 +428,99 @@ details[open] > summary::before { transform: rotate(90deg); }
 
 .grafica .franja.no { fill: var(--no); }
 
-.grafica text { font-size: 9px; fill: var(--suave); text-anchor: middle; }
+.grafica text { font-size: 9px; fill: var(--suave); text-anchor: middle; stroke: none; }
 
 .grafica text.inicio { text-anchor: start; }
 
-.grafica figcaption { margin: 0.25rem 0.2rem 0; }
+.grafica figcaption { margin-top: 0.2rem; }
 
 .ley { display: inline-block; width: 14px; height: 0; border-top: 2.5px solid var(--acento); vertical-align: middle; }
 
 .ley.rachas { border-top: 1.5px dashed var(--suave); }
 
+.lista-horas { list-style: none; padding: 0.1rem 0 0.4rem; margin: 0 -1rem; padding-inline: 1rem; display: flex; gap: 0.4rem; overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none; }
+
+.lista-horas::-webkit-scrollbar { display: none; }
+
+.hora { flex: 0 0 auto; scroll-snap-align: start; }
+
+.hora > button {
+  width: 4.1rem;
+  display: grid;
+  justify-items: center;
+  gap: 0.2rem;
+  padding: 0.5rem 0.2rem 0.45rem;
+  border-radius: 14px;
+  background: var(--tarjeta-2);
+  border: 1px solid transparent;
+  color: var(--texto);
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
+.hora.actual > button { border-color: var(--suave); }
+
+.hora.abierta > button { border-color: var(--acento); box-shadow: inset 0 0 0 1px var(--acento); background: var(--tarjeta); }
+
+.hora.pasada > button { opacity: 0.5; }
+
+.h-hora { font-size: 0.75rem; font-weight: 700; color: var(--suave); }
+
+.h-estado { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 800; background: var(--sin-dato); color: var(--tarjeta); }
+
+.hora.ok .h-estado { background: var(--ok); }
+
+.hora.precaucion .h-estado { background: var(--precaucion); }
+
+.hora.no .h-estado { background: var(--no); }
+
+.h-viento { font-size: 1.2rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; }
+
+.h-racha { display: flex; align-items: center; gap: 0.1rem; font-size: 0.75rem; color: var(--suave); }
+
+.h-racha .ico { width: 12px; height: 12px; }
+
+.unidades-horas { margin: 0.1rem 0 0; }
+
+.detalle-hora { margin-top: 0.75rem; padding: 0.75rem 0.85rem; border-radius: 14px; background: var(--tarjeta-2); border-left: 4px solid var(--sin-dato); }
+
+.detalle-hora.ok { border-left-color: var(--ok); }
+
+.detalle-hora.precaucion { border-left-color: var(--precaucion); }
+
+.detalle-hora.no { border-left-color: var(--no); }
+
+.detalle-hora h3 { margin: 0 0 0.3rem; font-size: 1rem; font-weight: 750; }
+
+.detalle-hora .factor { border-top-color: var(--borde); }
+
+.pista-horas { text-align: center; margin-top: 0.6rem; }
+
+.chip { display: inline-block; text-align: center; padding: 0.15rem 0.5rem; border-radius: 999px; font-size: 0.75rem; font-weight: 700; background: var(--tarjeta-2); color: var(--sin-dato); }
+
+.chip.ok { background: var(--ok-fondo); color: var(--ok); }
+
+.chip.precaucion { background: var(--precaucion-fondo); color: var(--precaucion); }
+
+.chip.no { background: var(--no-fondo); color: var(--no); }
+
 /* Perfil de viento */
-.perfil-viento { padding: 0.5rem 0 0.3rem; }
+.perfil-viento { padding: 0.3rem 0 0.4rem; }
 
 .perfil-viento ul { list-style: none; padding: 0; margin: 0.3rem 0 0; display: grid; gap: 0.35rem; }
 
-.perfil-viento li { display: grid; grid-template-columns: 6.5rem 1fr 5.5rem; gap: 0.5rem; align-items: center; font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+.perfil-viento li { display: grid; grid-template-columns: 6.2rem 1fr 5.2rem; gap: 0.5rem; align-items: center; font-size: 0.85rem; font-variant-numeric: tabular-nums; }
 
-.perfil-viento li.vuelo { font-weight: 700; }
+.perfil-viento li.vuelo { font-weight: 750; }
 
-.perfil-viento meter { width: 100%; height: 0.75rem; }
+.perfil-viento meter { width: 100%; height: 0.7rem; }
 
 .pv-valor { text-align: right; }
 
-/* Lista de comprobación */
+/* ── Lista de comprobación ───────────────────────────────────────── */
 .lista-check { list-style: none; padding: 0; margin: 0; display: grid; }
 
-.lista-check li { border-top: 0.5px solid var(--separador); }
+.lista-check li { border-top: 1px solid var(--separador); }
 
 .lista-check li:first-child { border-top: 0; }
 
@@ -443,68 +528,87 @@ details[open] > summary::before { transform: rotate(90deg); }
 
 .casilla input { width: 22px; height: 22px; margin: 0; accent-color: var(--ok); flex: none; }
 
-/* Ajustes */
-.rejilla-ajustes, fieldset { display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem; margin-top: 0.5rem; }
+/* ── Ajustes y pie ───────────────────────────────────────────────── */
+.rejilla-ajustes, fieldset { display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem; margin-top: 0.4rem; }
 
 .rejilla-ajustes label, fieldset label { display: grid; gap: 0.35rem; font-size: 0.8rem; color: var(--suave); align-content: start; }
 
 .rejilla-ajustes .casilla, fieldset .casilla { display: flex; color: var(--texto); font-size: 0.95rem; }
 
-fieldset { border: 0; background: var(--tarjeta-2); border-radius: 14px; padding: 0.85rem; }
+fieldset { border: 1px solid var(--borde); border-radius: 14px; padding: 0.85rem; margin-top: 0.85rem; }
 
-legend { font-weight: 700; padding: 0; float: left; width: 100%; margin-bottom: 0.4rem; }
+legend { font-weight: 700; padding: 0 0.3rem; font-size: 0.9rem; }
 
-/* Pie */
-.pie { text-align: center; font-size: 0.9rem; display: grid; gap: 0.2rem; }
+.pie p { margin: 0.35rem 0; }
 
-.pie a { color: var(--acento); font-weight: 600; text-decoration: none; }
+.pie a { color: var(--acento); font-weight: 600; }
 
-.pie p { margin: 0.2rem 0; }
+.pie .acciones { margin-top: 0.75rem; }
 
-/* Hojas (diálogos) */
+/* ── Barra de pestañas ───────────────────────────────────────────── */
+.pestanas {
+  position: fixed;
+  inset: auto 0 0;
+  z-index: 6;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  padding: 0.3rem 8px calc(0.3rem + env(safe-area-inset-bottom));
+  background: var(--cabecera);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid var(--borde);
+}
+
+.pestanas button { border: 0; background: transparent; color: var(--suave); display: grid; justify-items: center; gap: 0.1rem; padding: 0.3rem; min-height: 52px; font-size: 0.7rem; font-weight: 650; }
+
+.pestanas button[aria-selected="true"] { color: var(--acento); }
+
+.pestanas svg { width: 24px; height: 24px; }
+
+/* ── Diálogos ────────────────────────────────────────────────────── */
 dialog {
   width: min(560px, calc(100vw - 24px));
   max-height: 88vh;
-  border: 0;
-  border-radius: 22px;
+  border: 1px solid var(--borde);
+  border-radius: 20px;
   background: var(--tarjeta);
   color: var(--texto);
-  padding: 1.1rem;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  padding: 1rem;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.35);
 }
 
-dialog::backdrop { background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(2px); }
+dialog::backdrop { background: rgba(7, 11, 20, 0.55); }
 
 .dlg-cabecera { display: flex; justify-content: space-between; align-items: center; }
 
-.dlg-cabecera h2 { margin: 0; font-size: 1.25rem; font-weight: 700; letter-spacing: -0.02em; }
+.dlg-cabecera h2 { margin: 0; font-size: 1.2rem; font-weight: 750; }
 
-.dlg-cabecera .icono { background: var(--tarjeta-2); color: var(--suave); border-radius: 50%; min-width: 36px; min-height: 36px; width: 36px; height: 36px; padding: 0; }
+.dlg-cabecera .icono { color: var(--suave); }
 
 .buscar { display: flex; gap: 0.5rem; margin-top: 0.85rem; }
 
-.buscar button { background: var(--boton); color: var(--sobre-boton); }
+.buscar button { background: var(--boton); border-color: var(--boton); color: var(--sobre-boton); }
 
-dialog h3 { font-size: 0.8rem; font-weight: 600; color: var(--suave); text-transform: uppercase; letter-spacing: 0.03em; margin: 1.1rem 0 0.4rem; }
+dialog h3 { font-size: 0.75rem; font-weight: 700; color: var(--suave); text-transform: uppercase; letter-spacing: 0.08em; margin: 1.1rem 0 0.4rem; }
 
 .lista-lugares { list-style: none; padding: 0; margin: 0.5rem 0 0; display: grid; gap: 0.4rem; }
 
 .lista-lugares li { display: flex; gap: 0.35rem; }
 
-.lista-lugares li > button:first-child { flex: 1; text-align: left; background: var(--tarjeta-2); color: var(--texto); font-weight: 600; }
+.lista-lugares li > button:first-child { flex: 1; text-align: left; color: var(--texto); font-weight: 650; }
 
 .lista-lugares li > .icono { color: var(--suave); }
 
-.resumen-fav { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.35rem; font-variant-numeric: tabular-nums; font-weight: 400; }
+.resumen-fav { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.35rem; font-variant-numeric: tabular-nums; font-weight: 500; }
 
-.diagnostico { width: 100%; font: 0.75rem/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--texto); background: var(--tarjeta-2); border: 0; border-radius: var(--radio-pequeno); padding: 0.6rem; resize: vertical; }
+.diagnostico { width: 100%; font: 0.75rem/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--texto); background: var(--tarjeta-2); border: 1px solid var(--borde); border-radius: var(--radio-pequeno); padding: 0.6rem; resize: vertical; }
 
-/* Diario de vuelos */
-.resumen-diario { list-style: none; padding: 0; margin: 0.5rem 0; display: grid; gap: 0.35rem; font-size: 0.9rem; }
+/* ── Diario ──────────────────────────────────────────────────────── */
+.resumen-diario { list-style: none; padding: 0; margin: 0.3rem 0 0.6rem; display: grid; gap: 0.35rem; font-size: 0.9rem; }
 
 .lista-vuelos { list-style: none; padding: 0; margin: 0.5rem 0; display: grid; }
 
-.lista-vuelos li { position: relative; padding: 0.6rem 2.8rem 0.6rem 0; border-top: 0.5px solid var(--separador); }
+.lista-vuelos li { position: relative; padding: 0.6rem 2.8rem 0.6rem 0; border-top: 1px solid var(--separador); }
 
 .lista-vuelos .borrar { position: absolute; right: 0; top: 0.45rem; color: var(--no); }
 
@@ -514,19 +618,19 @@ dialog h3 { font-size: 0.8rem; font-weight: 600; color: var(--suave); text-trans
 
 .valoracion-mal { color: var(--no); font-weight: 700; }
 
-.valoracion { display: flex; flex-wrap: wrap; gap: 1rem; margin: 0.6rem 0; }
+.valoracion { display: flex; flex-wrap: wrap; gap: 1rem; margin: 0.6rem 0; border: 1px solid var(--borde); border-radius: 12px; padding: 0.4rem 0.8rem; }
 
 .nota-vuelo { display: grid; gap: 0.35rem; font-size: 0.8rem; color: var(--suave); margin-bottom: 0.85rem; }
 
-.nota-vuelo textarea { width: 100%; color: var(--texto); background: var(--tarjeta-2); border: 0; border-radius: var(--radio-pequeno); padding: 0.6rem; }
+.nota-vuelo textarea { width: 100%; color: var(--texto); background: var(--tarjeta-2); border: 1px solid var(--borde); border-radius: var(--radio-pequeno); padding: 0.6rem; }
 
-/* Informe para el cliente: solo existe al imprimir */
+/* ── Informe para el cliente: solo existe al imprimir ────────────── */
 #informe { display: none; }
 
 @media print {
   body > *:not(#informe) { display: none !important; }
 
-  #informe { display: block; color: #000; background: #fff; font: 11pt/1.35 -apple-system, "Helvetica Neue", Arial, sans-serif; }
+  #informe { display: block; color: #000; background: #fff; font: 11pt/1.35 system-ui, "Helvetica Neue", Arial, sans-serif; }
 
   #informe h1 { font-size: 18pt; margin: 0 0 0.3rem; }
 
@@ -539,11 +643,11 @@ dialog h3 { font-size: 0.8rem; font-weight: 600; color: var(--suave); text-trans
   #informe .nota { color: #333; font-size: 9pt; }
 }
 
+/* ── Pantallas estrechas ─────────────────────────────────────────── */
 @media (max-width: 420px) {
-  .resumen { grid-template-columns: repeat(2, 1fr); }
-  .hora > button { grid-template-columns: 2.9rem 3.1rem 1fr 1.15fr 0.75fr; gap: 0.2rem; font-size: 0.85rem; }
-  .chip { padding: 0.15rem 0.4rem; }
-  .hora > button .h-dato:last-child { display: none; }
+  .heroe { grid-template-columns: 8.2rem 1fr; gap: 0.5rem; }
+  .veredicto .grande { font-size: 1.55rem; }
+  .resumen strong { font-size: 1.1rem; }
   .rejilla-ajustes, fieldset { grid-template-columns: 1fr; }
 }
 

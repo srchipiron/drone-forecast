@@ -149,6 +149,10 @@ try {
 
   // Diagnóstico: abre, trae lo importante y queda copiado (o seleccionado).
   await ctx.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: url.replace(/\/$/, '') });
+  // Pestañas: el Diagnóstico vive en Ajustes; Previsión oculta mientras tanto.
+  await page.locator('[data-vista="ajustes"]').click();
+  assert.equal(await page.locator('#vista-prevision').isHidden(), true);
+  assert.equal(await page.locator('[data-vista="ajustes"]').getAttribute('aria-selected'), 'true');
   await page.getByRole('button', { name: 'Diagnóstico' }).click();
   const diag = await page.inputValue('#txt-diagnostico');
   assert.match(diag, /^Drone Forecast v\d+\.\d+\.\d+/);
@@ -159,6 +163,19 @@ try {
   await page.locator('#estado-diagnostico').filter({ hasText: /Copiado|Copiar/ }).waitFor();
   assert.equal(await page.evaluate(() => navigator.clipboard.readText()), diag, 'el portapapeles tiene el informe');
   await page.locator('#dlg-diagnostico button[value="cerrar"]').click();
+  await page.locator('[data-vista="prevision"]').click();
+
+  // Nada ensancha la página más que la pantalla del móvil: las tiras se deslizan.
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'sin desbordamiento horizontal');
+  assert.ok(await page.evaluate(() => { const t = document.querySelector('#horas .lista-horas'); return t.scrollWidth > t.clientWidth; }), 'la tira de horas se desliza');
+  assert.ok(
+    await page.evaluate(() => {
+      const t = document.querySelector('#horas .lista-horas').getBoundingClientRect();
+      const a = document.querySelector('#horas .hora.actual').getBoundingClientRect();
+      return a.left >= t.left - 1 && a.right <= t.right + 1;
+    }),
+    'la tira empieza en la hora actual, a la vista',
+  );
 
   // Gráfica del día encima de la lista de horas.
   assert.equal(await page.locator('#horas .grafica svg path.viento').count(), 1);
@@ -173,6 +190,7 @@ try {
   await page.fill('#txt-vuelo', 'Rachas en la cresta <b>');
   await page.locator('#form-vuelo button[type="submit"]').click();
   await page.locator('#diario .lista-vuelos li').first().waitFor();
+  assert.equal(await page.locator('[data-vista="diario"]').getAttribute('aria-selected'), 'true', 'al guardar te lleva al diario');
   assert.match(await page.textContent('#diario .lista-vuelos'), /Getafe<img[^]*Regular[^]*«Rachas en la cresta <b>»/);
   assert.match(await page.textContent('#diario-cuenta'), /\(1\)/);
   assert.match(await page.textContent('#diario .resumen-diario'), /1 vuelo: 0 bien · 1 regular · 0 mal/);
@@ -181,9 +199,10 @@ try {
   assert.match((await descarga).suggestedFilename(), /^diario-vuelos-\d{4}-\d\d-\d\d\.json$/);
   await page.reload();
   assert.match(await page.textContent('#diario-cuenta'), /\(1\)/, 'el diario se guarda');
-  await page.locator('#diario summary').click();
+  await page.locator('[data-vista="diario"]').click();
   await page.locator('[data-borrar-vuelo]').click();
   assert.equal(await page.locator('#diario .lista-vuelos li').count(), 0);
+  await page.locator('[data-vista="prevision"]').click();
 
   // Favorito: al guardarlo sale su resumen, y coincide con la pantalla principal.
   await page.locator('#btn-lugar').click();
@@ -216,14 +235,14 @@ try {
   });
   await p2.route('https://servais.enaire.es/**', (x) => x.abort());
   await p2.goto(url);
-  await p2.locator('#fuentes').filter({ hasText: /24 órbitas de CelesTrak/ }).waitFor();
+  await p2.locator('#fuentes').filter({ hasText: /24 órbitas de CelesTrak/ }).waitFor({ state: 'attached' });
   await p2.locator('#ahora .enaire.sin-dato').filter({ hasText: 'No se pudo consultar ENAIRE' }).waitFor();
   assert.match(await p2.textContent('#ahora .resumen'), /Satélites\s*\d+/);
   const antes = pedidasCelestrak;
   await p2.unroute('https://celestrak.org/**');
   await p2.route('https://celestrak.org/**', (x) => x.abort());
   await p2.reload();
-  await p2.locator('#fuentes').filter({ hasText: /24 órbitas guardadas/ }).waitFor();
+  await p2.locator('#fuentes').filter({ hasText: /24 órbitas guardadas/ }).waitFor({ state: 'attached' });
   assert.equal(antes, 4, 'una petición por constelación');
   gnssVacio = false;
 

@@ -33,20 +33,15 @@ const TEXTO = [
   ['sobre-boton', 'boton'],
   ['ok', 'tarjeta'], ['precaucion', 'tarjeta'], ['no', 'tarjeta'], ['sin-dato', 'tarjeta-2'],
   ['ok', 'ok-fondo'], ['precaucion', 'precaucion-fondo'], ['no', 'no-fondo'],
-  ['texto', 'precaucion-fondo'],
+  ['texto', 'precaucion-fondo'], ['acento', 'fondo'],
 ];
-const BLANCO_SOBRE = ['heroe-ok', 'heroe-precaucion', 'heroe-no', 'heroe-ok-2', 'heroe-precaucion-2', 'heroe-no-2'];
-const SIMBOLOS = [['tarjeta', 'ok'], ['tarjeta', 'precaucion'], ['tarjeta', 'no'], ['tarjeta', 'sin-dato']];
+const SIMBOLOS = [['tarjeta', 'ok'], ['tarjeta', 'precaucion'], ['tarjeta', 'no'], ['tarjeta', 'sin-dato'], ['ok', 'tarjeta-2'], ['precaucion', 'tarjeta-2'], ['no', 'tarjeta-2']];
 
 for (const [nombre, t] of [['claro', claro], ['oscuro', oscuro]]) {
   test(`modo ${nombre}: todo el texto pasa 4,5:1`, () => {
     for (const [a, b] of TEXTO) {
       const c = contraste(t[a], t[b]);
       assert.ok(c >= 4.5, `${a} (${t[a]}) sobre ${b} (${t[b]}): ${c.toFixed(2)}:1`);
-    }
-    for (const fondo of BLANCO_SOBRE) {
-      const c = contraste('#ffffff', t[fondo]);
-      assert.ok(c >= 4.5, `blanco sobre ${fondo} (${t[fondo]}): ${c.toFixed(2)}:1`);
     }
   });
   test(`modo ${nombre}: los símbolos ✓ ! ✕ pasan 3:1`, () => {

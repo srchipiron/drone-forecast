@@ -3,6 +3,13 @@
 Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
 `0.0.X` para correcciones. La versión sale en el pie de la app.
 
+## 0.15.1
+
+- **Más rápida.** Calcular la previsión de la semana tarda menos de la
+  mitad que antes: la app ya no rehace el formato de la fecha en cada hora.
+  Se nota al abrirla, al cambiar de lugar o de ajustes y al ver los
+  favoritos, sobre todo en móviles modestos.
+
 ## 0.15.0
 
 **Pasar de día deslizando el dedo.**

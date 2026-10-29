@@ -21,12 +21,24 @@ export function puntoCardinal(grados) {
 }
 
 // «14:00» en la hora del lugar. Una zona rara (de una caché vieja) no congela
-// nada: se usa la hora del móvil.
+// nada: se usa la hora del móvil. Un formateador por zona, reutilizado (se
+// llama cientos de veces en cada repintado).
+const formatosHora = new Map();
+
+function formatoHora(zona) {
+  if (!formatosHora.has(zona)) {
+    let f;
+    try {
+      f = new Intl.DateTimeFormat('es-ES', { hour: '2-digit', minute: '2-digit', timeZone: zona });
+    } catch {
+      f = new Intl.DateTimeFormat('es-ES', { hour: '2-digit', minute: '2-digit' });
+    }
+    formatosHora.set(zona, f);
+  }
+  return formatosHora.get(zona);
+}
+
 export function fmtHora(ms, zona) {
   if (!Number.isFinite(ms)) return '—';
-  try {
-    return new Intl.DateTimeFormat('es-ES', { hour: '2-digit', minute: '2-digit', timeZone: zona }).format(new Date(ms));
-  } catch {
-    return new Intl.DateTimeFormat('es-ES', { hour: '2-digit', minute: '2-digit' }).format(new Date(ms));
-  }
+  return formatoHora(zona).format(new Date(ms));
 }

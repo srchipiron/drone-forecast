@@ -47,10 +47,16 @@ export function normalizarAjustes(a = {}) {
   return r;
 }
 
+// Crear un Intl.DateTimeFormat cuesta (en el móvil, mucho): uno por zona y se reutiliza.
+const formatosDia = new Map();
+
 function claveDia(ms, zona) {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: zona, year: 'numeric', month: '2-digit', day: '2-digit' }).format(
-    new Date(ms),
-  );
+  let f = formatosDia.get(zona);
+  if (!f) {
+    f = new Intl.DateTimeFormat('en-CA', { timeZone: zona, year: 'numeric', month: '2-digit', day: '2-digit' });
+    formatosDia.set(zona, f);
+  }
+  return f.format(new Date(ms));
 }
 
 function sumaPrevia(horas, k, n) {

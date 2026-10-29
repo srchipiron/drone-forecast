@@ -3,6 +3,18 @@
 Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
 `0.0.X` para correcciones. La versión sale en el pie de la app.
 
+## 0.18.0
+
+**Tus otros drones.**
+
+- En **Ajustes → Mis drones** marca los que tienes. El cartel añade
+  debajo de las condiciones cómo está ahora cada uno: «✓ Volar Parrot
+  ANAFI UKR», «! Ojo DJI Matrice 4E / 4T (viento a 120 m, rachas)»,
+  «✕ No DJI Neo». Sirve para saber, cuando el que tienes elegido no puede,
+  si te vale llevar otro.
+- Se calcula igual que el veredicto principal (mismo lugar, hora, altura y
+  misión), solo cambia el dron.
+
 ## 0.17.0
 
 - **Próxima ventana**, en lugar de «Mejor ventana hoy». Si hoy queda una

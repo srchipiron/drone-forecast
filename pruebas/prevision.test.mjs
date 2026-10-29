@@ -166,3 +166,16 @@ test('próxima ventana: la primera verde de los días que vienen; si no hay verd
   assert.equal(proximaVentana([{ clave: 'a', ventana: null }, { clave: 'b', ventana: v('precaucion') }]).clave, 'b');
   assert.equal(proximaVentana([{ clave: 'a', ventana: null }]), null);
 });
+
+test('mis drones: el veredicto de ahora con cada uno de los otros drones del piloto', () => {
+  // 7 m/s a 10 m → ~9,8 a 120 m: ámbar para el Mini 5 Pro (12 m/s), rojo para el Neo (8 m/s), verde para el ANAFI UKR (15 m/s).
+  const meteo = leerPrevision(respuestaOpenMeteo({ viento: 7, racha: 7 }));
+  const p = construirPrevision({ meteo, lugar: LUGAR, ajustes: { misDrones: ['mini5pro', 'neo', 'anafiukr', 'basura', 'mini4pro'] }, ahora: AHORA });
+  assert.equal(p.actual.estado, 'precaucion');
+  const por = Object.fromEntries(p.otrosDrones.map((d) => [d.id, d]));
+  assert.deepEqual(Object.keys(por).sort(), ['anafiukr', 'neo'], 'sin el que ya está elegido, sin basura; el Mini 4 Pro retirado pasa a Mini 5 Pro y se quita');
+  assert.equal(por.neo.estado, 'no');
+  assert.ok(por.neo.motivos.some((m) => /Viento/.test(m)));
+  assert.equal(por.anafiukr.estado, 'ok');
+  assert.deepEqual(normalizarAjustes({ misDrones: 'neo' }).misDrones, [], 'lo que no es una lista no vale');
+});

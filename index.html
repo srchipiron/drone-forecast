@@ -13,7 +13,7 @@
   <link rel="icon" href="icons/icono.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/icono-192.png">
   <link rel="stylesheet" href="styles.css">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://services.swpc.noaa.gov https://celestrak.org https://servais.enaire.es; img-src 'self' data:; style-src 'self'; script-src 'self'; object-src 'none'; base-uri 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://services.swpc.noaa.gov https://celestrak.org https://servais.enaire.es; img-src 'self' data: https://tile.openstreetmap.org; style-src 'self'; script-src 'self'; object-src 'none'; base-uri 'none'">
 </head>
 <body>
   <header class="cabecera">
@@ -139,7 +139,13 @@
       <input id="txt-buscar" type="search" aria-label="Buscar lugar" placeholder="Pueblo, ciudad o paraje" autocomplete="off" enterkeyhint="search">
       <button type="submit">Buscar</button>
     </form>
-    <p class="nota">También vale «40.4168, -3.7038».</p>
+    <p class="nota">También vale «40.4168, -3.7038», o elígelo en el mapa.</p>
+    <button id="btn-mapa" type="button" class="boton-mapa" aria-expanded="false">Elegir en el mapa</button>
+    <div id="panel-mapa" hidden>
+      <div id="mapa" class="mapa" role="application" aria-label="Mapa: arrastra para moverte y toca el punto de vuelo"></div>
+      <p id="punto-mapa" class="nota">Toca el mapa donde vas a volar.</p>
+      <div class="acciones"><button id="btn-usar-punto" type="button" disabled>Usar este punto</button></div>
+    </div>
     <ul id="resultados" class="lista-lugares"></ul>
     <h3>Favoritos</h3>
     <ul id="favoritos" class="lista-lugares"></ul>

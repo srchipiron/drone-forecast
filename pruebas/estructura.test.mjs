@@ -52,6 +52,8 @@ test('la política de contenido solo deja hablar con las APIs que se usan', () =
   assert.doesNotMatch(csp, /unsafe-inline|unsafe-eval|\*/);
   const conecta = csp.match(/connect-src ([^;]+)/)[1].split(/\s+/);
   assert.deepEqual(conecta.sort(), ["'self'", 'https://api.open-meteo.com', 'https://geocoding-api.open-meteo.com', 'https://services.swpc.noaa.gov', 'https://celestrak.org', 'https://servais.enaire.es'].sort());
+  // Imágenes: las propias y las teselas del mapa de OpenStreetMap, nada más.
+  assert.deepEqual(csp.match(/img-src ([^;]+)/)[1].split(/\s+/).sort(), ["'self'", 'data:', 'https://tile.openstreetmap.org'].sort());
 });
 
 test('sin estilos en línea (la CSP los bloquearía)', () => {

@@ -14,6 +14,7 @@ import { perfilViento } from '../motor/viento.js';
 import { VERSION } from '../version.js';
 import { almacen } from './almacen.js';
 import { ETIQUETA, INTERVALO, comprobarAvisos } from './aviso.js';
+import { crearMapa } from './mapa.js';
 import { buscarLugar, cargarKp, cargarPrevision, cargarSatelites, cargarSoloPrevision, consultarEnaire, leerDescarga } from './datos.js';
 import { mensajeUbicacion, pedirUbicacion } from './ubicacion.js';
 
@@ -1003,6 +1004,36 @@ function pintarResultados() {
     : '<li class="nota">Nada con ese nombre.</li>';
 }
 
+// El mapa se crea al abrirlo (no antes: sin tamaño no sabe qué teselas pedir),
+// centrado en el lugar actual o, si no hay, en el centro de la Península.
+let mapa = null;
+let puntoMapa = null;
+
+function abrirMapa() {
+  const panel = $('#panel-mapa');
+  panel.hidden = !panel.hidden;
+  $('#btn-mapa').setAttribute('aria-expanded', String(!panel.hidden));
+  if (panel.hidden || mapa) return;
+  const centro = estado.lugar ?? { lat: 40.2, lon: -3.7 };
+  mapa = crearMapa($('#mapa'), {
+    lat: centro.lat,
+    lon: centro.lon,
+    z: estado.lugar ? 13 : 6,
+    alMarcar: (p) => {
+      puntoMapa = p;
+      $('#punto-mapa').textContent = `Punto: ${p.lat.toFixed(4)}, ${p.lon.toFixed(4)}`;
+      $('#btn-usar-punto').disabled = false;
+    },
+  });
+}
+
+function usarPuntoMapa() {
+  if (!puntoMapa) return;
+  const { lat, lon } = puntoMapa;
+  ponerLugar({ nombre: 'Punto del mapa', zona: `${lat.toFixed(4)}, ${lon.toFixed(4)}`, lat: Number(lat.toFixed(5)), lon: Number(lon.toFixed(5)) });
+  $('#dlg-lugar').close();
+}
+
 function abrirLugar() {
   pintarFavoritos();
   cargarResumenFavoritos();
@@ -1014,6 +1045,8 @@ function abrirLugar() {
 
 function enlazar() {
   $('#btn-lugar').addEventListener('click', abrirLugar);
+  $('#btn-mapa').addEventListener('click', abrirMapa);
+  $('#btn-usar-punto').addEventListener('click', usarPuntoMapa);
   $('#btn-gps').addEventListener('click', usarGPS);
   $('#btn-diagnostico').addEventListener('click', abrirDiagnostico);
   $('#btn-copiar-diagnostico').addEventListener('click', () => copiarDiagnostico());

@@ -711,6 +711,7 @@ function pintar() {
   pintarVistas();
   pintarDiario();
   pintarMisDrones();
+  pintarInstalar();
   pintarAvisoVentana();
   pintarPie();
 }
@@ -911,6 +912,42 @@ async function copiarDiagnostico(texto = $('#txt-diagnostico').value) {
     $('#txt-diagnostico').select();
     $('#estado-diagnostico').textContent = 'Mantén pulsado el texto y elige «Copiar».';
   }
+}
+
+// ---------- Instalar la app ----------
+
+// Chrome avisa de que la app se puede instalar (beforeinstallprompt); se
+// guarda el aviso para lanzarlo desde el botón en vez de esconderlo en el menú ⋮.
+let invitacion = null;
+
+const instalada = () => window.matchMedia?.('(display-mode: standalone)').matches || navigator.standalone === true;
+
+// Lo último que pasó al instalar (se queda aunque se repinte la pantalla).
+let mensajeInstalar = '';
+
+function pintarInstalar() {
+  const el = $('#instalar');
+  el.hidden = !invitacion && !instalada() && !mensajeInstalar;
+  if (el.hidden) return;
+  $('#btn-instalar').hidden = !invitacion;
+  $('#estado-instalar').textContent =
+    mensajeInstalar ||
+    (invitacion
+      ? 'Se abre desde la pantalla de inicio como una app más, sin la barra del navegador; funciona sin cobertura con la última previsión y permite el aviso de ventana.'
+      : 'Instalada: ábrela desde el icono de la pantalla de inicio.');
+}
+
+async function instalar() {
+  if (!invitacion) return;
+  const i = invitacion;
+  invitacion = null;
+  await i.prompt();
+  const { outcome } = await i.userChoice;
+  mensajeInstalar =
+    outcome === 'accepted'
+      ? 'Instalando: en unos segundos tendrás el icono en la pantalla de inicio.'
+      : 'Cancelado. Si cambias de idea, está en el menú ⋮ → «Instalar aplicación».';
+  pintarInstalar();
 }
 
 // ---------- Aviso de ventana ----------
@@ -1242,6 +1279,17 @@ function enlazar() {
   $('#form-vuelo').addEventListener('submit', guardarVuelo);
   $('#aj-aviso').addEventListener('change', (e) => activarAviso(e.target.checked));
   $('#btn-probar-aviso').addEventListener('click', probarAviso);
+  $('#btn-instalar').addEventListener('click', instalar);
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    invitacion = e;
+    pintarInstalar();
+  });
+  window.addEventListener('appinstalled', () => {
+    invitacion = null;
+    mensajeInstalar = 'Instalada: ábrela desde el icono de la pantalla de inicio.';
+    pintarInstalar();
+  });
   $('#form-buscar').addEventListener('submit', (e) => {
     e.preventDefault();
     buscar($('#txt-buscar').value);

@@ -193,6 +193,24 @@ try {
   await page.locator('[data-vista="ajustes"]').click();
   assert.equal(await page.locator('#vista-prevision').isHidden(), true);
   assert.equal(await page.locator('[data-vista="ajustes"]').getAttribute('aria-selected'), 'true');
+  // Instalar: sin invitación del navegador la tarjeta no sale; con ella, el
+  // botón lanza la ventana de instalación del navegador.
+  assert.ok(await page.locator('#instalar').isHidden(), 'sin invitación, nada que instalar');
+  await page.evaluate(() => {
+    const e = new Event('beforeinstallprompt', { cancelable: true });
+    e.prompt = async () => {
+      window.__instalar = (window.__instalar ?? 0) + 1;
+    };
+    e.userChoice = Promise.resolve({ outcome: 'accepted' });
+    window.dispatchEvent(e);
+    window.__cancelada = e.defaultPrevented;
+  });
+  assert.equal(await page.evaluate(() => window.__cancelada), true, 'se guarda para el botón (no sale la barra del navegador)');
+  await page.locator('#btn-instalar').click();
+  await page.locator('#estado-instalar').filter({ hasText: 'Instalando' }).waitFor();
+  assert.equal(await page.evaluate(() => window.__instalar), 1);
+  assert.ok(await page.locator('#btn-instalar').isHidden(), 'la invitación solo sirve una vez');
+
   // Aviso de ventana: Chromium tiene Periodic Background Sync, así que la
   // tarjeta sale; sin permiso de notificaciones no se queda activado.
   assert.ok(await page.locator('#avisos').isVisible(), 'tarjeta del aviso de ventana');

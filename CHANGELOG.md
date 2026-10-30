@@ -3,6 +3,16 @@
 Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
 `0.0.X` para correcciones. La versión sale en el pie de la app.
 
+## 0.19.0
+
+- **Instalar la app con un botón.** Cuando Chrome permite instalarla, en
+  Ajustes sale la tarjeta «Instalar la app» con su botón: un toque y
+  Chrome pregunta si quieres añadirla a la pantalla de inicio. Instalada
+  se abre como una app más, funciona sin cobertura con la última previsión
+  y es lo que hace falta para el aviso de ventana. Antes había que
+  buscarlo en el menú ⋮ del navegador.
+- Si ya la tienes instalada y la abres desde el icono, la tarjeta lo dice.
+
 ## 0.18.1
 
 - **Accesibilidad revisada con axe** (la herramienta estándar de

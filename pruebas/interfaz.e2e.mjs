@@ -268,7 +268,7 @@ try {
 
   // Nada ensancha la página, y la tabla de horas cabe entera sin deslizarla
   // de lado, también en un móvil estrecho de 360 px.
-  for (const ancho of [390, 360]) {
+  for (const ancho of [390, 360, 320]) {
     await page.setViewportSize({ width: ancho, height: 844 });
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `sin desbordamiento horizontal a ${ancho} px`);
     assert.ok(await page.evaluate(() => { const t = document.querySelector('#horas .tabla-horas-marco'); return t.scrollWidth <= t.clientWidth; }), `la tabla de horas cabe a ${ancho} px`);

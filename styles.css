@@ -319,7 +319,10 @@ main { max-width: 720px; margin: 0 auto; padding: 0.75rem 12px calc(5.5rem + env
 
 .lista-zonas { list-style: none; padding: 0; margin: 0.5rem 0 0; display: grid; }
 
-.zona { padding: 0.65rem 0; border-top: 1px solid var(--separador); display: grid; gap: 0.3rem; }
+.lista-zonas, .zonas-otras { min-width: 0; }
+
+/* minmax(0, 1fr): un correo o un nombre largo no ensanchan la ficha (ni la página). */
+.zona { padding: 0.65rem 0; border-top: 1px solid var(--separador); display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.3rem; overflow-wrap: anywhere; }
 
 .zona:first-child { border-top: 0; }
 
@@ -335,9 +338,9 @@ main { max-width: 720px; margin: 0 auto; padding: 0.75rem 12px calc(5.5rem + env
 
 .zona.precaucion .zona-destacado { border-left-color: var(--precaucion); }
 
-.zona-contactos { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.zona-contactos { display: flex; flex-wrap: wrap; gap: 0.4rem; min-width: 0; }
 
-.zonas-uas a.contacto { display: inline-flex; align-items: center; gap: 0.35rem; min-height: 40px; padding: 0.3rem 0.7rem; border: 1px solid var(--borde); border-radius: 999px; background: var(--tarjeta); font-size: 0.85rem; text-decoration: none; max-width: 100%; }
+.zonas-uas a.contacto { min-width: 0; display: inline-flex; align-items: center; gap: 0.35rem; min-height: 40px; padding: 0.3rem 0.7rem; border: 1px solid var(--borde); border-radius: 999px; background: var(--tarjeta); font-size: 0.85rem; text-decoration: none; max-width: 100%; }
 
 .contacto .ico { width: 16px; height: 16px; color: var(--acento); }
 

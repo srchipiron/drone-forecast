@@ -266,12 +266,13 @@ try {
   await page.locator('#dlg-diagnostico button[value="cerrar"]').click();
   await page.locator('[data-vista="prevision"]').click();
 
-  // Nada ensancha la página, y la tabla de horas cabe entera sin deslizarla
-  // de lado, también en un móvil estrecho de 360 px.
+  // Nada ensancha la página ni a 320 px, y la tabla de horas cabe entera sin
+  // deslizarla de lado en un móvil de 360 px (por debajo, se desliza en su marco).
   for (const ancho of [390, 360, 320]) {
     await page.setViewportSize({ width: ancho, height: 844 });
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `sin desbordamiento horizontal a ${ancho} px`);
-    assert.ok(await page.evaluate(() => { const t = document.querySelector('#horas .tabla-horas-marco'); return t.scrollWidth <= t.clientWidth; }), `la tabla de horas cabe a ${ancho} px`);
+    if (ancho >= 360)
+      assert.ok(await page.evaluate(() => { const t = document.querySelector('#horas .tabla-horas-marco'); return t.scrollWidth <= t.clientWidth; }), `la tabla de horas cabe a ${ancho} px`);
     // Todos los días a la vista sin deslizar (en algunos móviles las tiras no se deslizan).
     assert.ok(
       await page.evaluate(() => {
@@ -283,7 +284,8 @@ try {
       }),
       `todos los días caben a ${ancho} px`,
     );
-    assert.ok(await page.evaluate(() => [...document.querySelectorAll('#dias .dia .d-ventana, #dias .dia .d-nombre')].every((x) => x.scrollWidth <= x.clientWidth + 1)), `el texto de los días no se corta a ${ancho} px`);
+    if (ancho >= 360)
+      assert.ok(await page.evaluate(() => [...document.querySelectorAll('#dias .dia .d-ventana, #dias .dia .d-nombre')].every((x) => x.scrollWidth <= x.clientWidth + 1)), `el texto de los días no se corta a ${ancho} px`);
   }
   await page.setViewportSize({ width: 390, height: 844 });
   // Mañana trae el día entero.

@@ -3,6 +3,18 @@
 Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
 `0.0.X` para correcciones. La versión sale en el pie de la app.
 
+## 0.20.0
+
+- **Compartir dice más.** Si hoy y mañana no se puede volar, el mensaje
+  añade cuándo es la próxima ventana («Próxima ventana: mar 23
+  10:00–14:00»), o que no la hay en toda la semana. Y si tienes marcados
+  «Mis drones», una línea con cómo está cada uno ahora («Otros drones ahora:
+  DJI Mavic 3 Enterprise ✓, DJI Neo ✕»).
+- La mejora diaria tiene trabajo otra vez: hay cinco propuestas nuevas en
+  la lista (zonas de ENAIRE en el mapa, autonomía estimada, diario a CSV,
+  vuelo planificado y ventanas de la semana para todos tus drones). Puedes
+  reordenarlas o quitar las que no quieras.
+
 ## 0.19.1
 
 - **Vuelve el DJI Mavic 3 Enterprise (M3E / M3T)**, en el grupo DJI

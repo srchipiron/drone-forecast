@@ -24,3 +24,22 @@ test('compartir: si no se puede volar dice por qué; sin ventana lo dice', () =>
   assert.match(t, /Mejor ventana hoy: sin ventana/);
   assert.doesNotMatch(t, /https/, 'sin dirección si no se pasa');
 });
+
+test('compartir: si hoy y mañana no hay ventana, dice cuándo es la próxima; y añade tus otros drones', () => {
+  // Viento fuerte los dos primeros días y tranquilo después.
+  const p = construirPrevision({
+    meteo: leerPrevision(respuestaOpenMeteo({ viento: (k) => (k < 48 ? 20 : 3), racha: (k) => (k < 48 ? 25 : 4) })),
+    lugar: LUGAR,
+    ajustes: { misDrones: ['neo', 'anafiukr'] },
+    ahora: AHORA,
+  });
+  const t = textoCompartir(p, { nombre: 'Getafe' });
+  assert.match(t, /Mejor ventana hoy: sin ventana\nMañana: sin ventana\nPróxima ventana: mar 23 \d\d:00–\d\d:00/);
+  assert.match(t, /Otros drones ahora: DJI Neo ✕, Parrot ANAFI UKR ✕/);
+});
+
+test('compartir: sin nada volable en toda la previsión, lo dice', () => {
+  const t = textoCompartir(prev({ viento: 20, racha: 25 }), { nombre: 'Tarifa' });
+  assert.match(t, /Sin ventana en los próximos 7 días/);
+  assert.doesNotMatch(t, /Otros drones/, 'sin otros drones marcados no sale la línea');
+});

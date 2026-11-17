@@ -119,7 +119,7 @@ try {
   await page.locator('[data-accion="compartir"]').click();
   const compartido = await page.evaluate(() => window.__compartido);
   assert.match(compartido.title, /^Drone Forecast · Getafe/);
-  assert.match(compartido.text, /^🚁 Getafe<img[^\n]* · DJI Mini 5 Pro a 120 m\nAhora \(\d\d:00\): [^\n]+\nViento \d+ km\/h, rachas \d+ km\/h\nMejor ventana hoy: [^\n]+\nMañana: [^\n]+\nhttp:\/\/127\.0\.0\.1:\d+\/$/);
+  assert.match(compartido.text, /^🚁 Getafe<img[^\n]* · DJI Mini 5 Pro a 120 m\nAhora \(\d\d:00\): [^\n]+\nViento \d+ km\/h, rachas \d+ km\/h\nMejor ventana hoy: [^\n]+\nMañana: [^\n]+\n(Sin ventana en los próximos [78] días\n)?http:\/\/127\.0\.0\.1:\d+\/$/);
 
   // Selector de dron: la gama actual agrupada por marca, Mini 5 Pro por defecto.
   assert.equal(await page.inputValue('#sel-dron'), 'mini5pro');

@@ -3,6 +3,11 @@
 
 import { fmtHora, fmtViento } from './unidades.js';
 
+const SIMBOLO = { ok: '✓', precaucion: '!', no: '✕', 'sin-dato': '–' };
+
+// «sáb 31» de una clave AAAA-MM-DD (a mediodía UTC: el día no se mueve por la zona).
+const diaCorto = (clave) => new Intl.DateTimeFormat('es-ES', { weekday: 'short', day: 'numeric', timeZone: 'UTC' }).format(new Date(`${clave}T12:00:00Z`));
+
 const VEREDICTO = { ok: 'Se puede volar', precaucion: 'Con precaución', no: 'No volar', 'sin-dato': 'Sin datos' };
 
 function ventana(d, zona) {
@@ -27,6 +32,11 @@ export function textoCompartir(p, lugar, url = '') {
   }
   l.push(`Mejor ventana hoy: ${ventana(p.dias[0], p.zona)}`);
   if (p.dias[1]) l.push(`Mañana: ${ventana(p.dias[1], p.zona)}`);
+  // Si ni hoy ni mañana hay verde, cuándo es la primera (o que no la hay en toda la previsión).
+  const x = p.proxima;
+  if (!x) l.push(`Sin ventana en los próximos ${p.dias.length} días`);
+  else if (x.k > 1) l.push(`Próxima ventana: ${diaCorto(x.clave)} ${ventana(p.dias[x.k], p.zona)}`);
+  if (p.otrosDrones?.length) l.push(`Otros drones ahora: ${p.otrosDrones.map((d) => `${d.nombre} ${SIMBOLO[d.estado]}`).join(', ')}`);
   if (url) l.push(url);
   return l.join('\n');
 }

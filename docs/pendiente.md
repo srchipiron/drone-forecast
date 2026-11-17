@@ -39,3 +39,22 @@ bloqueada (con el motivo, y se pasa a la siguiente).
 - [x] **Aviso de ventana** (0.11.0): con la app instalada, si el navegador lo permite
   (Periodic Background Sync), una notificación cuando mañana haya una ventana
   verde en un favorito. Si no lo permite, el botón no sale.
+
+### Propuestas (17-11-2026; Javi puede reordenarlas o tacharlas)
+
+- [ ] **Zonas de ENAIRE en el mapa**: al elegir el punto en el mapa, dibujar
+  encima las zonas UAS que devuelve ENAIRE para la vista (consulta por
+  rectángulo en vez de por punto), con su color por tipo. Sin librerías: SVG
+  encima de las teselas.
+- [ ] **Autonomía estimada**: en el cartel, una línea con la autonomía
+  orientativa del dron (minutos de la ficha) recortada por frío y viento en
+  contra. Cada recorte con su fuente (DJI: baterías por debajo de 15 °C rinden
+  menos; viento > 70 % del límite). Si no hay fuente seria, se descarta.
+- [ ] **Diario a CSV**: además del JSON, exportar el diario como CSV para
+  abrirlo en una hoja de cálculo (fecha, lugar, dron, misión, previsión y
+  valoración).
+- [ ] **Vuelo planificado**: marcar un día y hora de vuelo (para un cliente)
+  y que el aviso de ventana avise si la previsión de esa hora empeora a ámbar
+  o rojo.
+- [ ] **Ventanas de la semana para todos mis drones**: en la vista de días,
+  con «Mis drones» marcados, la mejor ventana de cada día para cada dron.

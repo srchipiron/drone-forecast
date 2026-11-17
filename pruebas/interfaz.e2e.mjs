@@ -58,8 +58,14 @@ try {
   page.on('pageerror', (e) => errores.push(e.message));
   page.on('console', (m) => m.type() === 'error' && !/Failed to load resource/.test(m.text()) && errores.push(m.text()));
   await page.route('https://api.open-meteo.com/**', (r) => r.fulfill({ json: r.request().url().includes('models=') ? { hourly: { time: meteo().hourly.time, wind_speed_10m_gfs_seamless: meteo().hourly.wind_speed_10m, wind_speed_10m_icon_seamless: meteo().hourly.wind_speed_10m } } : meteo() }));
-  const zonaAero = { features: [{ attributes: { name: 'CTR Madrid<script>', restriction: 'REQ_AUTHORIZATION', reason: 'AIR_TRAFFIC' } }] };
-  await page.route('https://servais.enaire.es/**', (r) => r.fulfill({ json: /FeatureServer\/2\/query/.test(r.request().url()) ? zonaAero : { features: [] } }));
+  // ENAIRE: la respuesta real de Getafe (capa aeronáutica), con un <script> metido en un nombre.
+  const zonaAero = JSON.parse(await readFile(join(raiz, 'pruebas/fixtures/enaire-getafe-aero.json'), 'utf8'));
+  zonaAero.features[0].attributes.name = 'MADRID/Getafe<script>';
+  const capasPedidas = [];
+  await page.route('https://servais.enaire.es/**', (r) => {
+    capasPedidas.push(r.request().url().match(/FeatureServer\/(\d+)\//)?.[1]);
+    return r.fulfill({ json: /FeatureServer\/2\/query/.test(r.request().url()) ? zonaAero : { features: [] } });
+  });
   await page.route('https://geocoding-api.open-meteo.com/**', (r) => r.fulfill({ json: { results: [{ name: 'Getafe<img src=x onerror="window.__xss=1">', admin1: 'Madrid', country: 'España', latitude: 40.3057, longitude: -3.7329 }] } }));
   await page.route('https://services.swpc.noaa.gov/**', (r) => r.fulfill({ json: [['time_tag', 'kp', 'observed'], ...Array.from({ length: 40 }, (_, k) => [new Date(inicio + k * 3 * 3600000).toISOString().slice(0, 19).replace('T', ' '), '2.00', 'predicted'])] }));
 
@@ -103,12 +109,30 @@ try {
   // La semana de un vistazo: cada día con una raya por hora de su color.
   assert.ok((await page.locator('#dias .dia').nth(1).locator('.d-barra i').count()) >= 23, 'barra de horas de mañana');
   assert.ok((await page.locator('#dias .dia').nth(1).locator('.d-barra i.ok, .d-barra i.precaucion, .d-barra i.no').count()) >= 23, 'cada raya con su estado');
-  await page.locator('#ahora .enaire.dentro').waitFor();
-  const enaire = await page.textContent('#ahora .enaire');
-  assert.match(enaire, /Dentro de 1 zona UAS de ENAIRE/);
-  assert.match(enaire, /CTR Madrid<script> · Aeronáutica · requiere autorización/, 'nombre escapado, capa y restricción');
-  assert.equal(await page.locator('#ahora .enaire script').count(), 0);
-  assert.equal(await page.locator('#ahora .enaire a').getAttribute('href'), 'https://drones.enaire.es/', 'ENAIRE bajo el veredicto');
+  // Zonas UAS: resumen a tu altura (120 m), una ficha por zona y lo que no te afecta aparte.
+  await page.locator('#zonas .zonas-resumen.precaucion').waitFor();
+  assert.deepEqual([...new Set(capasPedidas)].sort(), ['0', '2', '3'], 'solo las capas que existen');
+  assert.equal(await page.textContent('#zonas .zonas-titulo'), 'Necesitas autorización a 120 m');
+  assert.match(await page.textContent('#zonas .zonas-resumen'), /5 zonas te afectan\./);
+  assert.equal(await page.locator('#zonas > .lista-zonas > .zona').count(), 5);
+  assert.equal(await page.locator('#zonas .zonas-otras .zona').count(), 1, 'la TMA empieza a 305 m: aparte');
+  const zonasTexto = await page.textContent('#zonas');
+  assert.match(zonasTexto, /MADRID\/Getafe<script>/, 'el nombre escapado, tal cual');
+  assert.equal(await page.locator('#zonas script').count(), 0);
+  assert.doesNotMatch(zonasTexto, /<elem>|<font|<p>|&lt;/, 'el HTML de ENAIRE no se ve');
+  assert.match(zonasTexto, /Desde 60 m hasta 305 m sobre el suelo/);
+  assert.match(zonasTexto, /NO permitido el vuelo a drones excepto coordinación con el Aeródromo\./);
+  assert.equal(await page.locator('#zonas .zona-destacado').filter({ hasText: 'altura máxima de 60m' }).count(), 1, 'la frase que repiten el CTR y la ATZ, una vez');
+  assert.equal(await page.locator('#zonas a[href="mailto:seguridad_operacional_MCV@aena.es"]').count(), 1);
+  assert.equal(await page.locator('#zonas a[href="tel:+34913210900"]').count(), 1);
+  assert.equal(await page.locator('#zonas a[href="https://planea.enaire.es/nsf/login"]').first().getAttribute('rel'), 'noopener noreferrer');
+  assert.equal(await page.textContent('#ahora .zonas-fila a'), 'Autorización (5) ›', 'resumen en el cartel');
+  assert.equal(await page.locator('#ahora .zonas-fila a').getAttribute('href'), '#zonas');
+  // A 30 m solo te afectan las dos que empiezan en el suelo.
+  await page.selectOption('#sel-altitud', '30');
+  assert.match(await page.textContent('#zonas .zonas-resumen'), /2 zonas te afectan\./);
+  assert.equal(await page.locator('#zonas .zonas-otras .zona').count(), 4);
+  await page.selectOption('#sel-altitud', '120');
 
   // Compartir: el menú del móvil con lugar, dron y ventanas.
   await page.evaluate(() => {
@@ -151,7 +175,7 @@ try {
   await page.locator('[data-accion="informe"]').click();
   assert.equal(await page.evaluate(() => window.__impreso), 1);
   const informe = await page.textContent('#informe');
-  assert.match(informe, /Condiciones de vuelo[^]*Termografía fotovoltaica[^]*DJI Mini 5 Pro[^]*CTR Madrid/);
+  assert.match(informe, /Condiciones de vuelo[^]*Termografía fotovoltaica[^]*DJI Mini 5 Pro[^]*CTR MADRID: requiere autorización, desde 60 m hasta 305 m sobre el suelo/);
   assert.match(informe, /Irradiancia/);
   assert.equal(await page.locator('#informe').isVisible(), false, 'en pantalla no se ve');
   await page.locator('#ahora .condicion').filter({ hasText: 'Irradiancia' }).waitFor();
@@ -235,7 +259,7 @@ try {
   assert.match(diag, /Lugar: Getafe/);
   assert.match(diag, /Órbitas: 24 \(despliegue\)/);
   assert.match(diag, /Ahora \d\d:\d\d → /);
-  assert.match(diag, /ENAIRE: dentro · 1 zonas \(CTR Madrid<script>\)/);
+  assert.match(diag, /ENAIRE: dentro · 6 zonas \(MADRID\/Getafe<script>, ATZ MADRID\/GETAFE, /);
   assert.match(diag, /Aviso de ventana: apagado/);
   await page.locator('#estado-diagnostico').filter({ hasText: /Copiado|Copiar/ }).waitFor();
   assert.equal(await page.evaluate(() => navigator.clipboard.readText()), diag, 'el portapapeles tiene el informe');
@@ -391,7 +415,7 @@ try {
   await p2.route('https://servais.enaire.es/**', (x) => x.abort());
   await p2.goto(url);
   await p2.locator('#fuentes').filter({ hasText: /24 órbitas de CelesTrak/ }).waitFor({ state: 'attached' });
-  await p2.locator('#ahora .enaire.sin-dato').filter({ hasText: 'No se pudo consultar ENAIRE' }).waitFor();
+  await p2.locator('#zonas .zonas-resumen.sin-dato').filter({ hasText: 'No se pudo consultar ENAIRE' }).waitFor();
   assert.match(await p2.textContent('#ahora [data-factor="satelites"] .c-valor'), /^\d+$/);
   const antes = pedidasCelestrak;
   await p2.unroute('https://celestrak.org/**');
@@ -411,7 +435,7 @@ try {
   await p3.getByRole('button', { name: 'Usar mi ubicación' }).first().click();
   await p3.locator('#nombre-lugar').filter({ hasText: 'Mi ubicación' }).waitFor();
   await p3.locator('#ahora .grande').filter({ hasText: /volar|precaución|No vueles/ }).waitFor();
-  await p3.locator('#ahora .enaire.fuera').filter({ hasText: 'No consta en ninguna zona UAS de ENAIRE' }).waitFor();
+  await p3.locator('#zonas .zonas-resumen.ok').filter({ hasText: 'No consta en ninguna zona UAS' }).waitFor();
 
   // Carrera: la previsión del lugar anterior llega tarde y no pisa la del nuevo.
   const ctx4 = await navegador.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });

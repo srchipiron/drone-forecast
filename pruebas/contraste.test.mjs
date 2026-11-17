@@ -33,7 +33,7 @@ const TEXTO = [
   ['sobre-boton', 'boton'],
   ['ok', 'tarjeta'], ['precaucion', 'tarjeta'], ['no', 'tarjeta'], ['sin-dato', 'tarjeta-2'],
   ['ok', 'ok-fondo'], ['precaucion', 'precaucion-fondo'], ['no', 'no-fondo'],
-  ['texto', 'precaucion-fondo'], ['acento', 'fondo'],
+  ['texto', 'precaucion-fondo'], ['texto', 'ok-fondo'], ['texto', 'no-fondo'], ['acento', 'fondo'],
   // El cartel del veredicto: texto en --tarjeta sobre el color del estado.
   ['tarjeta', 'ok'], ['tarjeta', 'precaucion'], ['tarjeta', 'no'], ['tarjeta', 'sin-dato'],
   // Las horas sin luz de la tabla.

@@ -286,21 +286,70 @@ main { max-width: 720px; margin: 0 auto; padding: 0.75rem 12px calc(5.5rem + env
 
 .fila.ventana-hoy.precaucion .ico, .fila.ventana-hoy.precaucion strong { color: var(--precaucion); }
 
-.enaire { display: grid; grid-template-columns: auto 1fr; gap: 0.6rem; align-items: start; margin-top: 0.25rem; padding: 0.65rem 0.75rem; border-radius: 12px; background: var(--tarjeta-2); font-size: 0.875rem; }
+.zonas-fila.precaucion .ico, .zonas-fila.precaucion strong { color: var(--precaucion); }
 
-.enaire .ico { margin-top: 0.1rem; }
+.zonas-fila.no .ico, .zonas-fila.no strong { color: var(--no); }
 
-.enaire.dentro { background: var(--precaucion-fondo); }
+.zonas-fila.ok .ico, .zonas-fila.ok strong { color: var(--ok); }
 
-.enaire.dentro .ico { color: var(--precaucion); }
+/* ── Zonas UAS (ENAIRE): resumen a tu altura y una ficha por zona ── */
+.zonas-uas a { color: var(--acento); font-weight: 600; }
 
-.enaire.fuera .ico { color: var(--ok); }
+.zonas-resumen { display: grid; grid-template-columns: auto 1fr; gap: 0.6rem; align-items: start; padding: 0.7rem 0.8rem; border-radius: 12px; background: var(--tarjeta-2); border-left: 4px solid var(--sin-dato); }
 
-.enaire p { margin: 0.1rem 0; }
+.zonas-resumen.ok { background: var(--ok-fondo); border-left-color: var(--ok); }
 
-.enaire ul { margin: 0.3rem 0; padding-left: 1.1rem; }
+.zonas-resumen.precaucion { background: var(--precaucion-fondo); border-left-color: var(--precaucion); }
 
-.enaire a { color: var(--acento); font-weight: 600; }
+.zonas-resumen.no { background: var(--no-fondo); border-left-color: var(--no); }
+
+.zonas-resumen .ico { margin-top: 0.15rem; }
+
+.zonas-resumen.ok .ico { color: var(--ok); }
+
+.zonas-resumen.precaucion .ico { color: var(--precaucion); }
+
+.zonas-resumen.no .ico { color: var(--no); }
+
+.zonas-resumen p { margin: 0; }
+
+.zonas-resumen .nota { color: var(--texto); margin-top: 0.2rem; }
+
+.zonas-titulo { font-weight: 750; font-size: 1.05rem; }
+
+.lista-zonas { list-style: none; padding: 0; margin: 0.5rem 0 0; display: grid; }
+
+.zona { padding: 0.65rem 0; border-top: 1px solid var(--separador); display: grid; gap: 0.3rem; }
+
+.zona:first-child { border-top: 0; }
+
+.zona p { margin: 0; }
+
+.zona-cabecera { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; }
+
+.zona-datos { font-size: 0.85rem; color: var(--suave); }
+
+.zona-destacado { font-size: 0.9rem; font-weight: 600; padding-left: 0.6rem; border-left: 3px solid var(--borde); }
+
+.zona.no .zona-destacado { border-left-color: var(--no); }
+
+.zona.precaucion .zona-destacado { border-left-color: var(--precaucion); }
+
+.zona-contactos { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+
+.zonas-uas a.contacto { display: inline-flex; align-items: center; gap: 0.35rem; min-height: 40px; padding: 0.3rem 0.7rem; border: 1px solid var(--borde); border-radius: 999px; background: var(--tarjeta); font-size: 0.85rem; text-decoration: none; max-width: 100%; }
+
+.contacto .ico { width: 16px; height: 16px; color: var(--acento); }
+
+.contacto span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.zona-texto summary, .zonas-otras summary { min-height: 40px; font-size: 0.85rem; color: var(--acento); }
+
+.zona-texto p { font-size: 0.85rem; margin: 0.35rem 0; }
+
+.zonas-otras { margin-top: 0.4rem; border-top: 1px solid var(--separador); }
+
+.zonas-uas > .nota { margin-top: 0.6rem; }
 
 .acciones { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 

@@ -16,6 +16,8 @@ export const DRONES = [
   { id: 'mavic4pro', marca: 'DJI', nombre: 'DJI Mavic 4 Pro', maxViento: 12, tempMin: -10, tempMax: 40, ip: null, fuente: 'https://www.dji.com/nl/support/product/mavic-4-pro' },
   { id: 'avata360', marca: 'DJI', nombre: 'DJI Avata 360', maxViento: 10.7, tempMin: -10, tempMax: 40, ip: null, fuente: 'https://www.dji.com/nl/support/product/avata-360' },
   // DJI, Enterprise. Su viento máximo está dado para despegue y aterrizaje.
+  // Mavic 3 Enterprise (M3E / M3T): ya no se vende, pero Aeroscan lo usa (Javi, 17-11-2026). 12 m/s, -10 a 40 °C, sin IP.
+  { id: 'm3e', marca: 'DJI Enterprise', nombre: 'DJI Mavic 3 Enterprise (M3E / M3T)', maxViento: 12, tempMin: -10, tempMax: 40, ip: null, fuente: 'https://enterprise.dji.com/mavic-3-enterprise/specs' },
   { id: 'm4et', marca: 'DJI Enterprise', nombre: 'DJI Matrice 4E / 4T', maxViento: 12, tempMin: -10, tempMax: 40, ip: null, fuente: 'https://enterprise.dji.com/matrice-4-series/specs' },
   // DJI no publica la temperatura del 4D/4TD aparte: se usa la de la serie Matrice 4.
   { id: 'm4td', marca: 'DJI Enterprise', nombre: 'DJI Matrice 4D / 4TD', maxViento: 12, tempMin: -10, tempMax: 40, ip: 'IP55', fuente: 'https://enterprise.dji.com/dock-3/faq' },
@@ -46,7 +48,6 @@ export const SUCESORES = {
   air3: 'air3s',
   mavic3: 'mavic4pro',
   avata2: 'avata360',
-  m3e: 'm4et',
   m30: 'm4et',
   m350: 'm400',
 };

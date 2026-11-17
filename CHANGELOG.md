@@ -3,6 +3,14 @@
 Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
 `0.0.X` para correcciones. La versión sale en el pie de la app.
 
+## 0.19.1
+
+- **Vuelve el DJI Mavic 3 Enterprise (M3E / M3T)**, en el grupo DJI
+  Enterprise: viento máximo 12 m/s y de -10 a 40 °C, según la ficha de DJI.
+  Ya no se vende, pero Aeroscan lo usa. Antes, quien lo tenía guardado
+  pasaba sin avisar al Matrice 4E; ahora se queda con el suyo. También se
+  puede marcar en «Mis drones».
+
 ## 0.19.0
 
 - **Instalar la app con un botón.** Cuando Chrome permite instalarla, en

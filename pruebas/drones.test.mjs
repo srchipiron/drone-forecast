@@ -32,3 +32,12 @@ test('un id desconocido cae en un dron real y el personalizado se respeta', () =
   assert.ok(DRONES.some((d) => d.id === idDron('inventado')));
   assert.equal(dronPorId('personalizado', { maxViento: 9 }).maxViento, 9);
 });
+
+test('el Mavic 3 Enterprise de Aeroscan está en la lista y no se cambia por otro', () => {
+  assert.equal(idDron('m3e'), 'm3e');
+  assert.equal(normalizarAjustes({ dron: 'm3e' }).dron, 'm3e');
+  const d = dronPorId('m3e');
+  assert.equal(d.nombre, 'DJI Mavic 3 Enterprise (M3E / M3T)');
+  assert.equal(d.maxViento, 12);
+  assert.deepEqual(normalizarAjustes({ misDrones: ['m3e', 'm4et'] }).misDrones, ['m3e', 'm4et']);
+});

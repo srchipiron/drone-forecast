@@ -4,6 +4,7 @@ import { cielo } from '../motor/cielo.js';
 import { sentidoDeslizar } from '../motor/gestos.js';
 import { textoCompartir } from '../motor/compartir.js';
 import { informeDiagnostico } from '../motor/diagnostico.js';
+import { alturasZona, valorarZonas } from '../motor/enaire.js';
 import { VALORACIONES, anadirEntrada, crearEntrada, diarioValido, resumenDiario } from '../motor/diario.js';
 import { graficaDia } from '../motor/grafica.js';
 import { DRONES } from '../motor/drones.js';
@@ -35,6 +36,9 @@ const ICONOS = {
   ventana: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6"/>',
   sol: '<path d="M4 18h16M7 18a5 5 0 0 1 10 0M12 7V4M5.6 10.6 3.5 8.5M18.4 10.6l2.1-2.1"/>',
   zona: '<path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/>',
+  correo: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>',
+  telefono: '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/>',
+  enlace: '<path d="M10 14a4 4 0 0 0 6 0l3-3a4 4 0 0 0-6-6l-1 1M14 10a4 4 0 0 0-6 0l-3 3a4 4 0 0 0 6 6l1-1"/>',
   termometro: '<path d="M10 14V5a2 2 0 1 1 4 0v9a4 4 0 1 1-4 0Z"/><path d="M12 10v6"/>',
   ojo: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>',
   nube: '<path d="M7 15a5 5 0 1 1 9.6-2H17a3 3 0 0 1 0 6H8a4 4 0 0 1-1-4Z"/>',
@@ -332,12 +336,12 @@ function pintarAhora(p) {
     ${filaOtrosDrones(p)}
     <ul class="filas">
       ${filaProxima(p)}
+      ${filaZonas(p)}
       <li class="fila sol">${icono('amanecer')}<span>Amanecer · ocaso</span>
         <strong>${esc(hora(hoy?.sol.salida, p.zona))} · ${esc(hora(hoy?.sol.puesta, p.zona))}</strong></li>
       <li class="fila sol">${icono('sol')}<span>Hora dorada</span>
         <strong>${esc(hora(hoy?.sol.doradaTarde, p.zona))}</strong></li>
     </ul>
-    ${bloqueEnaire()}
     <div class="acciones acciones-ahora">
       <button type="button" data-accion="volado" data-ms="${h.ms}">He volado</button>
       <button type="button" data-accion="compartir">Compartir</button>
@@ -353,24 +357,76 @@ function pintarAhora(p) {
 
 const MAPA_ENAIRE = '<a href="https://drones.enaire.es/" target="_blank" rel="noopener noreferrer">mapa de ENAIRE Drones</a>';
 
-function bloqueEnaire() {
+// ---------- Zonas UAS (ENAIRE) ----------
+
+// Color de una zona: por lo dura que es su restricción; gris si a tu altura no te afecta.
+const CLASE_NIVEL = { 3: 'no', 2: 'precaucion', 1: 'precaucion', 0: 'ok' };
+const claseZona = (z) => (z.aplica === 'no' ? 'sin-dato' : (CLASE_NIVEL[z.restriccion.nivel] ?? 'precaucion'));
+
+// `vistos`: los destacados ya enseñados (el CTR y la ATZ suelen repetir la misma frase).
+function zonaHtml(z, altitud, vistos = new Set()) {
+  const clase = claseZona(z);
+  const chip = z.aplica === 'no' ? `No te afecta a ${altitud} m` : z.aplica === 'quiza' ? `¿${z.restriccion.texto}?` : z.restriccion.texto;
+  const datos = [alturasZona(z), z.clase && !z.nombre.startsWith(z.clase) ? z.clase : '', z.motivos.join(', '), z.horario ?? ''].filter(Boolean);
+  // Contactos que se tocan: correo, teléfono y los enlaces https del mensaje (ya filtrados en el motor).
+  const contactos = [
+    z.email ? `<a class="contacto" href="mailto:${esc(z.email)}">${icono('correo')}<span>${esc(z.email)}</span></a>` : '',
+    ...z.telefonos.map((t) => `<a class="contacto" href="tel:${esc(t.replace(/[^\d+]/g, ''))}">${icono('telefono')}<span>${esc(t)}</span></a>`),
+    ...z.enlaces.map((e) => `<a class="contacto" href="${esc(e.url)}" target="_blank" rel="noopener noreferrer">${icono('enlace')}<span>${esc(e.texto)}</span></a>`),
+  ].join('');
+  return `<li class="zona ${clase}">
+    <p class="zona-cabecera"><span class="chip ${clase}">${esc(chip)}</span> <strong>${esc(z.nombre)}</strong></p>
+    <p class="zona-datos">${esc(datos.join(' · '))}</p>
+    ${z.aplica !== 'no' && z.destacado && !vistos.has(z.destacado) && vistos.add(z.destacado) ? `<p class="zona-destacado">${esc(z.destacado)}</p>` : ''}
+    ${contactos ? `<div class="zona-contactos">${contactos}</div>` : ''}
+    ${z.texto.length ? `<details class="zona-texto"><summary>Texto completo de ENAIRE</summary>${z.texto.map((t) => `<p>${esc(t)}</p>`).join('')}</details>` : ''}
+  </li>`;
+}
+
+// Lo que dice el resumen de arriba, y la fila corta del cartel.
+function resumenZonasUAS(p) {
   const z = estado.enaire;
-  if (!z) return `<div class="enaire">${icono('zona')}<div><p>Zonas UAS: consultando ENAIRE…</p></div></div>`;
-  if (z.estado === 'dentro') {
-    const n = z.zonas.length;
-    return `<div class="enaire dentro">${icono('zona')}<div><p><strong>Dentro de ${n} zona${n === 1 ? '' : 's'} UAS de ENAIRE</strong>${z.fallidas.length ? ' (y alguna capa no respondió)' : ''}:</p>
-      <ul>${z.zonas
-        .slice(0, 6)
-        .map(
-          (x) =>
-            `<li><strong>${esc(x.nombre)}</strong> · ${esc(x.capa)}${x.restriccion ? ` · ${esc(x.restriccion)}` : ''}${x.motivo ? ` · ${esc(x.motivo)}` : ''}${x.mensaje ? `<br><span class="nota">${esc(x.mensaje)}</span>` : ''}</li>`,
-        )
-        .join('')}</ul>
-      <p>Revisa las condiciones en el ${MAPA_ENAIRE} antes de volar.</p></div></div>`;
-  }
-  if (z.estado === 'fuera')
-    return `<div class="enaire fuera">${icono('zona')}<div><p>No consta en ninguna zona UAS de ENAIRE. Compruébalo igualmente en el ${MAPA_ENAIRE} (NOTAM y zonas temporales).</p></div></div>`;
-  return `<div class="enaire sin-dato">${icono('zona')}<div><p>${z.estado === 'incompleto' ? 'No se pudo consultar ENAIRE del todo' : 'No se pudo consultar ENAIRE'}: míralo en el ${MAPA_ENAIRE} antes de volar.</p></div></div>`;
+  const alt = p.ajustes.altitud;
+  if (!z) return { clase: 'sin-dato', titulo: 'Consultando ENAIRE…', corto: 'Consultando…' };
+  if (z.estado === 'error') return { clase: 'sin-dato', titulo: 'No se pudo consultar ENAIRE', sub: `Míralo en el ${MAPA_ENAIRE} antes de volar.`, corto: 'Sin datos' };
+  const v = valorarZonas(z.zonas, { altitud: alt, elevacion: estado.meteo?.elevacion ?? null });
+  const n = v.zonas.length;
+  const k = v.afectan.length;
+  const libre = v.libreHasta > 0 && v.libreHasta < alt ? ` Por debajo de ${v.libreHasta} m no te afecta ninguna.` : '';
+  const quiza = v.afectan.some((x) => x.aplica === 'quiza') ? ' Alguna va referida al nivel del mar y no se pudo comprobar con el terreno: revísala.' : '';
+  const plural = (x, s, p) => `${x} ${x === 1 ? s : p}`;
+  let r;
+  if (!n) r = { clase: 'ok', titulo: 'No consta en ninguna zona UAS', sub: `Revisa igualmente NOTAM y zonas temporales en el ${MAPA_ENAIRE}.`, corto: 'Sin zonas' };
+  else if (!k) {
+    const desde = Math.min(...v.zonas.map((x) => x.inferior.m ?? 0));
+    r = { clase: 'ok', titulo: `A ${alt} m no te afecta ninguna zona UAS`, sub: `Aquí ${n === 1 ? 'hay una zona' : `hay ${n} zonas`}, pero empiezan más arriba (desde ${desde} m).`, corto: 'No te afecta' };
+  } else if (v.peor.nivel >= 3) r = { clase: 'no', titulo: `Prohibido volar a ${alt} m`, sub: `${plural(k, 'zona te afecta', 'zonas te afectan')}.${libre}${quiza}`, corto: 'Prohibido' };
+  else if (v.peor.nivel === 2) r = { clase: 'precaucion', titulo: `Necesitas autorización a ${alt} m`, sub: `${plural(k, 'zona te afecta', 'zonas te afectan')}.${libre}${quiza}`, corto: `Autorización (${k})` };
+  else r = { clase: 'precaucion', titulo: `Vuelo con condiciones a ${alt} m`, sub: `${plural(k, 'zona te afecta', 'zonas te afectan')}.${libre}${quiza}`, corto: `Condiciones (${k})` };
+  if (z.estado === 'incompleto' || z.fallidas?.length) r.sub = `${r.sub ?? ''} Alguna capa de ENAIRE no respondió: puede faltar alguna zona.`.trim();
+  return { ...r, v };
+}
+
+function filaZonas(p) {
+  const r = resumenZonasUAS(p);
+  return `<li class="fila zonas-fila ${r.clase}">${icono('zona')}<span>Zonas UAS</span><strong><a class="enlace" href="#zonas">${esc(r.corto)} ›</a></strong></li>`;
+}
+
+function pintarZonas(p) {
+  const el = $('#zonas');
+  el.hidden = !estado.lugar || !p;
+  if (el.hidden) return;
+  const r = resumenZonasUAS(p);
+  const alt = p.ajustes.altitud;
+  const zonas = r.v?.zonas ?? [];
+  const afectan = zonas.filter((z) => z.aplica !== 'no');
+  const otras = zonas.filter((z) => z.aplica === 'no');
+  const vistos = new Set();
+  el.innerHTML = `<h2 id="titulo-zonas">Zonas UAS · ENAIRE</h2>
+    <div class="zonas-resumen ${r.clase}">${icono('zona')}<div><p class="zonas-titulo">${esc(r.titulo)}</p>${r.sub ? `<p class="nota">${r.sub.includes('<a ') ? r.sub : esc(r.sub)}</p>` : ''}</div></div>
+    ${afectan.length ? `<ul class="lista-zonas">${afectan.map((z) => zonaHtml(z, alt, vistos)).join('')}</ul>` : ''}
+    ${otras.length ? `<details class="zonas-otras"><summary>${otras.length === 1 ? 'Una zona no te afecta' : `${otras.length} zonas no te afectan`} a ${alt} m</summary><ul class="lista-zonas">${otras.map((z) => zonaHtml(z, alt)).join('')}</ul></details>` : ''}
+    ${zonas.length ? `<p class="nota">Las alturas y textos son de ENAIRE. Consulta también NOTAM y zonas temporales en el ${MAPA_ENAIRE}.</p>` : ''}`;
 }
 
 async function cargarEnaire() {
@@ -705,6 +761,7 @@ function pintar() {
   }
   pintarAviso(p);
   pintarAhora(p);
+  pintarZonas(p);
   pintarDias(p);
   pintarHoras(p);
   pintarChecklist();
@@ -809,7 +866,9 @@ function htmlInforme(p) {
   const enaire = !z
     ? 'sin consultar'
     : z.estado === 'dentro'
-      ? z.zonas.map((x) => `${x.nombre} (${x.capa}${x.restriccion ? `, ${x.restriccion}` : ''})`).join('; ')
+      ? valorarZonas(z.zonas, { altitud: p.ajustes.altitud, elevacion: estado.meteo?.elevacion ?? null })
+          .zonas.map((x) => `${x.nombre}: ${x.restriccion.texto.toLowerCase()}, ${alturasZona(x).toLowerCase()}${x.aplica === 'no' ? ` (no afecta a ${p.ajustes.altitud} m)` : ''}`)
+          .join('; ')
       : z.estado === 'fuera'
         ? 'no consta en ninguna zona UAS'
         : 'no se pudo consultar';

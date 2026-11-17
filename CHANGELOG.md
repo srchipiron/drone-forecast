@@ -3,6 +3,37 @@
 Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
 `0.0.X` para correcciones. La versión sale en el pie de la app.
 
+## 0.21.0
+
+**Los avisos de ENAIRE, rehechos con sus datos reales.**
+
+- **Tarjeta propia, «Zonas UAS · ENAIRE»**, debajo del cartel. Arriba, lo
+  que importa a tu altura de vuelo: «Necesitas autorización a 120 m · 5
+  zonas te afectan», «Prohibido volar», «A 30 m no te afecta ninguna zona»…
+  En el cartel queda una fila con el resumen («Zonas UAS: Autorización (5)
+  ›») que te lleva a la tarjeta.
+- **Cada zona con lo útil**: qué hace falta (prohibido, autorización,
+  condiciones), **desde qué altura y hasta cuál** aplica («Desde 60 m hasta
+  305 m sobre el suelo»), qué es (CTR, ATZ, aeródromo, restricción al vuelo
+  fotográfico), el motivo y el horario si lo tiene.
+- **Te dice si te afecta a tu altura.** Si una zona empieza más arriba de
+  donde vuelas, va aparte, en gris («No te afecta a 30 m»). Al cambiar la
+  altura se recalcula. Las zonas referidas al nivel del mar se comparan con
+  la altura del terreno.
+- **La frase importante, resaltada**: la que ENAIRE marca («NO permitido el
+  vuelo a drones excepto coordinación con el Aeródromo»), sin repetirla si
+  varias zonas dicen lo mismo.
+- **Contactos que se tocan**: correo, teléfonos y enlaces (ENAIRE Planea,
+  Aena, circulares AIC) como botones.
+- **Se acabó el HTML a la vista**: antes salían etiquetas como
+  «<elem>» o «<font color…>». Ahora el texto completo de ENAIRE está limpio,
+  plegado debajo de cada zona.
+- **Arreglado**: la app pedía a ENAIRE una capa que no existe, así que a
+  menudo decía «No se pudo consultar ENAIRE del todo», y la restricción de
+  cada zona no se leía bien. Ahora se usan los campos reales de ENAIRE.
+- El informe para el cliente lista cada zona con su restricción y sus
+  alturas.
+
 ## 0.20.0
 
 - **Compartir dice más.** Si hoy y mañana no se puede volar, el mensaje

@@ -46,11 +46,12 @@ bloqueada (con el motivo, y se pasa a la siguiente).
   encima las zonas UAS que devuelve ENAIRE para la vista (consulta por
   rectángulo en vez de por punto), con su color por tipo. Sin librerías: SVG
   encima de las teselas.
-- [ ] **Autonomía estimada**: en el cartel, una línea con la autonomía
-  orientativa del dron (minutos de la ficha) recortada por frío y viento en
-  contra. Cada recorte con su fuente (DJI: baterías por debajo de 15 °C rinden
-  menos; viento > 70 % del límite). Si no hay fuente seria, se descarta.
-- [ ] **Diario a CSV**: además del JSON, exportar el diario como CSV para
+- [ ] ~~**Autonomía estimada**~~ — **descartada** (18-11-2026): los
+  fabricantes dicen que con frío y viento la batería dura menos, pero ninguno
+  publica cuánto (ni DJI, ni Autel, ni Skydio, ni Parrot). Un «te quedan
+  22 min» inventado es peor que nada en un trabajo; el aviso de frío del
+  cartel («calienta las baterías») ya dice lo que sí está en las fichas.
+- [x] **Diario a CSV** (0.24.0): además del JSON, exportar el diario como CSV para
   abrirlo en una hoja de cálculo (fecha, lugar, dron, misión, previsión y
   valoración).
 - [ ] **Vuelo planificado**: marcar un día y hora de vuelo (para un cliente)

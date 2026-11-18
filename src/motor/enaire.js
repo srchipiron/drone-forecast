@@ -34,6 +34,60 @@ export function urlConsultaEnaire(capa, lat, lon) {
   return `${BASE}/${capa}/query?${p}`;
 }
 
+// Las formas de las zonas que tocan un rectángulo (para pintarlas en el
+// mapa). Solo los campos que hacen falta para colorear y la geometría
+// simplificada: `simplificar` es la tolerancia en grados (ArcGIS
+// maxAllowableOffset), del orden de un píxel en el zoom que se mira, para no
+// bajar miles de vértices que no se verían.
+export function urlFormasEnaire(capa, { oeste, sur, este, norte }, simplificar = 0.0005) {
+  const g = (v) => Number(v).toFixed(5);
+  const p = new URLSearchParams({
+    geometry: [oeste, sur, este, norte].map(g).join(','),
+    geometryType: 'esriGeometryEnvelope',
+    inSR: '4326',
+    spatialRel: 'esriSpatialRelIntersects',
+    outFields: 'identifier,name,type,lower,lowerReference,upper,upperReference,uom,extendedProperties',
+    returnGeometry: 'true',
+    outSR: '4326',
+    maxAllowableOffset: String(simplificar),
+    geometryPrecision: '5',
+    resultRecordCount: '300',
+    f: 'json',
+  });
+  return `${BASE}/${capa}/query?${p}`;
+}
+
+// La geometría de ArcGIS es {rings: [[[lon, lat], …], …]}; aquí se queda
+// solo lo que son números de verdad. Un anillo con menos de 3 puntos no
+// encierra nada y se descarta.
+function anillosDe(geo) {
+  if (!geo || !Array.isArray(geo.rings)) return [];
+  return geo.rings
+    .map((r) => (Array.isArray(r) ? r.filter((pt) => Array.isArray(pt) && Number.isFinite(pt[0]) && Number.isFinite(pt[1]) && Math.abs(pt[0]) <= 180 && Math.abs(pt[1]) <= 90).map((pt) => [pt[0], pt[1]]) : []))
+    .filter((r) => r.length >= 3);
+}
+
+/** Respuesta de la consulta de formas → zonas (como leerZonas) con `anillos`. */
+export function leerFormas(json, capa) {
+  const zonas = leerZonas(json, capa);
+  return zonas
+    .map((z, i) => ({ capa: z.capa, id: z.id, nombre: z.nombre, restriccion: z.restriccion, inferior: z.inferior, superior: z.superior, anillos: anillosDe(json.features[i]?.geometry) }))
+    .filter((z) => z.anillos.length);
+}
+
+// ¿El punto está dentro? Regla par-impar sobre todos los anillos, que es
+// como ArcGIS dibuja los huecos (un anillo dentro de otro lo vacía).
+export function puntoEnFormas(anillos, lat, lon) {
+  let dentro = false;
+  for (const r of anillos)
+    for (let i = 0, j = r.length - 1; i < r.length; j = i++) {
+      const [xi, yi] = r[i];
+      const [xj, yj] = r[j];
+      if (yi > lat !== yj > lat && lon < ((xj - xi) * (lat - yi)) / (yj - yi) + xi) dentro = !dentro;
+    }
+  return dentro;
+}
+
 // El campo `type` de ED-318: qué hace falta para volar dentro.
 const RESTRICCIONES = {
   PROHIBITED: { texto: 'Prohibido volar', nivel: 3 },
@@ -206,7 +260,7 @@ export function resumenZonas(resultados) {
 // pueden ir sobre el suelo (AGL) o sobre el nivel del mar (AMSL): para estos
 // hace falta la elevación del terreno; sin ella, «quizá» (nunca «no»).
 // En el límite exacto no aplica: «altura máxima de 60 m» deja volar a 60.
-function aplica(z, altitud, elevacion) {
+export function aplica(z, altitud, elevacion) {
   const alturaRespecto = (ref) => (ref === 'AMSL' ? (Number.isFinite(elevacion) ? elevacion + altitud : null) : altitud);
   const inf = z.inferior?.m ?? 0;
   if (inf > 0) {

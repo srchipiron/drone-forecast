@@ -163,7 +163,10 @@
     <button id="btn-mapa" type="button" class="boton-mapa" aria-expanded="false">Elegir en el mapa</button>
     <div id="panel-mapa" hidden>
       <div id="mapa" class="mapa" role="application" aria-label="Mapa: arrastra para moverte y toca el punto de vuelo"></div>
+      <p id="zonas-mapa" class="nota" aria-live="polite"></p>
+      <p class="leyenda-mapa nota"><span><span class="muestra n3"></span>Prohibido</span> <span><span class="muestra n2"></span>Autorización</span> <span><span class="muestra n1"></span>Condiciones</span> <span><span class="muestra sin-efecto"></span>No te afecta a tu altura</span></p>
       <p id="punto-mapa" class="nota">Toca el mapa donde vas a volar.</p>
+      <ul id="punto-zonas" class="punto-zonas" hidden></ul>
       <div class="acciones"><button id="btn-usar-punto" type="button" disabled>Usar este punto</button></div>
     </div>
     <ul id="resultados" class="lista-lugares"></ul>

@@ -42,7 +42,7 @@ bloqueada (con el motivo, y se pasa a la siguiente).
 
 ### Propuestas (17-11-2026; Javi puede reordenarlas o tacharlas)
 
-- [ ] **Zonas de ENAIRE en el mapa**: al elegir el punto en el mapa, dibujar
+- [x] **Zonas de ENAIRE en el mapa** (0.23.0): al elegir el punto en el mapa, dibujar
   encima las zonas UAS que devuelve ENAIRE para la vista (consulta por
   rectángulo en vez de por punto), con su color por tipo. Sin librerías: SVG
   encima de las teselas.

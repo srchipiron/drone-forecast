@@ -3,6 +3,21 @@
 Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
 `0.0.X` para correcciones. La versión sale en el pie de la app.
 
+## 0.23.0
+
+- **Las zonas de ENAIRE, dibujadas en el mapa.** Al elegir el punto en el
+  mapa (Lugar → Elegir en el mapa) ves encima las zonas UAS de la parte que
+  estás mirando: rojo si está prohibido, naranja si hace falta autorización,
+  amarillo si hay condiciones. Las que no te afectan a la altura a la que
+  vuelas salen solo con el borde a trazos. Debajo del mapa te dice cuántas
+  hay a la vista y cuántas te afectan.
+- **Toca un punto y sabrás qué zonas lo pisan** antes de elegirlo: cada
+  una con lo que pide, de qué altura a qué altura va y si te afecta a tu
+  altura. Así puedes mover el punto de despegue hasta salir de una zona sin
+  ir probando lugar a lugar.
+- Si alejas mucho el mapa te pide acercarlo (con media España a la vista
+  serían miles de zonas). Si alguna capa de ENAIRE no responde, lo dice.
+
 ## 0.22.0
 
 - **Aviso de versión nueva.** Cuando se instala una versión nueva de la

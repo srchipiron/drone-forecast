@@ -3,21 +3,30 @@
 // app no tiene dependencias) y sin estilos en línea en el HTML: las
 // posiciones van por CSSOM (el.style), que la CSP sí deja.
 
-import { TAM, ZOOM_MAX, ZOOM_MIN, aTesela, puntoEnPixel, teselasVisibles } from '../motor/mapa.js';
+import { TAM, ZOOM_MAX, ZOOM_MIN, aTesela, cajaVisible, puntoEnPixel, rutaAnillos, teselasVisibles } from '../motor/mapa.js';
+
+const SVG = 'http://www.w3.org/2000/svg';
 
 export const URL_TESELAS = 'https://tile.openstreetmap.org';
 
 /**
  * @param {HTMLElement} caja  contenedor con tamaño (CSS)
- * @param {{lat: number, lon: number, z?: number, alMarcar: (p: {lat: number, lon: number}) => void}} op
+ * @param {{lat: number, lon: number, z?: number, alMarcar: (p: {lat: number, lon: number}) => void,
+ *   alVer?: (v: {caja: object, zoom: number}) => void}} op
+ *   alVer: cuando la vista se queda quieta (al abrir, tras arrastrar o
+ *   acercar), con el rectángulo que se ve: quien lo usa decide qué pedir.
  */
-export function crearMapa(caja, { lat, lon, z = 12, alMarcar }) {
-  caja.innerHTML = `<div class="mapa-teselas"></div><div class="mapa-marca" hidden></div>
+export function crearMapa(caja, { lat, lon, z = 12, alMarcar, alVer = () => {} }) {
+  caja.innerHTML = `<div class="mapa-teselas"></div><svg class="mapa-zonas" aria-hidden="true"></svg><div class="mapa-marca" hidden></div>
     <div class="mapa-zoom"><button type="button" data-zoom="1" aria-label="Acercar">+</button><button type="button" data-zoom="-1" aria-label="Alejar">−</button></div>
     <p class="mapa-credito">© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a></p>`;
   const capa = caja.querySelector('.mapa-teselas');
   const marca = caja.querySelector('.mapa-marca');
+  const svg = caja.querySelector('.mapa-zonas');
   const imgs = new Map();
+  /** @type {{anillos: number[][][], clase: string}[]} */
+  let formas = [];
+  let espera = 0;
   let zoom = z;
   let c = aTesela(lat, lon, zoom);
   let marcado = null;
@@ -40,11 +49,39 @@ export function crearMapa(caja, { lat, lon, z = 12, alMarcar }) {
       img.style.transform = `translate(${t.izq}px, ${t.arriba}px)`;
     }
     for (const [clave, img] of imgs) if (!vistas.has(clave)) (img.remove(), imgs.delete(clave));
+    pintarFormas(ancho, alto);
     marca.hidden = !marcado;
     if (marcado) {
       const m = aTesela(marcado.lat, marcado.lon, zoom);
       marca.style.transform = `translate(${Math.round((m.x - c.x) * TAM + ancho / 2)}px, ${Math.round((m.y - c.y) * TAM + alto / 2)}px)`;
     }
+  }
+
+  // Las zonas, un <path> por zona, reutilizados de una vez a otra. La regla
+  // par-impar respeta los huecos de las zonas que los tienen.
+  function pintarFormas(ancho, alto) {
+    svg.setAttribute('width', String(Math.round(ancho)));
+    svg.setAttribute('height', String(Math.round(alto)));
+    const rutas = svg.children;
+    formas.forEach((f, i) => {
+      let r = rutas[i];
+      if (!r) {
+        r = document.createElementNS(SVG, 'path');
+        r.setAttribute('fill-rule', 'evenodd');
+        svg.append(r);
+      }
+      r.setAttribute('class', f.clase);
+      r.setAttribute('d', rutaAnillos(f.anillos, c.x, c.y, zoom, ancho, alto));
+    });
+    while (rutas.length > formas.length) rutas[rutas.length - 1].remove();
+  }
+
+  function avisarVista() {
+    clearTimeout(espera);
+    espera = setTimeout(() => {
+      const { width, height } = caja.getBoundingClientRect();
+      alVer({ caja: cajaVisible(c.x, c.y, zoom, width, height), zoom });
+    }, 350);
   }
 
   function acercar(d) {
@@ -56,6 +93,7 @@ export function crearMapa(caja, { lat, lon, z = 12, alMarcar }) {
     for (const img of imgs.values()) img.remove();
     imgs.clear();
     pintar();
+    avisarVista();
   }
 
   // Arrastrar mueve; un toque sin moverse (menos de 6 px) pone la marca.
@@ -78,13 +116,14 @@ export function crearMapa(caja, { lat, lon, z = 12, alMarcar }) {
     if (!inicio) return;
     const tocado = !inicio.movido;
     inicio = null;
-    if (!tocado) return;
+    if (!tocado) return avisarVista();
     const r = caja.getBoundingClientRect();
     marcado = puntoEnPixel(c.x, c.y, zoom, r.width, r.height, e.clientX - r.left, e.clientY - r.top);
     pintar();
     alMarcar(marcado);
   });
   caja.addEventListener('pointercancel', () => {
+    if (inicio?.movido) avisarVista();
     inicio = null;
   });
   caja.addEventListener('click', (e) => {
@@ -92,5 +131,15 @@ export function crearMapa(caja, { lat, lon, z = 12, alMarcar }) {
     if (b) acercar(Number(b.dataset.zoom));
   });
   pintar();
-  return { pintar, zoom: () => zoom, marcado: () => marcado };
+  avisarVista();
+  return {
+    pintar,
+    zoom: () => zoom,
+    marcado: () => marcado,
+    /** Pinta estas zonas (sustituye a las anteriores). */
+    ponerFormas(nuevas) {
+      formas = nuevas;
+      pintar();
+    },
+  };
 }

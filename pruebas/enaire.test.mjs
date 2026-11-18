@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { CAPAS, alturasZona, destacadoDe, enlacesDe, leerZonas, resumenZonas, textoPlano, urlConsultaEnaire, valorarZonas } from '../src/motor/enaire.js';
+import { CAPAS, alturasZona, aplica, destacadoDe, enlacesDe, leerFormas, leerZonas, puntoEnFormas, resumenZonas, textoPlano, urlConsultaEnaire, urlFormasEnaire, valorarZonas } from '../src/motor/enaire.js';
 
 // Respuesta real de la capa aeronáutica en Getafe (17-11-2026): seis zonas.
 const GETAFE = JSON.parse(readFileSync(new URL('./fixtures/enaire-getafe-aero.json', import.meta.url)));
@@ -169,4 +169,67 @@ test('Murcia: a 120 m no te afectan la Academia (desde 610 m), la TLP (desde 320
 test('Murcia: el texto llega limpio, sin «<elem>» ni «<font>»', () => {
   for (const z of murcia()) for (const p of z.texto) assert.doesNotMatch(p, /[<>]/, `${z.id}: ${p}`);
   assert.match(enMurcia('LELC0').destacado, /^NO permitido el vuelo a drones/);
+});
+
+// Formas reales (capa 2, rectángulo alrededor de Getafe, 18-11-2026): 13 zonas.
+const FORMAS = JSON.parse(readFileSync(new URL('./fixtures/enaire-getafe-formas.json', import.meta.url)));
+const formas = () => leerFormas(FORMAS, 'Aeronáutica');
+const enPunto = (lat, lon) => formas().filter((z) => puntoEnFormas(z.anillos, lat, lon)).map((z) => z.id).sort();
+
+test('formas: la consulta pide un rectángulo en WGS84, con geometría simplificada y solo los campos de colorear', () => {
+  const u = new URL(urlFormasEnaire(3, { oeste: -3.8, sur: 40.26, este: -3.66, norte: 40.35 }, 0.0003));
+  assert.equal(u.origin, 'https://servais.enaire.es');
+  assert.match(u.pathname, /\/FeatureServer\/3\/query$/);
+  assert.equal(u.searchParams.get('geometryType'), 'esriGeometryEnvelope');
+  assert.equal(u.searchParams.get('geometry'), '-3.80000,40.26000,-3.66000,40.35000', 'oeste,sur,este,norte');
+  assert.equal(u.searchParams.get('returnGeometry'), 'true');
+  assert.equal(u.searchParams.get('outSR'), '4326', 'sin outSR ArcGIS devuelve metros, no grados');
+  assert.equal(u.searchParams.get('maxAllowableOffset'), '0.0003');
+  assert.doesNotMatch(u.searchParams.get('outFields'), /\*|message/, 'el HTML de cada zona no hace falta para pintarla');
+});
+
+test('formas: las 13 zonas reales llegan con sus anillos en [lon, lat] y su restricción', () => {
+  const f = formas();
+  assert.equal(f.length, 13);
+  for (const z of f) {
+    assert.ok(z.anillos.length >= 1, z.id);
+    for (const r of z.anillos) for (const [lon, lat] of r) assert.ok(lon < 0 && lon > -6 && lat > 39 && lat < 42, `${z.id}: ${lon},${lat}`);
+  }
+  const ctr = f.find((z) => z.id === 'LEMD_CT');
+  assert.equal(ctr.nombre, 'CTR MADRID');
+  assert.equal(ctr.restriccion.nivel, 2);
+  assert.deepEqual([ctr.inferior.m, ctr.superior.m], [60, 305]);
+  assert.equal(Math.round(f.find((z) => z.id === '0559-3').superior.m), 914, '3000 ft');
+});
+
+test('formas: dentro o fuera con la regla par-impar, huecos incluidos', () => {
+  // En el aeropuerto de Getafe: la zona desde el suelo, no la de 45 m, que
+  // tiene ahí su hueco (la rodea).
+  assert.deepEqual(enPunto(40.2945, -3.7235), ['0582-1', 'LECM_TMA', 'LEGT AT', 'LEGT0', 'LEMD_CT']);
+  assert.deepEqual(enPunto(40.27, -3.67), ['LECM_TMA', 'LEGT AT', 'LEGT45', 'LEMD_CT']);
+  // En el hueco del hospital de Alcorcón no está la zona de 90 m.
+  const h = formas().find((z) => z.id === 'LEHA90');
+  assert.equal(puntoEnFormas(h.anillos, 40.3487, -3.8405), false);
+  assert.equal(puntoEnFormas(h.anillos, 40.3487, -3.804), true, 'en el anillo entre los dos bordes');
+  // Lejos de todo, nada.
+  assert.deepEqual(enPunto(41.6, -0.9), []);
+});
+
+test('formas: una geometría rota se descarta sin tumbar la respuesta; un error de ArcGIS es un fallo', () => {
+  const roto = { features: [
+    { attributes: { identifier: 'A', type: 'PROHIBITED' }, geometry: { rings: [[[0, 0], [1, 0]]] } },
+    { attributes: { identifier: 'B', type: 'PROHIBITED' }, geometry: { rings: [[[0, 0], ['x', 1], [1, 1], [1, 0], [999, 5]]] } },
+    { attributes: { identifier: 'C' } },
+  ] };
+  const f = leerFormas(roto, 'Urbana');
+  assert.deepEqual(f.map((z) => z.id), ['B']);
+  assert.deepEqual(f[0].anillos, [[[0, 0], [1, 1], [1, 0]]]);
+  assert.throws(() => leerFormas({ error: { message: 'Invalid query' } }, 'Urbana'), /Invalid query/);
+});
+
+test('formas: a 120 m te afectan las del CTR; la TMA (desde 305 m) no', () => {
+  const f = formas();
+  assert.equal(aplica(f.find((z) => z.id === 'LEMD_CT'), 120, null), 'si');
+  assert.equal(aplica(f.find((z) => z.id === 'LECM_TMA'), 120, null), 'no');
+  assert.equal(aplica(f.find((z) => z.id === 'LEMD_CT'), 50, null), 'no', 'empieza en 60 m');
 });

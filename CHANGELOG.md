@@ -3,6 +3,22 @@
 Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
 `0.0.X` para correcciones. La versión sale en el pie de la app.
 
+## 0.22.0
+
+- **Aviso de versión nueva.** Cuando se instala una versión nueva de la
+  app, sale abajo «Hay una versión nueva de la app» con el botón
+  **Actualizar**. Antes, con la app instalada y sin cerrarla del todo,
+  podías seguir viendo la versión vieja sin saberlo (por eso los avisos de
+  ENAIRE te salían aún con el formato antiguo). Además, al volver a la app
+  comprueba si hay versión nueva (como mucho cada media hora).
+- **ENAIRE, probado con tus zonas de Murcia** (San Javier, Academia
+  General del Aire, TLP): cuando una zona trae varios correos («;») salen
+  todos como botones, y los tipos de zona se dicen en palabras
+  («Restringida (R)», «Temporalmente Segregada (TSA)», «CTA (área de
+  control)», «Helipuerto»).
+- Las alturas se leen mejor: «Desde 3200 m hasta 30.450 m sobre el nivel
+  del mar», sin repetirlo.
+
 ## 0.21.0
 
 **Los avisos de ENAIRE, rehechos con sus datos reales.**

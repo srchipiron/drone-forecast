@@ -145,6 +145,10 @@ try {
   assert.match(compartido.title, /^Drone Forecast · Getafe/);
   assert.match(compartido.text, /^🚁 Getafe<img[^\n]* · DJI Mini 5 Pro a 120 m\nAhora \(\d\d:00\): [^\n]+\nViento \d+ km\/h, rachas \d+ km\/h\nMejor ventana hoy: [^\n]+\nMañana: [^\n]+\n(Sin ventana en los próximos [78] días\n)?http:\/\/127\.0\.0\.1:\d+\/$/);
 
+  // La primera vez no había instalador: su llegada no es una «versión nueva».
+  await page.evaluate(() => navigator.serviceWorker.dispatchEvent(new Event('controllerchange')));
+  assert.ok(await page.locator('#actualizar').isHidden(), 'sin instalador previo no hay aviso de versión nueva');
+
   // Selector de dron: la gama actual agrupada por marca, Mini 5 Pro por defecto.
   assert.equal(await page.inputValue('#sel-dron'), 'mini5pro');
   const marcas = await page.locator('#sel-dron optgroup').evaluateAll((g) => g.map((x) => x.label));
@@ -552,6 +556,11 @@ try {
   await ctx6.setOffline(true);
   await p6.reload();
   await p6.locator('#ahora').waitFor();
+  // Versión nueva: con un instalador ya al mando, el relevo saca el aviso con su botón.
+  assert.ok(await p6.locator('#actualizar').isHidden());
+  assert.ok(await p6.evaluate(() => Boolean(navigator.serviceWorker.controller)), 'la página ya la controla el instalador');
+  await p6.evaluate(() => navigator.serviceWorker.dispatchEvent(new Event('controllerchange')));
+  await p6.locator('#actualizar').filter({ hasText: 'Hay una versión nueva' }).waitFor();
 
   if (process.env.CAPTURA) await page.screenshot({ path: process.env.CAPTURA, fullPage: true });
   assert.equal(errores.length, 0, errores.join('\n'));

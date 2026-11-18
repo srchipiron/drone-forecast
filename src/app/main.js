@@ -370,7 +370,7 @@ function zonaHtml(z, altitud, vistos = new Set()) {
   const datos = [alturasZona(z), z.clase && !z.nombre.startsWith(z.clase) ? z.clase : '', z.motivos.join(', '), z.horario ?? ''].filter(Boolean);
   // Contactos que se tocan: correo, teléfono y los enlaces https del mensaje (ya filtrados en el motor).
   const contactos = [
-    z.email ? `<a class="contacto" href="mailto:${esc(z.email)}">${icono('correo')}<span>${esc(z.email)}</span></a>` : '',
+    ...z.emails.map((e) => `<a class="contacto" href="mailto:${esc(e)}">${icono('correo')}<span>${esc(e)}</span></a>`),
     ...z.telefonos.map((t) => `<a class="contacto" href="tel:${esc(t.replace(/[^\d+]/g, ''))}">${icono('telefono')}<span>${esc(t)}</span></a>`),
     ...z.enlaces.map((e) => `<a class="contacto" href="${esc(e.url)}" target="_blank" rel="noopener noreferrer">${icono('enlace')}<span>${esc(e.texto)}</span></a>`),
   ].join('');
@@ -1380,6 +1380,31 @@ function tic() {
   }
 }
 
+// Versión nueva: el instalador nuevo toma el control en cuanto se instala
+// (skipWaiting + clients.claim), pero la página abierta sigue siendo la vieja
+// hasta recargarla. Si ya había un instalador (no es la primera vez), se
+// avisa con un botón en vez de recargar a mitad de algo. Y al volver a la app
+// se pregunta si hay versión nueva (como mucho cada media hora): una app
+// instalada que nunca se cierra si no, no se entera.
+let ultimaComprobacion = 0;
+
+function vigilarVersionNueva() {
+  if (!('serviceWorker' in navigator)) return;
+  const habiaControlador = Boolean(navigator.serviceWorker.controller);
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (habiaControlador) $('#actualizar').hidden = false;
+  });
+  $('#btn-actualizar').addEventListener('click', () => location.reload());
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible' || Date.now() - ultimaComprobacion < REFRESCO) return;
+    ultimaComprobacion = Date.now();
+    navigator.serviceWorker
+      .getRegistration()
+      .then((r) => r?.update())
+      .catch(() => {});
+  });
+}
+
 async function arrancar() {
   // El instalador primero: si se cierra la app antes de que acabe todo lo
   // demás, que al menos quede para usarla sin cobertura.
@@ -1392,6 +1417,7 @@ async function arrancar() {
       .catch((e) => {
         estado.fallo = `Instalador: ${e?.message ?? e}`;
       });
+  vigilarVersionNueva();
   enlazar();
   pintar();
   const c = almacen.cache();

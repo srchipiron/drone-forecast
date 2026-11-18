@@ -59,10 +59,18 @@ const MOTIVOS = {
 // `extendedProperties`: la clase de zona en palabras.
 const CLASES = {
   CTR: 'CTR (zona de control)',
+  CTA: 'CTA (área de control)',
   ATZ: 'ATZ (zona de tránsito de aeródromo)',
   TMA: 'TMA (área de control terminal)',
   RVF: 'Restricción al vuelo fotográfico',
 };
+
+// «R-Restringida», «TSA-Temporalmente Segregada»... → «Restringida (R)».
+function clase(c) {
+  if (CLASES[c]) return CLASES[c];
+  const m = /^([A-Z]{1,4})-(.+)$/.exec(c);
+  return m ? `${m[2].trim()} (${m[1]})` : c;
+}
 
 const DIAS = { MON: 'lunes', TUE: 'martes', WED: 'miércoles', THU: 'jueves', FRI: 'viernes', SAT: 'sábado', SUN: 'domingo', WEEKDAYS: 'de lunes a viernes', WEEKEND: 'fines de semana' };
 
@@ -149,14 +157,14 @@ export function leerZonas(json, capa) {
   return json.features.map((f) => {
     const a = f?.attributes ?? {};
     const codigo = texto(a.type ?? a.restriction).toUpperCase();
-    const clase = texto(a.extendedProperties);
+    const cls = clase(texto(a.extendedProperties));
     const id = texto(a.identifier);
     const html = texto(a.message);
     return {
       capa,
       id,
-      nombre: texto(a.name) || [CLASES[clase] ?? clase, id].filter(Boolean).join(' ') || 'Zona sin nombre',
-      clase: CLASES[clase] ?? clase,
+      nombre: texto(a.name) || [cls, id].filter(Boolean).join(' ') || 'Zona sin nombre',
+      clase: cls,
       restriccion: { codigo, ...(RESTRICCIONES[codigo] ?? { texto: codigo.toLowerCase() || 'sin dato', nivel: 1 }) },
       motivos: texto(a.reasons ?? a.reason)
         .split(/[,;]/)
@@ -169,7 +177,8 @@ export function leerZonas(json, capa) {
       destacado: destacadoDe(html),
       texto: textoPlano(html),
       enlaces: enlacesDe(html),
-      email: EMAIL.test(texto(a.email)) ? texto(a.email) : '',
+      // Puede traer varios («a@x.es;b@y.es»); solo los que tienen forma de correo.
+      emails: [...new Set(texto(a.email).split(/[;,/\s]+/).filter((e) => EMAIL.test(e)))],
       telefonos: texto(a.phone)
         .split(/[;,/]/)
         .map((t) => t.trim())
@@ -244,14 +253,17 @@ export function valorarZonas(zonas, { altitud, elevacion = null }) {
 
 /** «Desde 60 m hasta 305 m sobre el suelo», «Desde el suelo hasta 900 m»... */
 export function alturasZona(z) {
+  const conInf = Boolean(z.inferior?.m);
   const conSup = Number.isFinite(z.superior?.m);
-  const mixta = z.inferior?.m && conSup && z.inferior.ref !== z.superior.ref;
   const ref = (r) => (r === 'AMSL' ? ' sobre el nivel del mar' : ' sobre el suelo');
-  const t = ({ m, ref: r }, siempre) => `${Math.round(m).toLocaleString('es-ES')} m${siempre || r === 'AMSL' ? ref(r) : ''}`;
-  const inf = z.inferior?.m ? `desde ${t(z.inferior, mixta)}` : 'desde el suelo';
-  const sup = conSup ? ` hasta ${t(z.superior, mixta)}` : '';
-  // Sin mezcla, «sobre el suelo» una vez al final, y solo si empieza en el aire.
-  const final = !mixta && z.inferior?.m && z.inferior.ref === 'AGL' && (!conSup || z.superior.ref === 'AGL') ? ' sobre el suelo' : '';
+  const num = (m) => `${Math.round(m).toLocaleString('es-ES')} m`;
+  // Con referencias distintas, cada límite lleva la suya; si no, una sola al final
+  // («desde el suelo hasta 900 m» no la necesita si es sobre el suelo).
+  const mixta = conInf && conSup && z.inferior.ref !== z.superior.ref;
+  const inf = conInf ? `desde ${num(z.inferior.m)}${mixta ? ref(z.inferior.ref) : ''}` : 'desde el suelo';
+  const sup = conSup ? ` hasta ${num(z.superior.m)}${mixta ? ref(z.superior.ref) : ''}` : '';
+  const unica = conSup ? z.superior.ref : z.inferior?.ref;
+  const final = mixta || (!conInf && unica !== 'AMSL') ? '' : ref(unica);
   const s = `${inf}${sup}${final}`;
   return s[0].toUpperCase() + s.slice(1);
 }

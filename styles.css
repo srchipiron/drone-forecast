@@ -598,6 +598,11 @@ legend { font-weight: 700; padding: 0 0.3rem; font-size: 0.9rem; }
 
 .pie .acciones { margin-top: 0.75rem; }
 
+/* Aviso de versión nueva, encima de la barra de pestañas. */
+.actualizar { position: fixed; z-index: 7; left: 12px; right: 12px; bottom: calc(4.6rem + env(safe-area-inset-bottom)); display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; padding: 0.5rem 0.5rem 0.5rem 0.9rem; border-radius: 14px; background: var(--boton); color: var(--sobre-boton); font-weight: 600; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25); }
+
+.actualizar button { background: var(--sobre-boton); border-color: var(--sobre-boton); color: var(--boton); }
+
 /* ── Barra de pestañas ───────────────────────────────────────────── */
 .pestanas {
   position: fixed;

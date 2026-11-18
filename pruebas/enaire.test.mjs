@@ -57,12 +57,12 @@ test('lo que ENAIRE resalta se saca aparte, con el párrafo entero si resalta un
 
 test('contactos: correo, teléfonos separados y los enlaces https del mensaje', () => {
   const cv = por('LECU/LEVS45');
-  assert.equal(cv.email, 'seguridad_operacional_MCV@aena.es');
+  assert.deepEqual(cv.emails, ['seguridad_operacional_MCV@aena.es']);
   assert.deepEqual(cv.telefonos, ['+34-913 210 900', '+34-916 493 000']);
   assert.equal(cv.enlaces[0].texto, 'Aena');
   assert.match(cv.enlaces[0].url, /^https:\/\/www\.aena\.es\//);
   assert.deepEqual(por('LEMD_CT').enlaces, [{ url: 'https://planea.enaire.es/nsf/login', texto: 'ENAIRE Planea' }]);
-  assert.equal(por('LEGT0').email, 'RPAS_LEGT@mde.es');
+  assert.deepEqual(por('LEGT0').emails, ['RPAS_LEGT@mde.es']);
 });
 
 test('lo de fuera son datos: ni scripts, ni enlaces que no sean https, ni correos raros', () => {
@@ -86,7 +86,7 @@ test('lo de fuera son datos: ni scripts, ni enlaces que no sean https, ni correo
   assert.ok(z.texto.every((p) => !/[<>]/.test(p)));
   assert.ok(z.texto.join(' ').includes('Hola & adiós —'));
   assert.deepEqual(z.enlaces, [{ url: 'https://bien.es/a', texto: 'bien' }]);
-  assert.equal(z.email, '');
+  assert.deepEqual(z.emails, []);
   assert.deepEqual(z.telefonos, []);
   assert.deepEqual(textoPlano(null), []);
   assert.deepEqual(enlacesDe(undefined), []);
@@ -140,4 +140,33 @@ test('nunca dice «fuera» si alguna capa falló', () => {
   const r = resumenZonas([ok('A', [{ nombre: 'X' }]), mal('B')]);
   assert.equal(r.estado, 'dentro');
   assert.deepEqual(r.fallidas, ['B']);
+});
+
+// Respuesta real en San Javier (Murcia), 18-11-2026: zonas que empiezan muy arriba y datos con otras formas.
+const MURCIA = JSON.parse(readFileSync(new URL('./fixtures/enaire-murcia-aero.json', import.meta.url)));
+const murcia = () => leerZonas(MURCIA, 'Aeronáutica');
+const enMurcia = (id) => murcia().find((z) => z.id === id);
+
+test('Murcia: varios correos y teléfonos en un campo, y las clases R/TSA/CTA/Helipuerto en palabras', () => {
+  assert.deepEqual(enMurcia('LELC0').emails, ['cecoamurcia@aena.es', 'prep_vuelos_sanjavier@ea.mde.es']);
+  assert.deepEqual(enMurcia('LELC0').telefonos, ['+34-968 172 024', '+34-968 189 148']);
+  assert.equal(enMurcia('LER63').clase, 'Restringida (R)');
+  assert.equal(enMurcia('LETS64').clase, 'Temporalmente Segregada (TSA)');
+  assert.equal(enMurcia('LELC_CTA').clase, 'CTA (área de control)');
+  assert.equal(enMurcia('LENR0').clase, 'Helipuerto');
+});
+
+test('Murcia: a 120 m no te afectan la Academia (desde 610 m), la TLP (desde 3200 m sobre el mar) ni la CTA (desde 300 m)', () => {
+  const v = valorarZonas(murcia(), { altitud: 120, elevacion: 5 });
+  const ids = v.afectan.map((z) => z.id).sort();
+  assert.deepEqual(ids, ['0956-1', 'LELC AT', 'LELC0', 'LELC_CT', 'LENR0']);
+  for (const fuera of ['LER63', 'LETS64', 'LELC_CTA']) assert.equal(v.zonas.find((z) => z.id === fuera).aplica, 'no', fuera);
+  assert.equal(alturasZona(enMurcia('LETS64')), 'Desde 3200 m hasta 30.450 m sobre el nivel del mar');
+  // Y a 50 m solo las que empiezan en el suelo.
+  assert.deepEqual(valorarZonas(murcia(), { altitud: 50, elevacion: 5 }).afectan.map((z) => z.id).sort(), ['0956-1', 'LELC0', 'LENR0']);
+});
+
+test('Murcia: el texto llega limpio, sin «<elem>» ni «<font>»', () => {
+  for (const z of murcia()) for (const p of z.texto) assert.doesNotMatch(p, /[<>]/, `${z.id}: ${p}`);
+  assert.match(enMurcia('LELC0').destacado, /^NO permitido el vuelo a drones/);
 });

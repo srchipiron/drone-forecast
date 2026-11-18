@@ -3,6 +3,17 @@
 Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
 `0.0.X` para correcciones. La versión sale en el pie de la app.
 
+## 0.24.0
+
+- **El diario, a hoja de cálculo.** En Diario, el botón **Exportar a hoja
+  de cálculo (CSV)** baja un fichero que se abre tal cual en Excel o en
+  Hojas de cálculo de Google, con una fila por vuelo: fecha, hora, lugar,
+  coordenadas, dron, misión, altura, lo que decía la previsión (verde, ámbar
+  o rojo, viento, rachas, Kp, satélites y por qué avisaba), tu valoración y
+  tu nota. Va con «;» y coma decimal, que es lo que entienden en español, y
+  con los acentos bien.
+- La copia en JSON sigue ahí, como **Copia de seguridad (JSON)**.
+
 ## 0.23.0
 
 - **Las zonas de ENAIRE, dibujadas en el mapa.** Al elegir el punto en el

@@ -5,7 +5,7 @@ import { sentidoDeslizar } from '../motor/gestos.js';
 import { textoCompartir } from '../motor/compartir.js';
 import { informeDiagnostico } from '../motor/diagnostico.js';
 import { alturasZona, aplica, puntoEnFormas, valorarZonas } from '../motor/enaire.js';
-import { VALORACIONES, anadirEntrada, crearEntrada, diarioValido, resumenDiario } from '../motor/diario.js';
+import { VALORACIONES, anadirEntrada, crearEntrada, diarioCSV, diarioValido, resumenDiario } from '../motor/diario.js';
 import { graficaDia } from '../motor/grafica.js';
 import { DRONES } from '../motor/drones.js';
 import { MISIONES, MODOS } from '../motor/misiones.js';
@@ -822,7 +822,7 @@ function pintarDiario() {
         </li>`,
       )
       .join('')}</ol>
-    <div class="acciones"><button type="button" data-accion="exportar-diario">Exportar el diario (JSON)</button></div>`;
+    <div class="acciones"><button type="button" data-accion="exportar-csv">Exportar a hoja de cálculo (CSV)</button><button type="button" data-accion="exportar-diario">Copia de seguridad (JSON)</button></div>`;
 }
 
 function abrirVuelo(ms) {
@@ -848,13 +848,20 @@ function guardarVuelo(e) {
   cambiarVista('diario');
 }
 
-function exportarDiario() {
-  const datos = JSON.stringify(diarioValido(almacen.diario()), null, 2);
+function bajarFichero(datos, tipo, nombre) {
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([datos], { type: 'application/json' }));
-  a.download = `diario-vuelos-${hoyLocal()}.json`;
+  a.href = URL.createObjectURL(new Blob([datos], { type: tipo }));
+  a.download = nombre;
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+}
+
+function exportarDiario() {
+  bajarFichero(JSON.stringify(diarioValido(almacen.diario()), null, 2), 'application/json', `diario-vuelos-${hoyLocal()}.json`);
+}
+
+function exportarCSV() {
+  bajarFichero(diarioCSV(diarioValido(almacen.diario())), 'text/csv;charset=utf-8', `diario-vuelos-${hoyLocal()}.csv`);
 }
 
 // ---------- Informe para el cliente ----------
@@ -1369,6 +1376,7 @@ function enlazar() {
     else if (b.dataset.accion === 'compartir') compartir(b);
     else if (b.dataset.diaPaso) cambiarDia(Number(b.dataset.diaPaso));
     else if (b.dataset.accion === 'exportar-diario') exportarDiario();
+    else if (b.dataset.accion === 'exportar-csv') exportarCSV();
     else if (b.dataset.borrarVuelo) {
       almacen.guardarDiario(diarioValido(almacen.diario()).filter((e) => e.id !== b.dataset.borrarVuelo));
       pintarDiario();

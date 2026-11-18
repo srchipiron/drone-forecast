@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { MAXIMO_ENTRADAS, anadirEntrada, crearEntrada, diarioValido, resumenDiario } from '../src/motor/diario.js';
+import { COLUMNAS_CSV, MAXIMO_ENTRADAS, anadirEntrada, crearEntrada, diarioCSV, diarioValido, resumenDiario } from '../src/motor/diario.js';
 import { graficaDia } from '../src/motor/grafica.js';
 import { leerPrevision } from '../src/motor/meteo.js';
 import { construirPrevision } from '../src/motor/prevision.js';
@@ -59,4 +59,44 @@ test('gráfica: un hueco en los datos corta la línea', () => {
   const horas = [3, 4, null, 5].map((v, i) => ({ ms: i, vientoAlt: v, rachaAlt: v, estado: 'ok' }));
   const g = graficaDia(horas, { comodo: 7, limite: 10 });
   assert.equal((g.viento.match(/M/g) ?? []).length, 2);
+});
+
+test('CSV: cabecera, «;» y coma decimal, fecha en la zona pedida, avisos en palabras', () => {
+  const e = crearEntrada(p, p.actual, { nombre: 'Getafe', ...LUGAR }, { valoracion: 'regular', nota: 'rachas', ms: Date.UTC(2026, 10, 18, 8, 5) });
+  const texto = diarioCSV([e], 'Europe/Madrid');
+  assert.ok(texto.startsWith('\uFEFF'), 'BOM: sin él Excel lee mal los acentos');
+  assert.ok(texto.endsWith('\r\n'));
+  const [cab, fila, ...resto] = texto.slice(1).split('\r\n');
+  assert.deepEqual(resto, ['']);
+  assert.deepEqual(cab.split(';'), COLUMNAS_CSV);
+  const c = fila.split(';');
+  assert.equal(c.length, COLUMNAS_CSV.length);
+  assert.deepEqual(c.slice(0, 3), ['2026-11-18', '09:05', 'Getafe'], 'hora de Madrid, no UTC');
+  assert.equal(c[3], LUGAR.lat.toFixed(5).replace('.', ','));
+  assert.equal(c[5], 'DJI Flip');
+  assert.equal(c[9], e.prevision.vientoAlt.toFixed(1).replace('.', ','));
+  assert.ok(c[13].split(', ').includes('viento'), c[13]);
+  assert.deepEqual(c.slice(14), ['Regular', 'rachas']);
+  assert.equal(diarioCSV([], 'Europe/Madrid'), `\uFEFF${COLUMNAS_CSV.join(';')}\r\n`);
+});
+
+test('CSV: el texto de fuera no rompe columnas ni se ejecuta como fórmula', () => {
+  const base = crearEntrada(p, p.actual, { nombre: 'X', ...LUGAR }, { valoracion: 'bien', ms: AHORA });
+  const e = { ...base, lugar: { ...base.lugar, nombre: '=HYPERLINK("http://x";"y")' }, nota: 'dos;\nlíneas "y" comillas', prevision: { ...base.prevision, avisos: ['techo', 'raro'] } };
+  const fila = diarioCSV([e], 'UTC').slice(1).split('\r\n').slice(1).join('\r\n');
+  assert.ok(fila.includes(`"'=HYPERLINK(""http://x"";""y"")"`), 'apóstrofo delante y entre comillas por el «;»');
+  assert.ok(fila.includes('"dos;\nlíneas ""y"" comillas"'));
+  assert.ok(fila.includes(';nubes bajas, raro;'));
+  const salto = diarioCSV([{ ...base, nota: 'una\notra' }], 'UTC');
+  assert.ok(salto.includes(';"una\notra"\r\n'), 'un salto de línea suelto también va entre comillas');
+  for (const peligro of ['+1', '-1', '@SUM(A1)']) {
+    const f = diarioCSV([{ ...base, nota: peligro }], 'UTC').trim().split('\r\n')[1];
+    assert.ok(f.endsWith(`;'${peligro}`), f);
+  }
+  // Las coordenadas negativas son números: no llevan apóstrofo.
+  const oeste = diarioCSV([{ ...base, lugar: { ...base.lugar, lon: -3.7 } }], 'UTC').split('\r\n')[1];
+  assert.ok(oeste.includes(';-3,70000;'), oeste);
+  // Sin datos de previsión, celdas vacías (no «NaN» ni «undefined»).
+  const vacio = diarioCSV([{ ...base, prevision: { estado: 'ok' } }], 'UTC').split('\r\n')[1];
+  assert.doesNotMatch(vacio, /NaN|undefined|null/);
 });

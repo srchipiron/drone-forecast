@@ -69,3 +69,75 @@ export function diarioValido(lista) {
       typeof e.prevision.estado === 'string',
   );
 }
+
+// ---------- Exportar a hoja de cálculo ----------
+
+const NOMBRE_ESTADO = { ok: 'Verde', precaucion: 'Ámbar', no: 'Rojo', 'sin-dato': 'Sin dato' };
+const NOMBRE_AVISO = {
+  viento: 'viento',
+  rachas: 'rachas',
+  lluvia: 'lluvia',
+  temperatura: 'temperatura',
+  visibilidad: 'visibilidad',
+  techo: 'nubes bajas',
+  kp: 'Kp',
+  satelites: 'satélites',
+  luz: 'luz',
+  'luz-foto': 'luz para fotogrametría',
+  consenso: 'desacuerdo entre modelos',
+};
+
+export const COLUMNAS_CSV = ['Fecha', 'Hora', 'Lugar', 'Latitud', 'Longitud', 'Dron', 'Misión', 'Altura (m)', 'Previsión', 'Viento (m/s)', 'Rachas (m/s)', 'Kp', 'Satélites', 'Avisos', 'Valoración', 'Nota'];
+
+// Una celda de texto. Separador «;» y coma decimal: es lo que esperan Excel y
+// Hojas de cálculo en español (con «,» meterían todo en una columna). El
+// texto que empieza por = + - @ se lleva un apóstrofo delante: el nombre del
+// lugar viene de fuera y la nota la escribe cualquiera, y una hoja de cálculo
+// ejecutaría «=HIPERVINCULO(…)» como fórmula (inyección CSV, OWASP).
+function celdaTexto(v) {
+  let s = v === null || v === undefined ? '' : String(v);
+  if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
+  return /[;"\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+function celdaNumero(v, decimales) {
+  return Number.isFinite(v) ? v.toFixed(decimales).replace('.', ',') : '';
+}
+
+function partesFecha(ms, zona) {
+  const f = new Intl.DateTimeFormat('es-ES', { timeZone: zona, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+  const p = Object.fromEntries(f.formatToParts(new Date(ms)).map((x) => [x.type, x.value]));
+  return [`${p.year}-${p.month}-${p.day}`, `${p.hour}:${p.minute}`];
+}
+
+/**
+ * El diario como CSV (texto, con BOM para que Excel lea bien los acentos).
+ * @param {object[]} diario  diarioValido()
+ * @param {string} [zona]  zona horaria de las fechas (la del móvil si no se da)
+ */
+export function diarioCSV(diario, zona) {
+  const filas = [COLUMNAS_CSV.map(celdaTexto).join(';')];
+  for (const e of diario) {
+    const pr = e.prevision ?? {};
+    filas.push(
+      [
+        ...partesFecha(e.ms, zona).map(celdaTexto),
+        celdaTexto(e.lugar?.nombre),
+        celdaNumero(e.lugar?.lat, 5),
+        celdaNumero(e.lugar?.lon, 5),
+        celdaTexto(e.dron),
+        celdaTexto(e.mision),
+        celdaNumero(e.altitud, 0),
+        celdaTexto(NOMBRE_ESTADO[pr.estado] ?? pr.estado),
+        celdaNumero(pr.vientoAlt, 1),
+        celdaNumero(pr.rachaAlt, 1),
+        celdaNumero(pr.kp, 1),
+        celdaNumero(pr.sats, 0),
+        celdaTexto((Array.isArray(pr.avisos) ? pr.avisos : []).map((a) => NOMBRE_AVISO[a] ?? a).join(', ')),
+        celdaTexto(VALORACIONES[e.valoracion] ?? e.valoracion),
+        celdaTexto(e.nota),
+      ].join(';'),
+    );
+  }
+  return `\uFEFF${filas.join('\r\n')}\r\n`;
+}

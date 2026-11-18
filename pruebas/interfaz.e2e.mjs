@@ -356,6 +356,13 @@ try {
   const descarga = page.waitForEvent('download');
   await page.locator('[data-accion="exportar-diario"]').click();
   assert.match((await descarga).suggestedFilename(), /^diario-vuelos-\d{4}-\d\d-\d\d\.json$/);
+  const descargaCSV = page.waitForEvent('download');
+  await page.locator('[data-accion="exportar-csv"]').click();
+  const csv = await descargaCSV;
+  assert.match(csv.suggestedFilename(), /^diario-vuelos-\d{4}-\d\d-\d\d\.csv$/);
+  const lineasCSV = (await readFile(await csv.path(), 'utf8')).split('\r\n');
+  assert.match(lineasCSV[0], /^\uFEFFFecha;Hora;Lugar;/, 'con BOM y separador «;»');
+  assert.match(lineasCSV[1], /^\d{4}-\d\d-\d\d;\d\d:\d\d;"Getafe<img src=x onerror=""window\.__xss=1"">";40,30570;-3,73290;DJI [^;]+;[^;]+;120;(Verde|Ámbar|Rojo);[^]*;Regular;Rachas en la cresta <b>$/);
   await page.reload();
   assert.match(await page.textContent('#diario-cuenta'), /\(1\)/, 'el diario se guarda');
   await page.locator('[data-vista="diario"]').click();

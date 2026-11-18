@@ -1,7 +1,7 @@
 // Todo lo que viene de la red. Lo que llega de fuera son datos: se valida al
 // leerlo (src/motor/*) y nunca se mete en la página sin escapar.
 
-import { CAPAS, leerZonas, resumenZonas, urlConsultaEnaire } from '../motor/enaire.js';
+import { CAPAS, leerFormas, leerZonas, resumenZonas, urlConsultaEnaire, urlFormasEnaire } from '../motor/enaire.js';
 import { URL_KP, leerKp } from '../motor/kp.js';
 import { leerBusqueda, leerConsenso, leerPrevision, urlBusqueda, urlConsenso, urlPrevision } from '../motor/meteo.js';
 import { antiguedadDias, desdeOMM, satValido } from '../motor/satelites.js';
@@ -105,4 +105,20 @@ export async function consultarEnaire(lat, lon) {
     }),
   );
   return { ...resumenZonas(resultados), motivos: resultados.filter((r) => !r.ok).map((r) => `${r.capa}: ${r.motivo}`) };
+}
+
+// Las formas de las zonas que tocan un rectángulo, para el mapa. Igual que
+// arriba: una capa que falla no tumba las demás, pero se dice cuál faltó.
+export async function cargarFormasEnaire(caja, simplificar) {
+  const resultados = await Promise.all(
+    CAPAS.map(async (c) => {
+      try {
+        return { capa: c.nombre, ok: true, zonas: leerFormas(await pedir(urlFormasEnaire(c.id, caja, simplificar), 20000), c.nombre) };
+      } catch {
+        return { capa: c.nombre, ok: false };
+      }
+    }),
+  );
+  const fallidas = resultados.filter((r) => !r.ok).map((r) => r.capa);
+  return { zonas: resultados.filter((r) => r.ok).flatMap((r) => r.zonas), fallidas, error: fallidas.length === CAPAS.length };
 }

@@ -45,3 +45,46 @@ export function teselasVisibles(cx, cy, z, ancho, alto) {
 export function puntoEnPixel(cx, cy, z, ancho, alto, px, py) {
   return aLatLon(cx + (px - ancho / 2) / TAM, cy + (py - alto / 2) / TAM, z);
 }
+
+/** El rectángulo en grados que se ve: {oeste, sur, este, norte}. */
+export function cajaVisible(cx, cy, z, ancho, alto) {
+  const a = puntoEnPixel(cx, cy, z, ancho, alto, 0, 0);
+  const b = puntoEnPixel(cx, cy, z, ancho, alto, ancho, alto);
+  return { oeste: a.lon, sur: b.lat, este: b.lon, norte: a.lat };
+}
+
+/** ¿La caja `dentro` cabe entera en `fuera`? (para no volver a pedir lo mismo) */
+export function cajaDentro(dentro, fuera) {
+  return Boolean(fuera) && dentro.oeste >= fuera.oeste && dentro.este <= fuera.este && dentro.sur >= fuera.sur && dentro.norte <= fuera.norte;
+}
+
+/** La caja agrandada un `f` por cada lado (pedir de más deja arrastrar sin pedir otra vez). */
+export function ampliarCaja(c, f = 0.5) {
+  const dx = (c.este - c.oeste) * f;
+  const dy = (c.norte - c.sur) * f;
+  return { oeste: c.oeste - dx, sur: c.sur - dy, este: c.este + dx, norte: c.norte + dy };
+}
+
+/**
+ * Anillos [[lon, lat], …] → el atributo `d` de un <path> SVG en píxeles del
+ * rectángulo (mismo centro y zoom que las teselas). Se redondea a medio píxel
+ * y se saltan los puntos que caen en el mismo sitio.
+ */
+export function rutaAnillos(anillos, cx, cy, z, ancho, alto) {
+  const partes = [];
+  for (const r of anillos) {
+    let previo = '';
+    let trozo = '';
+    for (const [lon, lat] of r) {
+      const t = aTesela(lat, lon, z);
+      const px = Math.round(((t.x - cx) * TAM + ancho / 2) * 2) / 2;
+      const py = Math.round(((t.y - cy) * TAM + alto / 2) * 2) / 2;
+      const p = `${px} ${py}`;
+      if (p === previo) continue;
+      trozo += `${trozo ? 'L' : 'M'}${p}`;
+      previo = p;
+    }
+    if (trozo) partes.push(`${trozo}Z`);
+  }
+  return partes.join('');
+}

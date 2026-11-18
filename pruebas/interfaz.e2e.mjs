@@ -61,10 +61,19 @@ try {
   // ENAIRE: la respuesta real de Getafe (capa aeronáutica), con un <script> metido en un nombre.
   const zonaAero = JSON.parse(await readFile(join(raiz, 'pruebas/fixtures/enaire-getafe-aero.json'), 'utf8'));
   zonaAero.features[0].attributes.name = 'MADRID/Getafe<script>';
+  // Las formas para el mapa: las reales alrededor de Getafe, con HTML metido en un nombre.
+  const formasAero = JSON.parse(await readFile(join(raiz, 'pruebas/fixtures/enaire-getafe-formas.json'), 'utf8'));
+  formasAero.features.find((f) => f.attributes.identifier === 'LEMD_CT').attributes.name = 'CTR MADRID<img src=x onerror="window.__xss=2">';
   const capasPedidas = [];
+  const formasPedidas = [];
   await page.route('https://servais.enaire.es/**', (r) => {
-    capasPedidas.push(r.request().url().match(/FeatureServer\/(\d+)\//)?.[1]);
-    return r.fulfill({ json: /FeatureServer\/2\/query/.test(r.request().url()) ? zonaAero : { features: [] } });
+    const u = r.request().url();
+    if (u.includes('esriGeometryEnvelope')) {
+      formasPedidas.push(u);
+      return r.fulfill({ json: /FeatureServer\/2\/query/.test(u) ? formasAero : { features: [] } });
+    }
+    capasPedidas.push(u.match(/FeatureServer\/(\d+)\//)?.[1]);
+    return r.fulfill({ json: /FeatureServer\/2\/query/.test(u) ? zonaAero : { features: [] } });
   });
   await page.route('https://geocoding-api.open-meteo.com/**', (r) => r.fulfill({ json: { results: [{ name: 'Getafe<img src=x onerror="window.__xss=1">', admin1: 'Madrid', country: 'España', latitude: 40.3057, longitude: -3.7329 }] } }));
   await page.route('https://services.swpc.noaa.gov/**', (r) => r.fulfill({ json: [['time_tag', 'kp', 'observed'], ...Array.from({ length: 40 }, (_, k) => [new Date(inicio + k * 3 * 3600000).toISOString().slice(0, 19).replace('T', ' '), '2.00', 'predicted'])] }));
@@ -380,10 +389,23 @@ try {
   assert.ok(teselasPedidas.every((u) => /^https:\/\/tile\.openstreetmap\.org\/13\/\d+\/\d+\.png$/.test(u)), 'teselas de OSM en z13');
   const centroX = caja.x + caja.width / 2;
   const centroY = caja.y + caja.height / 2;
-  // Tocar el centro marca el lugar actual (Getafe).
+  // Las zonas de ENAIRE encima: las 13 del rectángulo, de las tres capas.
+  await page.locator('#zonas-mapa').filter({ hasText: 'Zonas de ENAIRE a la vista: 13' }).waitFor();
+  assert.match(await page.textContent('#zonas-mapa'), /a 120 m, 12 te afectan\.$/, 'la TMA empieza en 305 m');
+  assert.deepEqual([...new Set(formasPedidas.map((u) => u.match(/FeatureServer\/(\d+)\//)[1]))].sort(), ['0', '2', '3']);
+  assert.equal(await page.locator('#mapa .mapa-zonas path').count(), 13);
+  assert.equal(await page.locator('#mapa .mapa-zonas path.sin-efecto').count(), 1);
+  assert.ok(Math.abs(Number(await page.locator('#mapa .mapa-zonas').getAttribute('width')) - caja.width) < 2, 'la capa de zonas mide lo que el mapa');
+  // Tocar el centro marca el lugar actual (Getafe) y dice qué zonas lo tocan.
   await page.mouse.click(centroX, centroY);
   assert.equal(await page.textContent('#punto-mapa'), 'Punto: 40.3057, -3.7329');
   assert.ok(await page.locator('#mapa .mapa-marca').isVisible());
+  const enPunto = await page.locator('#punto-zonas li').allTextContents();
+  assert.equal(enPunto.length, 6, enPunto.join(' | '));
+  assert.ok(enPunto.some((t) => t.startsWith('CTR MADRID<img') && t.includes('te afecta a 120 m')), 'el HTML de fuera sale como texto');
+  assert.match(enPunto.at(-1), /^TMA MADRID .*no te afecta a 120 m$/, 'lo que no te afecta, al final');
+  assert.equal(await page.evaluate(() => window.__xss), undefined);
+  const pedidasAntes = formasPedidas.length;
   // Arrastrar 100 px a la derecha lleva el centro al oeste.
   await page.mouse.move(centroX, centroY);
   await page.mouse.down();
@@ -391,11 +413,14 @@ try {
   await page.mouse.move(centroX + 100, centroY, { steps: 3 });
   await page.mouse.up();
   assert.equal(await page.textContent('#punto-mapa'), 'Punto: 40.3057, -3.7329', 'arrastrar no mueve la marca');
+  await page.waitForTimeout(600);
+  assert.equal(formasPedidas.length, pedidasAntes, 'arrastrar dentro de lo ya pedido no pide otra vez');
   await page.mouse.click(centroX, centroY);
   const [, latM, lonM] = (await page.textContent('#punto-mapa')).match(/Punto: ([\d.-]+), ([\d.-]+)/).map(Number);
   assert.ok(Math.abs(latM - 40.3057) < 1e-3 && lonM < -3.74, `el centro se fue al oeste: ${lonM}`);
   await page.locator('#mapa [data-zoom="1"]').click();
   assert.ok(teselasPedidas.some((u) => u.includes('/14/')), 'acercar pide teselas de z14');
+  if (process.env.CAPTURA_MAPA) await page.locator('#panel-mapa').screenshot({ path: process.env.CAPTURA_MAPA });
   await page.locator('#btn-usar-punto').click();
   await page.locator('#nombre-lugar').filter({ hasText: 'Punto del mapa' }).waitFor();
   assert.equal(await page.locator('#dlg-lugar').isVisible(), false);

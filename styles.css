@@ -662,6 +662,50 @@ dialog h3 { font-size: 0.75rem; font-weight: 700; color: var(--suave); text-tran
 
 .mapa-zoom button { min-width: 40px; min-height: 40px; padding: 0; font-size: 1.3rem; line-height: 1; }
 
+/* Zonas de ENAIRE encima de las teselas: color por restricción; las que no
+   te afectan a tu altura, solo el borde a trazos. */
+.mapa-zonas { position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible; }
+
+/* Poco relleno: varias zonas una encima de otra (lo normal cerca de un
+   aeropuerto) no deben tapar el mapa. */
+.mapa-zonas path { fill-opacity: 0.07; stroke-width: 1.5; stroke-opacity: 0.85; }
+
+.mapa-zonas .n3 { fill: #c01c28; stroke: #c01c28; }
+
+.mapa-zonas .n2 { fill: #d35f00; stroke: #d35f00; }
+
+.mapa-zonas .n1 { fill: #b58900; stroke: #b58900; }
+
+.mapa-zonas .n0 { fill: #0b5fc4; stroke: #0b5fc4; }
+
+.mapa-zonas .sin-efecto { fill-opacity: 0; stroke-dasharray: 4 3; stroke-opacity: 0.7; }
+
+.leyenda-mapa { display: flex; flex-wrap: wrap; align-items: center; gap: 0.2rem 0.8rem; }
+
+.leyenda-mapa > span { white-space: nowrap; }
+
+.muestra { display: inline-block; width: 0.9rem; height: 0.9rem; margin-right: 0.25rem; vertical-align: -0.12rem; border-radius: 3px; border: 2px solid; }
+
+.muestra.n3 { background: rgba(192, 28, 40, 0.25); border-color: #c01c28; }
+
+.muestra.n2 { background: rgba(211, 95, 0, 0.25); border-color: #d35f00; }
+
+.muestra.n1 { background: rgba(181, 137, 0, 0.25); border-color: #b58900; }
+
+.muestra.sin-efecto { border-style: dashed; border-color: var(--suave); }
+
+.punto-zonas { list-style: none; margin: 0.3rem 0 0; padding: 0; display: grid; gap: 0.3rem; font-size: 0.9rem; }
+
+.punto-zonas li { padding: 0.35rem 0.55rem; border-left: 4px solid var(--borde); background: var(--tarjeta-2); border-radius: 6px; overflow-wrap: anywhere; }
+
+.punto-zonas li.n3 { border-left-color: #c01c28; }
+
+.punto-zonas li.n2 { border-left-color: #d35f00; }
+
+.punto-zonas li.n1 { border-left-color: #b58900; }
+
+.punto-zonas li.sin-efecto { border-left-style: dashed; }
+
 .mapa-credito { position: absolute; right: 0; bottom: 0; margin: 0; padding: 1px 6px; font-size: 0.7rem; background: var(--tarjeta); color: var(--texto); border-top-left-radius: 6px; }
 
 .mapa-credito a { color: var(--acento); }

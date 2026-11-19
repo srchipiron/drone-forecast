@@ -454,6 +454,8 @@ try {
   });
   await page.reload();
   await page.locator('#planes .plan').first().waitFor();
+  // Eran planes «de antes» (sin ajustes): al arrancar se quedan con el dron de ahora.
+  assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('drone-forecast:planes')).filter((x) => x.ajustes?.dron === 'mini5pro').length), 20);
   await page.locator('[data-accion="planificar"]').click();
   await page.locator('#form-plan button[type="submit"]').click();
   assert.match(await page.textContent('#plan-previa'), /^Ya tienes 20 vuelos planificados: borra alguno para añadir otro\.$/);

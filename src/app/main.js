@@ -9,7 +9,7 @@ import { VALORACIONES, anadirEntrada, crearEntrada, diarioCSV, diarioValido, res
 import { graficaDia } from '../motor/grafica.js';
 import { DRONES } from '../motor/drones.js';
 import { MISIONES, MODOS } from '../motor/misiones.js';
-import { MAXIMO_PLANES, NOMBRE_ESTADO, anadirPlan, crearPlan, cuandoPlan, empeora, huecosPlan, icsPlan, planesValidos, valorarPlan } from '../motor/planificado.js';
+import { MAXIMO_PLANES, NOMBRE_ESTADO, anadirPlan, crearPlan, cuandoPlan, empeora, fijarAjustesPlanes, huecosPlan, icsPlan, planesValidos, valorarPlan } from '../motor/planificado.js';
 import { construirPrevision, normalizarAjustes, resumenDias } from '../motor/prevision.js';
 import { fmtHora as hora, fmtViento } from '../motor/unidades.js';
 import { umbralesViento } from '../motor/veredicto.js';
@@ -1730,6 +1730,9 @@ function vigilarVersionNueva() {
 }
 
 async function arrancar() {
+  // Planes de antes de 0.29.1: se quedan con los ajustes de ahora (una vez).
+  const migrados = fijarAjustesPlanes(almacen.planes(), estado.ajustes);
+  if (migrados.cambiados) almacen.guardarPlanes(migrados.planes);
   // El instalador primero: si se cierra la app antes de que acabe todo lo
   // demás, que al menos quede para usarla sin cobertura.
   // Con aviso de ventana, el instalador de tipo módulo (lleva sw.js dentro);

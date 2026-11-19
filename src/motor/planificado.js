@@ -206,3 +206,19 @@ export function huecosPlan(p, horas, ahora = Date.now()) {
   if (verdes.length) return verdes.map((x) => ({ ...x, estado: 'ok' }));
   return buscar((e) => e === 'ok' || e === 'precaucion').map((x) => ({ ...x, estado: 'precaucion' }));
 }
+
+/**
+ * Planes guardados antes de 0.29.1 no llevan sus ajustes y se juzgaban con
+ * los del momento. Se les fijan los de ahora una vez (lo más parecido a los
+ * de cuando se planificaron) para que dejen de cambiar con el dron puesto.
+ * @returns {{planes: object[], cambiados: number}}
+ */
+export function fijarAjustesPlanes(planes, ajustes) {
+  let cambiados = 0;
+  const salida = (Array.isArray(planes) ? planes : []).map((p) => {
+    if (!p || typeof p !== 'object' || (p.ajustes && typeof p.ajustes === 'object')) return p;
+    cambiados++;
+    return { ...p, ajustes: ajustesDelPlan(ajustes ?? {}) };
+  });
+  return { planes: salida, cambiados };
+}

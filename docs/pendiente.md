@@ -67,5 +67,5 @@ bloqueada (con el motivo, y se pasa a la siguiente).
   para meterlo en el calendario del móvil o mandárselo al cliente.
 - [x] **Informe del vuelo planificado** (0.28.0): el «Informe para el cliente» de un
   plan (sus horas, no la hora de ahora), con las zonas de ENAIRE del punto.
-- [ ] **Mejor día para un plan**: al planificar, sugerir los huecos verdes
+- [x] **Mejor día para un plan** (0.29.0): al planificar, sugerir los huecos verdes
   de la semana que cubren las horas pedidas (por ejemplo, «2 h seguidas»).

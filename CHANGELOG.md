@@ -3,6 +3,27 @@
 Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
 `0.0.X` para correcciones. La versión sale en el pie de la app.
 
+## 0.29.2
+
+Correcciones del mapa de zonas de ENAIRE (otra revisión a fondo):
+
+- **Al tocar un punto del mapa, sus zonas se preguntan a ENAIRE por ese
+  punto exacto**, igual que la tarjeta «Zonas UAS». Antes se sacaban de las
+  formas dibujadas, que están simplificadas para pintar: con el mapa alejado
+  una zona pequeña podía no estar, y si movías el mapa después de marcar
+  podía decir «Fuera de las zonas de ENAIRE» o «no te afecta» estando
+  dentro. Si alguna capa de ENAIRE no responde, ya no dice «fuera».
+- Si en la parte del mapa que miras hay más zonas de las que ENAIRE manda de
+  una vez, lo dice («acerca el mapa para verlas todas») en vez de dar por
+  completo lo que llegó.
+- Si una capa de ENAIRE falla, al mover el mapa se vuelve a intentar (antes
+  se quedaba sin ella hasta salir de esa zona).
+- Al alejar el mapa, una respuesta que llegaba tarde ya no pinta zonas a
+  medias; y lo que ya no miras se deja de descargar (ahorra datos en 4G).
+- Arrastrar el mapa con muchas zonas va más suave.
+- Los vuelos planificados antes de 0.29.1 se quedan con el dron que tengas
+  puesto al abrir la app, y ya no cambian si luego cambias de dron.
+
 ## 0.29.1
 
 Correcciones en los vuelos planificados (una revisión a fondo de lo nuevo):

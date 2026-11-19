@@ -4,7 +4,7 @@ import { cielo } from '../motor/cielo.js';
 import { sentidoDeslizar } from '../motor/gestos.js';
 import { textoCompartir } from '../motor/compartir.js';
 import { informeDiagnostico } from '../motor/diagnostico.js';
-import { alturasZona, aplica, puntoEnFormas, valorarZonas } from '../motor/enaire.js';
+import { alturasZona, aplica, valorarZonas } from '../motor/enaire.js';
 import { VALORACIONES, anadirEntrada, crearEntrada, diarioCSV, diarioValido, resumenDiario } from '../motor/diario.js';
 import { graficaDia } from '../motor/grafica.js';
 import { DRONES } from '../motor/drones.js';
@@ -1433,7 +1433,12 @@ let puntoMapa = null;
 // rectángulo abarca media España y la respuesta sería enorme (y el servicio
 // corta en 300): se pide acercar.
 const ZOOM_ZONAS = 9;
-const formasMapa = { zonas: [], caja: null, zoom: 0, fallidas: [], pidiendo: 0, estado: 'lejos' };
+const formasMapa = { zonas: [], caja: null, zoom: 0, fallidas: [], cortadas: [], pidiendo: 0, estado: 'lejos', cancelar: null };
+// Las zonas del punto tocado: se preguntan a ENAIRE por ESE punto (geometría
+// exacta, como la tarjeta «Zonas UAS»), no se sacan de las formas del mapa,
+// que están simplificadas para pintar (en zoom bajo borran zonas pequeñas),
+// pueden ser de otra parte del mapa o venir cortadas por el tope.
+const zonasPunto = { turno: 0, p: null, r: null };
 
 function claseForma(z, alt) {
   return `zona-mapa n${z.restriccion.nivel}${aplica(z, alt, null) === 'no' ? ' sin-efecto' : ''}`;
@@ -1455,35 +1460,54 @@ function pintarFormasMapa() {
       ? 'Sin zonas de ENAIRE en esta parte del mapa.'
       : `Zonas de ENAIRE a la vista: ${formasMapa.zonas.length}; a ${alt2}, ${afectan === 0 ? 'ninguna te afecta' : afectan === 1 ? '1 te afecta' : `${afectan} te afectan`}.`,
   }[formasMapa.estado];
-  const falta = formasMapa.estado === 'listo' && formasMapa.fallidas.length ? ` Faltan las capas: ${formasMapa.fallidas.join(', ')}.` : '';
+  const falta =
+    formasMapa.estado !== 'listo'
+      ? ''
+      : (formasMapa.fallidas.length ? ` Faltan las capas: ${formasMapa.fallidas.join(', ')}.` : '') +
+        (formasMapa.cortadas.length ? ` Hay más zonas de las que caben (${formasMapa.cortadas.join(', ')}): acerca el mapa para verlas todas.` : '');
   $('#zonas-mapa').textContent = texto + falta;
   pintarPuntoMapa();
 }
 
 // Qué zonas tocan el punto marcado, contadas a tu altura.
+async function consultarPunto(p) {
+  const turno = ++zonasPunto.turno;
+  Object.assign(zonasPunto, { p, r: { estado: 'mirando' } });
+  pintarPuntoMapa();
+  const r = await consultarEnaire(p.lat, p.lon).catch(() => ({ estado: 'error', zonas: [], fallidas: [] }));
+  if (turno !== zonasPunto.turno) return; // ya han tocado otro punto
+  zonasPunto.r = r;
+  pintarPuntoMapa();
+}
+
 function pintarPuntoMapa() {
   const caja = $('#punto-zonas');
-  if (!puntoMapa || formasMapa.estado !== 'listo') return void (caja.hidden = true);
-  const alt = estado.ajustes.altitud;
-  const dentro = formasMapa.zonas.filter((z) => puntoEnFormas(z.anillos, puntoMapa.lat, puntoMapa.lon));
+  const { p, r } = zonasPunto;
+  if (!p || !puntoMapa || p !== puntoMapa || !r) return void (caja.hidden = true);
   caja.hidden = false;
-  if (!dentro.length) {
-    caja.innerHTML = `<li>${formasMapa.fallidas.length ? 'Ninguna zona de las capas que han llegado' : 'Fuera de las zonas de ENAIRE'}.</li>`;
+  const alt = estado.ajustes.altitud;
+  const falta = r.fallidas?.length ? ` (no han respondido: ${r.fallidas.join(', ')})` : '';
+  if (r.estado === 'mirando') return void (caja.innerHTML = '<li>Preguntando a ENAIRE por este punto…</li>');
+  if (r.estado === 'error') return void (caja.innerHTML = '<li>No se pudo preguntar a ENAIRE por este punto. Mira la tarjeta «Zonas UAS» al elegirlo.</li>');
+  if (!r.zonas?.length) {
+    caja.innerHTML = r.estado === 'fuera' ? '<li>Fuera de las zonas de ENAIRE.</li>' : `<li>Ninguna zona en las capas que han respondido${esc(falta)}: no se puede decir que esté fuera.</li>`;
     return;
   }
-  caja.innerHTML = valorarZonas(dentro, { altitud: alt, elevacion: null })
-    .zonas.map((z) => {
-      const efecto = z.aplica === 'no' ? `no te afecta a ${alt} m` : z.aplica === 'quiza' ? 'puede afectarte' : `te afecta a ${alt} m`;
-      return `<li class="${claseForma(z, alt)}"><strong>${esc(z.nombre)}</strong> · ${esc(z.restriccion.texto)} · ${esc(alturasZona(z).toLowerCase())} · <em>${esc(efecto)}</em></li>`;
-    })
-    .join('');
+  caja.innerHTML =
+    valorarZonas(r.zonas, { altitud: alt, elevacion: null })
+      .zonas.map((z) => {
+        const efecto = z.aplica === 'no' ? `no te afecta a ${alt} m` : z.aplica === 'quiza' ? 'puede afectarte' : `te afecta a ${alt} m`;
+        return `<li class="${claseForma(z, alt)}"><strong>${esc(z.nombre)}</strong> · ${esc(z.restriccion.texto)} · ${esc(alturasZona(z).toLowerCase())} · <em>${esc(efecto)}</em></li>`;
+      })
+      .join('') + (falta ? `<li>Puede haber más${esc(falta)}.</li>` : '');
 }
 
 async function verZonasMapa({ caja, zoom }) {
   if (zoom < ZOOM_ZONAS) {
-    formasMapa.estado = 'lejos';
-    formasMapa.zonas = [];
-    formasMapa.caja = null;
+    // Lo que estuviera en camino ya no sirve: que no llegue y pinte.
+    formasMapa.pidiendo++;
+    formasMapa.cancelar?.abort();
+    Object.assign(formasMapa, { estado: 'lejos', zonas: [], caja: null, cancelar: null });
     return pintarFormasMapa();
   }
   // Lo ya pedido vale mientras la vista quepa dentro y no se haya acercado
@@ -1491,13 +1515,18 @@ async function verZonasMapa({ caja, zoom }) {
   if (formasMapa.estado === 'listo' && cajaDentro(caja, formasMapa.caja) && zoom < formasMapa.zoom + 2) return;
   const pedida = ampliarCaja(caja);
   const turno = ++formasMapa.pidiendo;
+  formasMapa.cancelar?.abort(); // en 4G, no seguir bajando lo que ya no se mira
+  const cancelar = typeof AbortController === 'function' ? new AbortController() : null;
+  formasMapa.cancelar = cancelar;
   formasMapa.estado = 'cargando';
   pintarFormasMapa();
   // Un píxel en grados en este zoom: menos detalle no se vería.
-  const r = await cargarFormasEnaire(pedida, Number((360 / (256 * 2 ** zoom)).toPrecision(2)));
+  const r = await cargarFormasEnaire(pedida, Number((360 / (256 * 2 ** zoom)).toPrecision(2)), cancelar?.signal);
   if (turno !== formasMapa.pidiendo) return; // llegó tarde: hay otra más nueva
-  const todas = r.error;
-  Object.assign(formasMapa, { zonas: r.zonas, fallidas: r.fallidas, caja: todas ? null : pedida, zoom, estado: todas ? 'error' : 'listo' });
+  // Con una capa caída o cortada no se da por pedida esta parte: al moverse
+  // se vuelve a intentar.
+  const completa = !r.fallidas.length && !r.cortadas.length;
+  Object.assign(formasMapa, { zonas: r.zonas, fallidas: r.fallidas, cortadas: r.cortadas, caja: completa ? pedida : null, zoom, estado: r.error ? 'error' : 'listo', cancelar: null });
   pintarFormasMapa();
 }
 
@@ -1516,7 +1545,7 @@ function abrirMapa() {
       puntoMapa = p;
       $('#punto-mapa').textContent = `Punto: ${p.lat.toFixed(4)}, ${p.lon.toFixed(4)}`;
       $('#btn-usar-punto').disabled = false;
-      pintarPuntoMapa();
+      consultarPunto(p);
     },
     alVer: verZonasMapa,
   });

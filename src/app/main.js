@@ -9,7 +9,7 @@ import { VALORACIONES, anadirEntrada, crearEntrada, diarioCSV, diarioValido, res
 import { graficaDia } from '../motor/grafica.js';
 import { DRONES } from '../motor/drones.js';
 import { MISIONES, MODOS } from '../motor/misiones.js';
-import { NOMBRE_ESTADO, anadirPlan, crearPlan, cuandoPlan, empeora, huecosPlan, icsPlan, planesValidos, valorarPlan } from '../motor/planificado.js';
+import { MAXIMO_PLANES, NOMBRE_ESTADO, anadirPlan, crearPlan, cuandoPlan, empeora, huecosPlan, icsPlan, planesValidos, valorarPlan } from '../motor/planificado.js';
 import { construirPrevision, normalizarAjustes, resumenDias } from '../motor/prevision.js';
 import { fmtHora as hora, fmtViento } from '../motor/unidades.js';
 import { umbralesViento } from '../motor/veredicto.js';
@@ -787,7 +787,7 @@ function pintar() {
   pintarAviso(p);
   pintarAhora(p);
   pintarZonas(p);
-  pintarPlanes(p);
+  pintarPlanes();
   pintarDias(p);
   pintarDiasDrones(p);
   pintarHoras(p);
@@ -863,24 +863,42 @@ function abrirVuelo(ms) {
 // ---------- Vuelos planificados ----------
 
 const mismoSitio = (a, b) => Boolean(a && b) && Math.abs(a.lat - b.lat) < 1e-4 && Math.abs(a.lon - b.lon) < 1e-4;
-// Previsión de los lugares de los planes que no son el de la pantalla, una
-// descarga por lugar y por sesión (se renueva al recargar).
+// Los planes se juzgan COMO EL INSTALADOR que avisa en segundo plano: con
+// el dron y la altura del plan y sin el acuerdo entre modelos (que el
+// instalador no descarga). Si no, la tarjeta diría «ha empeorado» por cosas
+// que nunca llegarían como aviso, o al revés.
+const memoPlanes = new Map();
+function previsionParaPlan(meteo, lugar, ajustes) {
+  const clave = JSON.stringify([lugar.lat, lugar.lon, ajustes, horaEnCurso()]);
+  const m = memoPlanes.get(clave);
+  if (m && m.meteo === meteo && m.kp === estado.kp && m.sats === estado.gnss.satelites) return m.valor;
+  const valor = construirPrevision({ meteo, kp: estado.kp, satelites: estado.gnss.satelites, lugar, ajustes });
+  if (memoPlanes.size > 40) memoPlanes.clear();
+  memoPlanes.set(clave, { meteo, kp: estado.kp, sats: estado.gnss.satelites, valor });
+  return valor;
+}
+
+// Previsión de los lugares de los planes que no son el de la pantalla: una
+// descarga por lugar, que caduca como la de la pantalla (REFRESCO). La app
+// puede seguir abierta días en Android: sin caducar, la tarjeta y el informe
+// para el cliente enseñarían una previsión vieja.
 const meteoPlanes = new Map();
 
-function previsionPlan(plan, p) {
-  if (mismoSitio(plan.lugar, estado.lugar)) return p;
+function previsionPlan(plan) {
+  const ajustes = plan.ajustes ?? estado.ajustes;
+  if (mismoSitio(plan.lugar, estado.lugar)) return estado.meteo ? previsionParaPlan(estado.meteo, plan.lugar, ajustes) : null;
   const clave = `${plan.lugar.lat},${plan.lugar.lon}`;
   const m = meteoPlanes.get(clave);
-  if (m === undefined) {
-    meteoPlanes.set(clave, null);
+  if (!m || (m.estado !== 'cargando' && Date.now() - m.ms > REFRESCO)) {
+    meteoPlanes.set(clave, { estado: 'cargando', meteo: m?.meteo ?? null, ms: Date.now() });
     cargarSoloPrevision(plan.lugar.lat, plan.lugar.lon)
-      .then((meteo) => meteoPlanes.set(clave, meteo))
-      .catch(() => meteoPlanes.set(clave, 'error'))
-      .finally(() => pintarPlanes(prevision()));
-    return null;
+      .then((meteo) => meteoPlanes.set(clave, { estado: 'listo', meteo, ms: Date.now() }))
+      .catch(() => meteoPlanes.set(clave, { estado: 'error', meteo: null, ms: Date.now() }))
+      .finally(() => pintarPlanes());
   }
-  if (!m || m === 'error') return m;
-  return construirPrevision({ meteo: m, kp: estado.kp, satelites: estado.gnss.satelites, lugar: plan.lugar, ajustes: estado.ajustes });
+  const actual = meteoPlanes.get(clave);
+  if (actual.meteo) return previsionParaPlan(actual.meteo, plan.lugar, ajustes);
+  return actual.estado === 'error' ? 'error' : null;
 }
 
 function textoValoracion(val) {
@@ -889,18 +907,18 @@ function textoValoracion(val) {
   return `${nombre[0].toUpperCase()}${nombre.slice(1)}${val.motivos.length ? `: ${val.motivos.join(', ').toLowerCase()}` : ''}`;
 }
 
-function pintarPlanes(p) {
+function pintarPlanes() {
   const caja = $('#planes');
   const planes = planesValidos(almacen.planes());
   caja.hidden = !planes.length;
   if (!planes.length) return;
   const filas = planes.map((plan) => {
-    const pp = previsionPlan(plan, p);
+    const pp = previsionPlan(plan);
     const val = pp && pp !== 'error' ? valorarPlan(plan, pp) : null;
     const txt = pp === 'error' ? 'No se pudo descargar la previsión' : val ? textoValoracion(val) : 'Mirando la previsión…';
     const peor = val && empeora(plan.estado, val.estado);
     return `<li class="plan e-${esc(val?.estado ?? 'sin-dato')}">
-      <div><strong>${esc(cuandoPlan(plan))}</strong> · ${esc(plan.lugar.nombre)}${plan.nota ? ` · «${esc(plan.nota)}»` : ''}</div>
+      <div><strong>${esc(cuandoPlan(plan))}</strong> · ${esc(plan.lugar.nombre)}${pp && pp !== 'error' ? ` · ${esc(pp.dron.nombre)} a ${esc(pp.ajustes.altitud)} m` : ''}${plan.nota ? ` · «${esc(plan.nota)}»` : ''}</div>
       <div class="estado-plan">${esc(txt)}</div>
       ${peor ? `<div class="empeora">Ha empeorado: al planificarlo estaba en ${esc(NOMBRE_ESTADO[plan.estado])}.</div>` : ''}
       <button type="button" class="icono" data-borrar-plan="${esc(plan.id)}" aria-label="Borrar el plan del ${esc(cuandoPlan(plan))}">✕</button>
@@ -920,7 +938,7 @@ function pintarPlanes(p) {
 async function planAlCalendario(id) {
   const plan = planesValidos(almacen.planes()).find((x) => x.id === id);
   if (!plan) return;
-  const pp = previsionPlan(plan, prevision());
+  const pp = previsionPlan(plan);
   const ics = icsPlan(plan, pp && pp !== 'error' ? valorarPlan(plan, pp) : null);
   const nombre = `vuelo-${new Date(plan.ms).toISOString().slice(0, 10)}.ics`;
   const fichero = typeof File === 'function' ? new File([ics], nombre, { type: 'text/calendar' }) : null;
@@ -940,7 +958,7 @@ async function planAlCalendario(id) {
 // de la pantalla, se preguntan a ENAIRE en el momento.
 async function informePlan(id, boton) {
   const plan = planesValidos(almacen.planes()).find((x) => x.id === id);
-  const pp = plan && previsionPlan(plan, prevision());
+  const pp = plan && previsionPlan(plan);
   if (!pp || pp === 'error') return;
   const aqui = mismoSitio(plan.lugar, estado.lugar);
   let enaireZonas = estado.enaire;
@@ -948,7 +966,7 @@ async function informePlan(id, boton) {
     boton.textContent = 'Preguntando a ENAIRE…';
     enaireZonas = await consultarEnaire(plan.lugar.lat, plan.lugar.lon).catch(() => ({ estado: 'error' }));
   }
-  const elevacion = aqui ? (estado.meteo?.elevacion ?? null) : (meteoPlanes.get(`${plan.lugar.lat},${plan.lugar.lon}`)?.elevacion ?? null);
+  const elevacion = aqui ? (estado.meteo?.elevacion ?? null) : (meteoPlanes.get(`${plan.lugar.lat},${plan.lugar.lon}`)?.meteo?.elevacion ?? null);
   $('#informe').innerHTML = htmlInforme(pp, { plan, enaireZonas, elevacion });
   boton.textContent = 'Informe para el cliente';
   window.print();
@@ -978,8 +996,9 @@ function horasPlan(p = prevision()) {
 function planDelFormulario(p) {
   const ms = Number($('#plan-hora').value);
   if (!Number.isFinite(ms) || !ms) return null;
-  const borrador = crearPlan({ ms, horas: Number($('#plan-horas').value), lugar: estado.lugar, zona: p.zona, nota: $('#plan-nota').value });
-  const val = valorarPlan(borrador, p);
+  const borrador = crearPlan({ ms, horas: Number($('#plan-horas').value), lugar: estado.lugar, zona: p.zona, nota: $('#plan-nota').value, ajustes: estado.ajustes });
+  // La referencia de «empeora», calculada igual que la calculará el instalador.
+  const val = valorarPlan(borrador, previsionPlan(borrador) ?? p);
   return { plan: { ...borrador, estado: val.estado in NOMBRE_ESTADO ? val.estado : null }, val };
 }
 
@@ -1017,10 +1036,15 @@ function guardarPlan(e) {
   const p = prevision();
   const r = p && planDelFormulario(p);
   if (!r) return;
-  almacen.guardarPlanes(anadirPlan(planesValidos(almacen.planes()), r.plan));
+  const lista = planesValidos(almacen.planes());
+  if (!lista.some((x) => x.id === r.plan.id) && lista.length >= MAXIMO_PLANES) {
+    $('#plan-previa').textContent = `Ya tienes ${MAXIMO_PLANES} vuelos planificados: borra alguno para añadir otro.`;
+    return;
+  }
+  almacen.guardarPlanes(anadirPlan(lista, r.plan));
   $('#dlg-plan').close();
-  sincronizarAviso();
-  pintarPlanes(p);
+  sincronizarAviso([r.plan.id]); // guardado otra vez: lo visto antes ya no vale
+  pintarPlanes();
   $('#planes').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
@@ -1226,12 +1250,16 @@ const CON_AVISO =
   'showNotification' in (window.ServiceWorkerRegistration?.prototype ?? {});
 
 // El instalador no ve lo guardado por la página: se le copia lo que necesita cada vez que cambia.
-async function sincronizarAviso() {
+// olvidar: planes recién guardados o borrados, cuyo último estado visto ya
+// no sirve de referencia (si no, un plan rojo que se vuelve a guardar en
+// verde no avisaría al pasar a ámbar).
+async function sincronizarAviso(olvidar = []) {
   if (!CON_AVISO) return;
   const antes = (await almacen.configAviso()) ?? {};
   // Para el Diagnóstico, que se monta sin esperas (el portapapeles no espera).
   estado.avisoUltimo = antes.ultimo ?? '';
-  await almacen.guardarConfigAviso({ ultimo: antes.ultimo ?? '', vistos: antes.vistos ?? {}, activo: almacen.aviso(), ajustes: estado.ajustes, favoritos: estado.favoritos, planes: planesValidos(almacen.planes()) });
+  const vistos = Object.fromEntries(Object.entries(antes.vistos ?? {}).filter(([id]) => !olvidar.includes(id)));
+  await almacen.guardarConfigAviso({ ultimo: antes.ultimo ?? '', vistos, activo: almacen.aviso(), ajustes: estado.ajustes, favoritos: estado.favoritos, planes: planesValidos(almacen.planes()) });
 }
 
 function pintarAvisoVentana(texto) {
@@ -1577,8 +1605,8 @@ function enlazar() {
     else if (b.dataset.informePlan) informePlan(b.dataset.informePlan, b);
     else if (b.dataset.borrarPlan) {
       almacen.guardarPlanes(planesValidos(almacen.planes()).filter((x) => x.id !== b.dataset.borrarPlan));
-      sincronizarAviso();
-      pintarPlanes(prevision());
+      sincronizarAviso([b.dataset.borrarPlan]);
+      pintarPlanes();
     }
     else if (b.dataset.accion === 'informe') imprimirInforme();
     else if (b.dataset.accion === 'compartir') compartir(b);

@@ -11,9 +11,15 @@ const lugar = { nombre: 'Getafe', ...LUGAR };
 const prev = (op) => construirPrevision({ meteo: leerPrevision(respuestaOpenMeteo(op)), lugar, ajustes: { dron: 'flip' }, ahora: AHORA });
 const plan = (op = {}) => crearPlan({ ms: MANANA_10, horas: 2, lugar, zona: 'Europe/Madrid', estado: 'ok', ...op });
 
-test('plan: empieza en punto, duración válida, nombre y nota recortados', () => {
-  const p = plan({ ms: MANANA_10 + 25 * 60000, horas: 9, nota: 'x'.repeat(300), lugar: { ...lugar, nombre: 'n'.repeat(200) } });
+test('plan: la hora elegida tal cual, duración válida, nombre y nota recortados, con sus ajustes', () => {
+  // Una hora de la previsión en un huso de media hora (India): no se redondea a la hora UTC.
+  const media = MANANA_10 + 30 * 60000;
+  assert.equal(plan({ ms: media }).ms, media);
+  assert.equal(cuandoPlan(plan({ ms: media, zona: 'Asia/Kolkata' })), 'lun 22 jun, 14:00–16:00');
+  const p = plan({ horas: 9, nota: 'x'.repeat(300), lugar: { ...lugar, nombre: 'n'.repeat(200) }, ajustes: { dron: 'neo', altitud: 60, misDrones: ['flip'] } });
   assert.equal(p.ms, MANANA_10);
+  assert.deepEqual(p.ajustes, { dron: 'neo', altitud: 60 }, 'con su dron y su altura, sin «Mis drones»');
+  assert.equal(plan().ajustes, null);
   assert.equal(p.horas, 1, 'una duración rara pasa a 1 h');
   assert.equal(p.nota.length, 200);
   assert.equal(p.lugar.nombre.length, 120);

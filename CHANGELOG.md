@@ -3,6 +3,15 @@
 Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
 `0.0.X` para correcciones. La versión sale en el pie de la app.
 
+## 0.26.0
+
+- **La semana con todos tus drones.** Si tienes marcados otros drones en
+  Ajustes → Mis drones, debajo de la fila de días sale **Con tus otros
+  drones**: para cada uno, la mejor ventana de cada día («Mañ. 10–14 h»), en
+  verde o ámbar como arriba, o «—» si ese día no se puede volar con él. Así
+  ves de un vistazo qué día sale el vuelo con el dron que aguanta más
+  viento. Tocar un día lo abre en la tabla de horas.
+
 ## 0.25.0
 
 - **Vuelos planificados.** Con el botón **Planificar vuelo** (debajo del

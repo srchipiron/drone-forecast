@@ -57,5 +57,15 @@ bloqueada (con el motivo, y se pasa a la siguiente).
 - [x] **Vuelo planificado** (0.25.0): marcar un día y hora de vuelo (para un cliente)
   y que el aviso de ventana avise si la previsión de esa hora empeora a ámbar
   o rojo.
-- [ ] **Ventanas de la semana para todos mis drones**: en la vista de días,
+- [x] **Ventanas de la semana para todos mis drones** (0.26.0): en la vista de días,
   con «Mis drones» marcados, la mejor ventana de cada día para cada dron.
+
+### Propuestas (19-11-2026; Javi puede reordenarlas o tacharlas)
+
+- [ ] **Vuelo planificado al calendario**: desde la tarjeta de planes, un
+  botón que baje un `.ics` (fecha, hora, lugar con enlace al mapa y la nota)
+  para meterlo en el calendario del móvil o mandárselo al cliente.
+- [ ] **Informe del vuelo planificado**: el «Informe para el cliente» de un
+  plan (sus horas, no la hora de ahora), con las zonas de ENAIRE del punto.
+- [ ] **Mejor día para un plan**: al planificar, sugerir los huecos verdes
+  de la semana que cubren las horas pedidas (por ejemplo, «2 h seguidas»).

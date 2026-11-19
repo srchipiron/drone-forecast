@@ -470,6 +470,28 @@ function pintarDias(p) {
     .join('');
 }
 
+// Con «Mis drones» marcados: la ventana de cada día para cada uno de los
+// otros. Tocar un día lo abre, como en la fila de arriba.
+function pintarDiasDrones(p) {
+  const caja = $('#dias-drones');
+  const filas = p?.ventanasDrones ?? [];
+  caja.hidden = !filas.length;
+  if (!filas.length) return;
+  const nombreDia = (clave, k) => (k === 1 ? 'Mañ.' : etiquetaDia(clave, k));
+  caja.innerHTML = `<h2 id="titulo-dias-drones">Con tus otros drones</h2><ul class="lista-dias-drones">${filas
+    .map(
+      (f) => `<li><strong>${esc(f.nombre)}</strong><span class="dias-dron">${f.dias
+        .map((d, k) => {
+          const v = d.ventana;
+          const rango = v ? `${hora(v.inicio, p.zona).slice(0, 2)}–${hora(v.fin, p.zona).slice(0, 2).replace(/^00$/, '24')} h` : '—';
+          const detalle = v ? `${hora(v.inicio, p.zona)}–${hora(v.fin, p.zona)}${v.estado === 'precaucion' ? ' con precaución' : ''}` : 'sin ventana';
+          return `<button type="button" class="chip ${v ? v.estado : 'no'}${d.clave === estado.dia ? ' activo' : ''}" data-dia="${esc(d.clave)}" data-ir="horas" aria-label="${esc(f.nombre)}, ${esc(etiquetaDia(d.clave, k))}: ${esc(detalle)}">${esc(nombreDia(d.clave, k))} ${esc(rango)}</button>`;
+        })
+        .join('')}</span></li>`,
+    )
+    .join('')}</ul>`;
+}
+
 // Viento por alturas en una hora. <meter> colorea solo: hasta «low» verde,
 // hasta «high» ámbar, más allá rojo; con los mismos umbrales que el semáforo.
 function bloquePerfil(h, p) {
@@ -767,6 +789,7 @@ function pintar() {
   pintarZonas(p);
   pintarPlanes(p);
   pintarDias(p);
+  pintarDiasDrones(p);
   pintarHoras(p);
   pintarChecklist();
   pintarVistas();

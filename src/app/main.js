@@ -9,6 +9,7 @@ import { VALORACIONES, anadirEntrada, crearEntrada, diarioCSV, diarioValido, res
 import { graficaDia } from '../motor/grafica.js';
 import { DRONES } from '../motor/drones.js';
 import { MISIONES, MODOS } from '../motor/misiones.js';
+import { NOMBRE_ESTADO, anadirPlan, crearPlan, cuandoPlan, empeora, planesValidos, valorarPlan } from '../motor/planificado.js';
 import { construirPrevision, normalizarAjustes, resumenDias } from '../motor/prevision.js';
 import { fmtHora as hora, fmtViento } from '../motor/unidades.js';
 import { umbralesViento } from '../motor/veredicto.js';
@@ -346,6 +347,7 @@ function pintarAhora(p) {
     <div class="acciones acciones-ahora">
       <button type="button" data-accion="volado" data-ms="${h.ms}">He volado</button>
       <button type="button" data-accion="compartir">Compartir</button>
+      <button type="button" data-accion="planificar">Planificar vuelo</button>
       ${p.ajustes.modo === 'profesional' ? '<button type="button" data-accion="informe">Informe para el cliente</button>' : ''}
     </div>`;
   // El lector de pantalla solo oye el veredicto cuando cambia, no cada minuto.
@@ -763,6 +765,7 @@ function pintar() {
   pintarAviso(p);
   pintarAhora(p);
   pintarZonas(p);
+  pintarPlanes(p);
   pintarDias(p);
   pintarHoras(p);
   pintarChecklist();
@@ -775,6 +778,7 @@ function pintar() {
 }
 
 function recargarTodo() {
+  meteoPlanes.clear();
   descargar();
   cargarEnaire();
   cargarKp().then((kp) => {
@@ -785,8 +789,6 @@ function recargarTodo() {
 }
 
 // ---------- Diario de vuelos ----------
-
-const NOMBRE_ESTADO = { ok: 'verde', precaucion: 'ámbar', no: 'rojo' };
 
 function fecha(ms) {
   return new Intl.DateTimeFormat('es-ES', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(ms));
@@ -833,6 +835,106 @@ function abrirVuelo(ms) {
   $('#vuelo-prevision').textContent = `La app decía: ${ESTADOS[h.estado].texto.toLowerCase()} · viento ${fmtViento(h.vientoAlt, p.ajustes.unidades)} · rachas ${fmtViento(h.rachaAlt, p.ajustes.unidades)}`;
   $('#form-vuelo').reset();
   $('#dlg-vuelo').showModal();
+}
+
+// ---------- Vuelos planificados ----------
+
+const mismoSitio = (a, b) => Boolean(a && b) && Math.abs(a.lat - b.lat) < 1e-4 && Math.abs(a.lon - b.lon) < 1e-4;
+// Previsión de los lugares de los planes que no son el de la pantalla, una
+// descarga por lugar y por sesión (se renueva al recargar).
+const meteoPlanes = new Map();
+
+function previsionPlan(plan, p) {
+  if (mismoSitio(plan.lugar, estado.lugar)) return p;
+  const clave = `${plan.lugar.lat},${plan.lugar.lon}`;
+  const m = meteoPlanes.get(clave);
+  if (m === undefined) {
+    meteoPlanes.set(clave, null);
+    cargarSoloPrevision(plan.lugar.lat, plan.lugar.lon)
+      .then((meteo) => meteoPlanes.set(clave, meteo))
+      .catch(() => meteoPlanes.set(clave, 'error'))
+      .finally(() => pintarPlanes(prevision()));
+    return null;
+  }
+  if (!m || m === 'error') return m;
+  return construirPrevision({ meteo: m, kp: estado.kp, satelites: estado.gnss.satelites, lugar: plan.lugar, ajustes: estado.ajustes });
+}
+
+function textoValoracion(val) {
+  if (val.estado === 'sin-prevision') return val.cubiertas ? 'La previsión aún no llega a todas las horas' : 'Aún sin previsión para ese día';
+  const nombre = NOMBRE_ESTADO[val.estado];
+  return `${nombre[0].toUpperCase()}${nombre.slice(1)}${val.motivos.length ? `: ${val.motivos.join(', ').toLowerCase()}` : ''}`;
+}
+
+function pintarPlanes(p) {
+  const caja = $('#planes');
+  const planes = planesValidos(almacen.planes());
+  caja.hidden = !planes.length;
+  if (!planes.length) return;
+  const filas = planes.map((plan) => {
+    const pp = previsionPlan(plan, p);
+    const val = pp && pp !== 'error' ? valorarPlan(plan, pp) : null;
+    const txt = pp === 'error' ? 'No se pudo descargar la previsión' : val ? textoValoracion(val) : 'Mirando la previsión…';
+    const peor = val && empeora(plan.estado, val.estado);
+    return `<li class="plan e-${esc(val?.estado ?? 'sin-dato')}">
+      <div><strong>${esc(cuandoPlan(plan))}</strong> · ${esc(plan.lugar.nombre)}${plan.nota ? ` · «${esc(plan.nota)}»` : ''}</div>
+      <div class="estado-plan">${esc(txt)}</div>
+      ${peor ? `<div class="empeora">Ha empeorado: al planificarlo estaba en ${esc(NOMBRE_ESTADO[plan.estado])}.</div>` : ''}
+      <button type="button" class="icono" data-borrar-plan="${esc(plan.id)}" aria-label="Borrar el plan del ${esc(cuandoPlan(plan))}">✕</button>
+    </li>`;
+  });
+  const aviso = !CON_AVISO
+    ? 'Este navegador no deja avisar en segundo plano: mira aquí antes del vuelo.'
+    : almacen.aviso()
+      ? 'Si la previsión de un plan empeora, te llega una notificación.'
+      : 'Para que te avise si empeora aunque no abras la app, activa el aviso en Ajustes.';
+  caja.innerHTML = `<h2 id="titulo-planes">Vuelos planificados</h2><ul class="lista-planes">${filas.join('')}</ul><p class="nota">${esc(aviso)}</p>`;
+}
+
+function abrirPlan() {
+  const p = prevision();
+  if (!p || !estado.lugar) return;
+  $('#form-plan').reset();
+  $('#plan-lugar').textContent = `En ${estado.lugar.nombre}, con ${p.dron.nombre} a ${p.ajustes.altitud} m.`;
+  const k = Math.max(0, p.dias.findIndex((d) => d.clave === estado.dia));
+  $('#plan-dia').innerHTML = p.dias.map((d, i) => `<option value="${i}"${i === k ? ' selected' : ''}>${esc(etiquetaDia(d.clave, i))}</option>`).join('');
+  horasPlan(p);
+  $('#dlg-plan').showModal();
+}
+
+// Las horas del día elegido (las que quedan, si es hoy), empezando por la ventana si la hay.
+function horasPlan(p = prevision()) {
+  const d = p?.dias[Number($('#plan-dia').value)];
+  if (!d) return;
+  const horas = d.horas.filter((h) => h.ms + 3600000 > Date.now());
+  const elegida = d.ventana?.inicio ?? horas[0]?.ms;
+  $('#plan-hora').innerHTML = horas.map((h) => `<option value="${h.ms}"${h.ms === elegida ? ' selected' : ''}>${esc(hora(h.ms, p.zona))}</option>`).join('');
+  previaPlan(p);
+}
+
+function planDelFormulario(p) {
+  const ms = Number($('#plan-hora').value);
+  if (!Number.isFinite(ms) || !ms) return null;
+  const borrador = crearPlan({ ms, horas: Number($('#plan-horas').value), lugar: estado.lugar, zona: p.zona, nota: $('#plan-nota').value });
+  const val = valorarPlan(borrador, p);
+  return { plan: { ...borrador, estado: val.estado in NOMBRE_ESTADO ? val.estado : null }, val };
+}
+
+function previaPlan(p = prevision()) {
+  const r = p && planDelFormulario(p);
+  $('#plan-previa').textContent = r ? `Ahora mismo: ${textoValoracion(r.val).toLowerCase()}.` : 'No quedan horas ese día.';
+}
+
+function guardarPlan(e) {
+  e.preventDefault();
+  const p = prevision();
+  const r = p && planDelFormulario(p);
+  if (!r) return;
+  almacen.guardarPlanes(anadirPlan(planesValidos(almacen.planes()), r.plan));
+  $('#dlg-plan').close();
+  sincronizarAviso();
+  pintarPlanes(p);
+  $('#planes').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 function guardarVuelo(e) {
@@ -1033,7 +1135,7 @@ async function sincronizarAviso() {
   const antes = (await almacen.configAviso()) ?? {};
   // Para el Diagnóstico, que se monta sin esperas (el portapapeles no espera).
   estado.avisoUltimo = antes.ultimo ?? '';
-  await almacen.guardarConfigAviso({ ultimo: antes.ultimo ?? '', activo: almacen.aviso(), ajustes: estado.ajustes, favoritos: estado.favoritos });
+  await almacen.guardarConfigAviso({ ultimo: antes.ultimo ?? '', vistos: antes.vistos ?? {}, activo: almacen.aviso(), ajustes: estado.ajustes, favoritos: estado.favoritos, planes: planesValidos(almacen.planes()) });
 }
 
 function pintarAvisoVentana(texto) {
@@ -1372,6 +1474,13 @@ function enlazar() {
     else if (b.dataset.accion === 'recargar') recargarTodo();
     else if (b.dataset.accion === 'volado') abrirVuelo(Number(b.dataset.ms));
     else if (b.dataset.accion === 'cerrar-vuelo') $('#dlg-vuelo').close();
+    else if (b.dataset.accion === 'planificar') abrirPlan();
+    else if (b.dataset.accion === 'cerrar-plan') $('#dlg-plan').close();
+    else if (b.dataset.borrarPlan) {
+      almacen.guardarPlanes(planesValidos(almacen.planes()).filter((x) => x.id !== b.dataset.borrarPlan));
+      sincronizarAviso();
+      pintarPlanes(prevision());
+    }
     else if (b.dataset.accion === 'informe') imprimirInforme();
     else if (b.dataset.accion === 'compartir') compartir(b);
     else if (b.dataset.diaPaso) cambiarDia(Number(b.dataset.diaPaso));
@@ -1420,6 +1529,10 @@ function enlazar() {
     pintarChecklist();
   });
   $('#form-vuelo').addEventListener('submit', guardarVuelo);
+  $('#form-plan').addEventListener('submit', guardarPlan);
+  $('#plan-dia').addEventListener('change', () => horasPlan());
+  $('#plan-hora').addEventListener('change', () => previaPlan());
+  $('#plan-horas').addEventListener('change', () => previaPlan());
   $('#aj-aviso').addEventListener('change', (e) => activarAviso(e.target.checked));
   $('#btn-probar-aviso').addEventListener('click', probarAviso);
   $('#btn-instalar').addEventListener('click', instalar);

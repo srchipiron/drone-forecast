@@ -50,6 +50,7 @@
       <section id="aviso" class="aviso" hidden></section>
       <section id="ahora" class="tarjeta veredicto"></section>
       <section id="zonas" class="tarjeta zonas-uas" aria-labelledby="titulo-zonas" hidden></section>
+      <section id="planes" class="tarjeta" aria-labelledby="titulo-planes" hidden></section>
       <p id="anuncio" class="visualmente-oculto" aria-live="polite"></p>
       <section id="dias" class="dias" aria-label="Mejor ventana de cada día"></section>
       <section id="horas" class="tarjeta horas"></section>
@@ -191,6 +192,24 @@
         <textarea id="txt-vuelo" rows="3" maxlength="500" placeholder="Rachas en la cresta, el dron derivaba…"></textarea>
       </label>
       <div class="acciones"><button type="submit">Guardar en el diario</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="dlg-plan" aria-labelledby="titulo-plan">
+    <form id="form-plan" class="form-plan">
+      <div class="dlg-cabecera">
+        <h2 id="titulo-plan">Planificar un vuelo</h2>
+        <button type="button" class="icono" data-accion="cerrar-plan" aria-label="Cerrar">✕</button>
+      </div>
+      <p id="plan-lugar" class="nota"></p>
+      <label>Día <select id="plan-dia"></select></label>
+      <label>Desde las <select id="plan-hora"></select></label>
+      <label>Duración
+        <select id="plan-horas"><option value="1">1 hora</option><option value="2" selected>2 horas</option><option value="3">3 horas</option><option value="4">4 horas</option></select>
+      </label>
+      <label>Nota (opcional) <input id="plan-nota" type="text" maxlength="200" placeholder="Cliente, trabajo…"></label>
+      <p id="plan-previa" class="nota" aria-live="polite"></p>
+      <div class="acciones"><button type="submit">Guardar el plan</button></div>
     </form>
   </dialog>
 

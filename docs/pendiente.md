@@ -65,7 +65,7 @@ bloqueada (con el motivo, y se pasa a la siguiente).
 - [x] **Vuelo planificado al calendario** (0.27.0): desde la tarjeta de planes, un
   botón que baje un `.ics` (fecha, hora, lugar con enlace al mapa y la nota)
   para meterlo en el calendario del móvil o mandárselo al cliente.
-- [ ] **Informe del vuelo planificado**: el «Informe para el cliente» de un
+- [x] **Informe del vuelo planificado** (0.28.0): el «Informe para el cliente» de un
   plan (sus horas, no la hora de ahora), con las zonas de ENAIRE del punto.
 - [ ] **Mejor día para un plan**: al planificar, sugerir los huecos verdes
   de la semana que cubren las horas pedidas (por ejemplo, «2 h seguidas»).

@@ -3,6 +3,17 @@
 Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
 `0.0.X` para correcciones. La versión sale en el pie de la app.
 
+## 0.28.0
+
+- **Informe para el cliente de un vuelo planificado.** Cada plan de
+  **Vuelos planificados** tiene **Informe para el cliente** (en cuanto la
+  previsión llega a ese día). Es el informe de siempre, listo para imprimir
+  o guardar en PDF, pero de ese vuelo: el día y las horas planificadas, tu
+  nota, cómo está la previsión de esas horas, la tabla solo con ellas y los
+  factores de la peor hora.
+- Las zonas de ENAIRE son las del punto del plan, aunque estés mirando otro
+  lugar en la pantalla: la app se las pregunta a ENAIRE en el momento.
+
 ## 0.27.0
 
 - **Un vuelo planificado, al calendario.** Cada plan de la tarjeta

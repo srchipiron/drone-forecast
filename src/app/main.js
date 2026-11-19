@@ -904,7 +904,7 @@ function pintarPlanes(p) {
       <div class="estado-plan">${esc(txt)}</div>
       ${peor ? `<div class="empeora">Ha empeorado: al planificarlo estaba en ${esc(NOMBRE_ESTADO[plan.estado])}.</div>` : ''}
       <button type="button" class="icono" data-borrar-plan="${esc(plan.id)}" aria-label="Borrar el plan del ${esc(cuandoPlan(plan))}">✕</button>
-      <div class="acciones-plan"><button type="button" class="enlace" data-calendario-plan="${esc(plan.id)}">Al calendario</button></div>
+      <div class="acciones-plan"><button type="button" class="enlace" data-calendario-plan="${esc(plan.id)}">Al calendario</button>${val && val.estado !== 'sin-prevision' ? `<button type="button" class="enlace" data-informe-plan="${esc(plan.id)}">Informe para el cliente</button>` : ''}</div>
     </li>`;
   });
   const aviso = !CON_AVISO
@@ -934,6 +934,24 @@ async function planAlCalendario(id) {
     estado.fallo = `Calendario: ${e?.message ?? e}`;
   }
   bajarFichero(ics, 'text/calendar;charset=utf-8', nombre);
+}
+
+// Informe de un plan. Las zonas de ENAIRE son las de SU punto: si no es el
+// de la pantalla, se preguntan a ENAIRE en el momento.
+async function informePlan(id, boton) {
+  const plan = planesValidos(almacen.planes()).find((x) => x.id === id);
+  const pp = plan && previsionPlan(plan, prevision());
+  if (!pp || pp === 'error') return;
+  const aqui = mismoSitio(plan.lugar, estado.lugar);
+  let enaireZonas = estado.enaire;
+  if (!aqui) {
+    boton.textContent = 'Preguntando a ENAIRE…';
+    enaireZonas = await consultarEnaire(plan.lugar.lat, plan.lugar.lon).catch(() => ({ estado: 'error' }));
+  }
+  const elevacion = aqui ? (estado.meteo?.elevacion ?? null) : (meteoPlanes.get(`${plan.lugar.lat},${plan.lugar.lon}`)?.elevacion ?? null);
+  $('#informe').innerHTML = htmlInforme(pp, { plan, enaireZonas, elevacion });
+  boton.textContent = 'Informe para el cliente';
+  window.print();
 }
 
 function abrirPlan() {
@@ -1013,42 +1031,51 @@ function exportarCSV() {
 
 // ---------- Informe para el cliente ----------
 
-function htmlInforme(p) {
-  const dia = p.dias.find((d) => d.clave === estado.dia) ?? p.dias[0];
-  const h = p.actual ?? dia.horas[0];
+// El informe para el cliente: el del día que se mira (por defecto) o el de
+// un vuelo planificado (sus horas, su lugar y sus zonas de ENAIRE).
+function htmlInforme(p, { plan = null, enaireZonas = estado.enaire, elevacion = estado.meteo?.elevacion ?? null } = {}) {
+  const lugar = plan?.lugar ?? estado.lugar;
+  const fin = plan ? plan.ms + plan.horas * 3600000 : 0;
+  const dia = (plan ? p.dias.find((d) => d.horas.some((x) => x.ms === plan.ms)) : p.dias.find((d) => d.clave === estado.dia)) ?? p.dias[0];
+  const horas = plan ? p.horas.filter((x) => x.ms >= plan.ms && x.ms < fin) : dia.horas;
+  const rango = { ok: 0, precaucion: 1, no: 2 };
+  // Con un plan, los factores de su peor hora: es la que decide.
+  const h = plan ? horas.reduce((a, x) => ((rango[x.estado] ?? 0) > (rango[a.estado] ?? 0) ? x : a), horas[0]) : (p.actual ?? dia.horas[0]);
   const u = p.ajustes.unidades;
-  const z = estado.enaire;
+  const z = enaireZonas;
   const enaire = !z
     ? 'sin consultar'
     : z.estado === 'dentro'
-      ? valorarZonas(z.zonas, { altitud: p.ajustes.altitud, elevacion: estado.meteo?.elevacion ?? null })
+      ? valorarZonas(z.zonas, { altitud: p.ajustes.altitud, elevacion })
           .zonas.map((x) => `${x.nombre}: ${x.restriccion.texto.toLowerCase()}, ${alturasZona(x).toLowerCase()}${x.aplica === 'no' ? ` (no afecta a ${p.ajustes.altitud} m)` : ''}`)
           .join('; ')
       : z.estado === 'fuera'
         ? 'no consta en ninguna zona UAS'
         : 'no se pudo consultar';
   const v = dia.ventana;
+  const val = plan ? valorarPlan(plan, p) : null;
   return `
-    <h1>Condiciones de vuelo</h1>
-    <p>${esc(estado.lugar.nombre)} (${esc(estado.lugar.lat.toFixed(5))}, ${esc(estado.lugar.lon.toFixed(5))}) · generado el ${esc(fecha(Date.now()))}</p>
+    <h1>${plan ? 'Vuelo planificado' : 'Condiciones de vuelo'}</h1>
+    <p>${esc(lugar.nombre)} (${esc(lugar.lat.toFixed(5))}, ${esc(lugar.lon.toFixed(5))}) · generado el ${esc(fecha(Date.now()))}</p>
     <table class="datos-informe">
+      ${plan ? `<tr><th>Vuelo</th><td>${esc(cuandoPlan(plan))}${plan.nota ? ` · ${esc(plan.nota)}` : ''}</td></tr><tr><th>Previsión de esas horas</th><td>${esc(textoValoracion(val))}</td></tr>` : ''}
       <tr><th>Misión</th><td>${esc(p.mision.nombre)}</td></tr>
       <tr><th>Dron</th><td>${esc(p.dron.nombre)} · altura ${esc(p.ajustes.altitud)} m</td></tr>
       <tr><th>Día</th><td>${esc(dia.clave)} · sol ${esc(hora(dia.sol.salida, p.zona))}–${esc(hora(dia.sol.puesta, p.zona))}</td></tr>
       <tr><th>Mejor ventana</th><td>${v ? `${esc(hora(v.inicio, p.zona))}–${esc(hora(v.fin, p.zona))} (${esc(NOMBRE_ESTADO[v.estado])})` : 'ninguna'}</td></tr>
       <tr><th>Zonas UAS (ENAIRE)</th><td>${esc(enaire)}</td></tr>
     </table>
-    <h2>Hora a hora</h2>
+    <h2>${plan ? 'Las horas del vuelo' : 'Hora a hora'}</h2>
     <table class="horas-informe">
       <tr><th>Hora</th><th>Semáforo</th><th>Viento</th><th>Rachas</th><th>Lluvia</th><th>Satélites</th></tr>
-      ${dia.horas
+      ${horas
         .map(
           (x) =>
             `<tr><td>${esc(hora(x.ms, p.zona))}</td><td>${esc(ESTADOS[x.estado].corto)}</td><td>${esc(fmtViento(x.vientoAlt, u))}</td><td>${esc(fmtViento(x.rachaAlt, u))}</td><td>${esc(x.probLluvia ?? '—')}%</td><td>${esc(x.sats?.total ?? '—')}</td></tr>`,
         )
         .join('')}
     </table>
-    <h2>Factores a las ${esc(hora(h.ms, p.zona))}</h2>
+    <h2>Factores a las ${esc(hora(h.ms, p.zona))}${plan && horas.length > 1 ? ' (la peor hora del vuelo)' : ''}</h2>
     <table class="horas-informe">${h.factores
       .map((f) => `<tr><td>${esc(f.nombre)}</td><td>${esc(ESTADOS[f.estado].corto)}</td><td>${esc(f.valor)}</td><td>${esc(f.detalle)}</td></tr>`)
       .join('')}</table>
@@ -1522,6 +1549,7 @@ function enlazar() {
     else if (b.dataset.accion === 'planificar') abrirPlan();
     else if (b.dataset.accion === 'cerrar-plan') $('#dlg-plan').close();
     else if (b.dataset.calendarioPlan) planAlCalendario(b.dataset.calendarioPlan);
+    else if (b.dataset.informePlan) informePlan(b.dataset.informePlan, b);
     else if (b.dataset.borrarPlan) {
       almacen.guardarPlanes(planesValidos(almacen.planes()).filter((x) => x.id !== b.dataset.borrarPlan));
       sincronizarAviso();

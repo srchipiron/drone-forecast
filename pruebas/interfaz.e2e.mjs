@@ -65,6 +65,7 @@ try {
   const formasAero = JSON.parse(await readFile(join(raiz, 'pruebas/fixtures/enaire-getafe-formas.json'), 'utf8'));
   formasAero.features.find((f) => f.attributes.identifier === 'LEMD_CT').attributes.name = 'CTR MADRID<img src=x onerror="window.__xss=2">';
   const capasPedidas = [];
+  const enaireUrls = [];
   const formasPedidas = [];
   await page.route('https://servais.enaire.es/**', (r) => {
     const u = r.request().url();
@@ -72,6 +73,7 @@ try {
       formasPedidas.push(u);
       return r.fulfill({ json: /FeatureServer\/2\/query/.test(u) ? formasAero : { features: [] } });
     }
+    enaireUrls.push(u);
     capasPedidas.push(u.match(/FeatureServer\/(\d+)\//)?.[1]);
     return r.fulfill({ json: /FeatureServer\/2\/query/.test(u) ? zonaAero : { features: [] } });
   });
@@ -378,6 +380,19 @@ try {
   assert.match(await page.textContent('#planes .estado-plan'), /^(Verde|Ámbar|Rojo)/);
   assert.equal(await page.evaluate(() => window.__xss), undefined);
   if (process.env.CAPTURA_PLAN) await page.locator('#planes').screenshot({ path: process.env.CAPTURA_PLAN });
+  // Informe para el cliente del plan: sus dos horas, su peor hora y las zonas de su punto.
+  await page.evaluate(() => {
+    window.__impreso = 0;
+    window.print = () => window.__impreso++;
+  });
+  await page.locator('[data-informe-plan]').click();
+  await page.waitForFunction(() => window.__impreso === 1);
+  const informePlan = await page.textContent('#informe');
+  assert.match(informePlan, /^\s*Vuelo planificado\s*Getafe<img[^]*Vuelo\s*\w+ \d{1,2} \w+, 10:00–12:00 · Cliente <b>[^]*Previsión de esas horas\s*(Verde|Ámbar|Rojo)/);
+  assert.match(informePlan, /CTR MADRID: requiere autorización/);
+  assert.match(informePlan, /Las horas del vuelo/);
+  assert.equal(await page.locator('#informe .horas-informe').first().locator('tr').count(), 3, 'cabecera y las dos horas del plan');
+  assert.match(informePlan, /Factores a las 1[01]:00 \(la peor hora del vuelo\)/);
   // Al calendario: sin «Compartir» de ficheros (Chrome de escritorio), se descarga el .ics.
   const descargaIcs = page.waitForEvent('download');
   await page.locator('[data-calendario-plan]').click();
@@ -388,8 +403,25 @@ try {
   assert.match(textoIcs, /\r\nDTSTART:\d{8}T\d{6}Z\r\n/);
   assert.match(textoIcs, /\r\nSUMMARY:Vuelo con dron · Getafe<img src=x onerror="window\.__xss=1">\r\n/);
   assert.match(textoIcs, /\r\nDESCRIPTION:Cliente <b>\\nPrevisión al exportarlo: (verde|ámbar|rojo)/);
+  // Un plan en otro sitio: su previsión se baja aparte y el informe pregunta a ENAIRE por SU punto.
+  await page.evaluate(() => {
+    const planes = JSON.parse(localStorage.getItem('drone-forecast:planes'));
+    planes.push({ ...planes[0], id: `${planes[0].id}-segovia`, lugar: { nombre: 'Segovia', lat: 40.95, lon: -4.12 }, nota: '' });
+    localStorage.setItem('drone-forecast:planes', JSON.stringify(planes));
+  });
   await page.reload();
-  await page.locator('#planes .plan').waitFor();
+  await page.locator('#planes [data-informe-plan$="-segovia"]').waitFor();
+  assert.equal(await page.locator('#planes .plan').count(), 2);
+  await page.evaluate(() => {
+    window.__impreso = 0;
+    window.print = () => window.__impreso++;
+  });
+  await page.locator('#planes [data-informe-plan$="-segovia"]').click();
+  await page.waitForFunction(() => window.__impreso === 1);
+  assert.match(await page.textContent('#informe'), /^\s*Vuelo planificado\s*Segovia \(40\.95000, -4\.12000\)/);
+  assert.ok(enaireUrls.some((u) => u.includes('geometry=-4.120000%2C40.950000')), 'ENAIRE preguntado por el punto del plan');
+  await page.locator('#planes [data-borrar-plan$="-segovia"]').click();
+  await page.locator('#planes .plan').first().waitFor();
   await page.locator('[data-borrar-plan]').click();
   assert.equal(await page.locator('#planes').isVisible(), false, 'borrado el único plan, la tarjeta se va');
 

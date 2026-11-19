@@ -96,3 +96,37 @@ test('calendario: ninguna línea pasa de 75 octetos, ni con acentos, y al desdob
   assert.ok(desdoblado.includes(`DESCRIPTION:${nota.slice(0, 200).replace(/,/g, '\\,')}`), 'la nota entera, sin cortes');
   assert.ok(desdoblado.includes('LOCATION:Polígono Industrial «Los Ángeles»\\, nave número 14\\, Getafe (Madrid)'));
 });
+
+test('huecos: el primer tramo verde de cada día con las horas pedidas seguidas', async () => {
+  const { huecosPlan } = await import('../src/motor/planificado.js');
+  // Verde (3 m/s) solo de 10 a 13 h de mañana (horas 34-36) y de 9 a 10 del día 23 (horas 57); el resto, 20 m/s.
+  const p = prev({ viento: (k) => ((k >= 34 && k < 37) || k === 57 ? 3 : 20), racha: (k) => ((k >= 34 && k < 37) || k === 57 ? 4 : 25) });
+  assert.deepEqual(huecosPlan(p, 2, AHORA), [{ ms: MANANA_10, clave: '2026-06-22', estado: 'ok' }], 'el día 23 solo tiene 1 h verde');
+  assert.deepEqual(huecosPlan(p, 1, AHORA).map((x) => x.clave), ['2026-06-22', '2026-06-23']);
+  assert.equal(huecosPlan(p, 3, AHORA)[0].ms, MANANA_10);
+  assert.deepEqual(huecosPlan(p, 4, AHORA), [], 'cuatro seguidas no caben y no hay ámbar');
+  // La última hora de la previsión no da para dos: no se inventa la que falta.
+  // (Previsión mínima a mano: la última hora real de la sintética es de noche.)
+  const ultima = [{ ms: MANANA_10, estado: 'precaucion' }, { ms: MANANA_10 + H, estado: 'ok' }];
+  const final = { horas: ultima, dias: [{ clave: '2026-06-22', horas: ultima }] };
+  assert.deepEqual(huecosPlan(final, 2, AHORA), [{ ms: MANANA_10, clave: '2026-06-22', estado: 'precaucion' }], 'en verde solo queda 1 h');
+  assert.deepEqual(huecosPlan(final, 1, AHORA), [{ ms: MANANA_10 + H, clave: '2026-06-22', estado: 'ok' }]);
+  // Un hueco en la previsión (falta una hora) corta el tramo.
+  const rota = [{ ms: MANANA_10, estado: 'ok' }, { ms: MANANA_10 + 2 * H, estado: 'ok' }];
+  assert.deepEqual(huecosPlan({ horas: rota, dias: [{ clave: '2026-06-22', horas: rota }] }, 2, AHORA), []);
+  // Todo verde: un hueco por día, hoy desde la hora en curso (10:30 → 10:00).
+  const todo = huecosPlan(prev({ viento: 3 }), 2, AHORA);
+  assert.equal(todo.length, 7);
+  assert.equal(todo[0].ms, Date.parse('2026-06-21T08:00:00Z'));
+});
+
+test('huecos: sin verde en toda la previsión, los de ámbar, y lo dice', async () => {
+  const { huecosPlan } = await import('../src/motor/planificado.js');
+  const p = prev({ viento: 7, racha: 7 }); // ámbar todo el tiempo para el Flip
+  const h = huecosPlan(p, 2, AHORA);
+  assert.ok(h.length >= 1);
+  assert.ok(h.every((x) => x.estado === 'precaucion'));
+  // Con un solo hueco verde, no se mezclan los ámbar.
+  const uno = prev({ viento: (k) => (k === 40 || k === 41 ? 3 : 7), racha: (k) => (k === 40 || k === 41 ? 4 : 7) });
+  assert.deepEqual(huecosPlan(uno, 2, AHORA).map((x) => x.estado), ['ok']);
+});

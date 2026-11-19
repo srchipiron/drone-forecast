@@ -9,7 +9,7 @@ import { VALORACIONES, anadirEntrada, crearEntrada, diarioCSV, diarioValido, res
 import { graficaDia } from '../motor/grafica.js';
 import { DRONES } from '../motor/drones.js';
 import { MISIONES, MODOS } from '../motor/misiones.js';
-import { NOMBRE_ESTADO, anadirPlan, crearPlan, cuandoPlan, empeora, icsPlan, planesValidos, valorarPlan } from '../motor/planificado.js';
+import { NOMBRE_ESTADO, anadirPlan, crearPlan, cuandoPlan, empeora, huecosPlan, icsPlan, planesValidos, valorarPlan } from '../motor/planificado.js';
 import { construirPrevision, normalizarAjustes, resumenDias } from '../motor/prevision.js';
 import { fmtHora as hora, fmtViento } from '../motor/unidades.js';
 import { umbralesViento } from '../motor/veredicto.js';
@@ -986,6 +986,30 @@ function planDelFormulario(p) {
 function previaPlan(p = prevision()) {
   const r = p && planDelFormulario(p);
   $('#plan-previa').textContent = r ? `Ahora mismo: ${textoValoracion(r.val).toLowerCase()}.` : 'No quedan horas ese día.';
+  pintarHuecos(p);
+}
+
+// Los huecos de la semana donde caben las horas pedidas; tocar uno lo elige.
+function pintarHuecos(p = prevision()) {
+  const caja = $('#plan-huecos');
+  if (!p) return void (caja.innerHTML = '');
+  const n = Number($('#plan-horas').value);
+  const huecos = huecosPlan(p, n);
+  const k = (clave) => p.dias.findIndex((d) => d.clave === clave);
+  const elegido = Number($('#plan-hora').value);
+  caja.innerHTML = !huecos.length
+    ? `<p class="nota">En toda la previsión no hay ${n} h seguidas en las que se pueda volar.</p>`
+    : `<p class="nota">${huecos[0].estado === 'ok' ? `Con ${n} h seguidas en verde:` : `Ningún día tiene ${n} h seguidas en verde; en ámbar:`}</p>
+      <div class="huecos">${huecos
+        .map((x) => `<button type="button" class="chip ${x.estado}${x.ms === elegido ? ' activo' : ''}" data-hueco="${x.ms}" data-hueco-dia="${k(x.clave)}">${esc(etiquetaDia(x.clave, k(x.clave)))} ${esc(hora(x.ms, p.zona))}</button>`)
+        .join('')}</div>`;
+}
+
+function elegirHueco(b) {
+  $('#plan-dia').value = b.dataset.huecoDia;
+  horasPlan();
+  $('#plan-hora').value = b.dataset.hueco;
+  previaPlan();
 }
 
 function guardarPlan(e) {
@@ -1548,6 +1572,7 @@ function enlazar() {
     else if (b.dataset.accion === 'cerrar-vuelo') $('#dlg-vuelo').close();
     else if (b.dataset.accion === 'planificar') abrirPlan();
     else if (b.dataset.accion === 'cerrar-plan') $('#dlg-plan').close();
+    else if (b.dataset.hueco) elegirHueco(b);
     else if (b.dataset.calendarioPlan) planAlCalendario(b.dataset.calendarioPlan);
     else if (b.dataset.informePlan) informePlan(b.dataset.informePlan, b);
     else if (b.dataset.borrarPlan) {

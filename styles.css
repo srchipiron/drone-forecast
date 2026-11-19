@@ -755,6 +755,12 @@ dialog h3 { font-size: 0.75rem; font-weight: 700; color: var(--suave); text-tran
 
 .form-plan select, .form-plan input { width: 100%; color: var(--texto); background: var(--tarjeta-2); border: 1px solid var(--borde); border-radius: var(--radio-pequeno); padding: 0.55rem; font-size: 1rem; }
 
+.plan-huecos .huecos { display: flex; flex-wrap: wrap; gap: 0.3rem; margin: 0.2rem 0 0.8rem; }
+
+.plan-huecos .chip { border: 2px solid transparent; min-height: 34px; font-weight: 650; }
+
+.plan-huecos .chip.activo { border-color: var(--acento); }
+
 .lista-planes { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }
 
 .plan { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.2rem 0.5rem; align-items: start; padding: 0.55rem 0.7rem; border-left: 4px solid var(--borde); background: var(--tarjeta-2); border-radius: var(--radio-pequeno); overflow-wrap: anywhere; }

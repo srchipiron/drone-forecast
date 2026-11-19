@@ -360,10 +360,31 @@ try {
   if (process.env.CAPTURA_HORAS) await page.locator('#horas .tabla-horas').screenshot({ path: process.env.CAPTURA_HORAS });
 
   // Vuelo planificado: mañana de 10 a 12, con nota; sale en su tarjeta y se borra.
+  // Con 4 satélites de mínimo (la constelación de prueba es pequeña) hay horas
+  // en verde, y así se prueban los huecos; al acabar se deja como estaba.
+  const minSatsAntes = await page.inputValue('#aj-sats');
+  await page.locator('[data-vista="ajustes"]').click();
+  await page.fill('#aj-sats', '4');
+  await page.locator('#aj-sats').dispatchEvent('change');
+  await page.locator('[data-vista="prevision"]').click();
   assert.equal(await page.locator('#planes').isVisible(), false, 'sin planes no hay tarjeta');
   await page.locator('[data-accion="planificar"]').click();
   await page.locator('#dlg-plan').waitFor();
   assert.match(await page.textContent('#plan-lugar'), /^En Getafe<img[^]*a 120 m\.$/);
+  // Los huecos de la semana para las horas pedidas: tocar uno elige su día y su hora.
+  const hueco = page.locator('#plan-huecos [data-hueco]').last();
+  if ((await page.locator('#plan-huecos [data-hueco]').count()) > 0) {
+    assert.match(await page.textContent('#plan-huecos .nota'), /^(Con 2 h seguidas en verde:|Ningún día tiene 2 h seguidas en verde; en ámbar:)$/);
+    const [ms, k] = [await hueco.getAttribute('data-hueco'), await hueco.getAttribute('data-hueco-dia')];
+    await hueco.click();
+    assert.equal(await page.inputValue('#plan-dia'), k);
+    assert.equal(await page.inputValue('#plan-hora'), ms);
+    assert.match(await page.locator('#plan-huecos .chip.activo').getAttribute('data-hueco'), new RegExp(`^${ms}$`), 'el hueco elegido se marca');
+  } else assert.fail(`sin huecos con 4 satélites de mínimo: ${await page.textContent('#plan-huecos')}`);
+  if (process.env.CAPTURA_HUECOS) await page.locator('#dlg-plan').screenshot({ path: process.env.CAPTURA_HUECOS });
+  // Con 4 h seguidas cambian (o desaparecen) los huecos.
+  await page.selectOption('#plan-horas', '4');
+  assert.match(await page.textContent('#plan-huecos'), /4 h seguidas/);
   await page.selectOption('#plan-dia', '1');
   const horasManana = await page.locator('#plan-hora option').count();
   assert.ok(horasManana >= 23 && horasManana <= 25, `mañana tiene todas sus horas (${horasManana}; 23 o 25 el día del cambio de hora)`);
@@ -424,6 +445,10 @@ try {
   await page.locator('#planes .plan').first().waitFor();
   await page.locator('[data-borrar-plan]').click();
   assert.equal(await page.locator('#planes').isVisible(), false, 'borrado el único plan, la tarjeta se va');
+  await page.locator('[data-vista="ajustes"]').click();
+  await page.fill('#aj-sats', minSatsAntes);
+  await page.locator('#aj-sats').dispatchEvent('change');
+  await page.locator('[data-vista="prevision"]').click();
 
   // Diario: «He volado» → valoración → aparece en el diario y en su resumen.
   await page.locator('[data-accion="volado"]').click();

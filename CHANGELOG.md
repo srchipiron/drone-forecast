@@ -3,6 +3,16 @@
 Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
 `0.0.X` para correcciones. La versión sale en el pie de la app.
 
+## 0.29.0
+
+- **Te sugiere cuándo planificar.** Al planificar un vuelo, debajo de la
+  previsión sale **Con 2 h seguidas en verde:** y un botón por cada día en
+  que caben esas horas seguidas en verde, con la hora a la que empieza el
+  hueco («Mañana 10:00», «sáb 21 9:00»…). Tócalo y se eligen ese día y esa
+  hora. Si cambias la duración, cambian los huecos.
+- Si ningún día tiene esas horas en verde, te enseña los huecos en ámbar y
+  lo dice; si tampoco hay, te dice que no caben en toda la previsión.
+
 ## 0.28.0
 
 - **Informe para el cliente de un vuelo planificado.** Cada plan de

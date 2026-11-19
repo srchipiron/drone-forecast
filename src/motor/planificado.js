@@ -163,3 +163,35 @@ export function icsPlan(plan, val = null, ahora = Date.now()) {
   ];
   return `${lineas.map(doblar).join('\r\n')}\r\n`;
 }
+
+// ---------- Huecos para un plan ----------
+
+/**
+ * Dónde cabe un vuelo de `horas` horas seguidas: el primer hueco de cada día
+ * con todas sus horas en verde. Si en toda la previsión no hay ninguno
+ * verde, los de ámbar (mejor eso que nada, y se dice).
+ * @param {object} p  construirPrevision()
+ * @param {number} horas
+ * @param {number} [ahora]
+ * @returns {Array<{ms: number, clave: string, estado: 'ok'|'precaucion'}>}  uno por día, en orden
+ */
+export function huecosPlan(p, horas, ahora = Date.now()) {
+  const todas = p?.horas ?? [];
+  const buscar = (vale) => {
+    const salida = [];
+    for (const dia of p?.dias ?? []) {
+      const inicio = dia.horas.find((h) => {
+        if (h.ms + HORA <= ahora) return false;
+        const k = todas.indexOf(h);
+        const tramo = todas.slice(k, k + horas);
+        // Seguidas de verdad: sin huecos en la previsión entre una y otra.
+        return tramo.length === horas && tramo.every((x, i) => vale(x.estado) && x.ms === h.ms + i * HORA);
+      });
+      if (inicio) salida.push({ ms: inicio.ms, clave: dia.clave });
+    }
+    return salida;
+  };
+  const verdes = buscar((e) => e === 'ok');
+  if (verdes.length) return verdes.map((x) => ({ ...x, estado: 'ok' }));
+  return buscar((e) => e === 'ok' || e === 'precaucion').map((x) => ({ ...x, estado: 'precaucion' }));
+}

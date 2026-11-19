@@ -3,6 +3,17 @@
 Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
 `0.0.X` para correcciones. La versión sale en el pie de la app.
 
+## 0.27.0
+
+- **Un vuelo planificado, al calendario.** Cada plan de la tarjeta
+  **Vuelos planificados** tiene **Al calendario**. En el móvil abre el menú
+  de compartir: elige tu calendario para guardarlo, o WhatsApp o el correo
+  para mandárselo al cliente. Si el navegador no deja compartir ficheros,
+  lo descarga (un `.ics`, que se abre con cualquier calendario).
+- El evento lleva la fecha y las horas, el lugar con un enlace al mapa, tu
+  nota y cómo estaba la previsión al exportarlo, y un recordatorio la
+  víspera para que mires la previsión otra vez.
+
 ## 0.26.0
 
 - **La semana con todos tus drones.** Si tienes marcados otros drones en

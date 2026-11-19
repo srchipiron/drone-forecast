@@ -62,3 +62,37 @@ test('planes: lo guardado roto o pasado se descarta; ordenados, sin repetir y co
   const muchos = Array.from({ length: MAXIMO_PLANES + 5 }, (_, k) => plan({ ms: MANANA_10 + k * H }));
   assert.equal(planesValidos(muchos, AHORA).length, MAXIMO_PLANES);
 });
+
+test('calendario: un evento .ics válido, en UTC, con el lugar, la nota y la previsión', async () => {
+  const { icsPlan } = await import('../src/motor/planificado.js');
+  const p = plan({ nota: 'Cliente: Aeroscan; tejado, nave 3' });
+  const ics = icsPlan(p, { estado: 'precaucion', motivos: ['Rachas'] }, Date.parse('2026-06-21T08:30:00Z'));
+  assert.ok(ics.endsWith('\r\n'));
+  assert.doesNotMatch(ics.replace(/\r\n/g, ''), /\n/, 'solo CRLF');
+  // Se desdobla como lo haría un calendario y se leen las propiedades.
+  const lineas = ics.replace(/\r\n /g, '').split('\r\n');
+  const prop = (k) => lineas.find((l) => l.startsWith(`${k}:`))?.slice(k.length + 1);
+  assert.equal(lineas[0], 'BEGIN:VCALENDAR');
+  assert.equal(prop('DTSTART'), '20260622T080000Z');
+  assert.equal(prop('DTEND'), '20260622T100000Z');
+  assert.equal(prop('DTSTAMP'), '20260621T083000Z');
+  assert.equal(prop('UID'), `${p.id}@drone-forecast`);
+  assert.equal(prop('SUMMARY'), 'Vuelo con dron · Getafe');
+  assert.equal(prop('GEO'), `${LUGAR.lat.toFixed(6)};${LUGAR.lon.toFixed(6)}`);
+  assert.equal(prop('DESCRIPTION').split('\\n')[0], 'Cliente: Aeroscan\\; tejado\\, nave 3', '; y , escapados');
+  assert.match(prop('DESCRIPTION'), /Previsión al exportarlo: ámbar \(rachas\)\./);
+  assert.match(prop('URL'), /^https:\/\/www\.openstreetmap\.org\/\?mlat=40\.41680&mlon=-3\.70380/);
+  assert.equal(lineas.filter((l) => l === 'BEGIN:VEVENT').length, 1);
+  assert.ok(lineas.includes('TRIGGER:-PT18H'), 'recordatorio la víspera');
+  assert.match(icsPlan(p, null).replace(/\r\n /g, ''), /aún no llega a ese día/);
+});
+
+test('calendario: ninguna línea pasa de 75 octetos, ni con acentos, y al desdoblar no se pierde nada', async () => {
+  const { icsPlan } = await import('../src/motor/planificado.js');
+  const nota = 'Inspección termográfica de la cubierta norte, ñandú ✈ — '.repeat(6).trim();
+  const ics = icsPlan(plan({ nota: nota.slice(0, 200), lugar: { ...lugar, nombre: 'Polígono Industrial «Los Ángeles», nave número 14, Getafe (Madrid)' } }));
+  for (const l of ics.split('\r\n')) assert.ok(Buffer.byteLength(l, 'utf8') <= 75, `${Buffer.byteLength(l, 'utf8')} octetos: ${l}`);
+  const desdoblado = ics.replace(/\r\n /g, '');
+  assert.ok(desdoblado.includes(`DESCRIPTION:${nota.slice(0, 200).replace(/,/g, '\\,')}`), 'la nota entera, sin cortes');
+  assert.ok(desdoblado.includes('LOCATION:Polígono Industrial «Los Ángeles»\\, nave número 14\\, Getafe (Madrid)'));
+});

@@ -378,6 +378,16 @@ try {
   assert.match(await page.textContent('#planes .estado-plan'), /^(Verde|Ámbar|Rojo)/);
   assert.equal(await page.evaluate(() => window.__xss), undefined);
   if (process.env.CAPTURA_PLAN) await page.locator('#planes').screenshot({ path: process.env.CAPTURA_PLAN });
+  // Al calendario: sin «Compartir» de ficheros (Chrome de escritorio), se descarga el .ics.
+  const descargaIcs = page.waitForEvent('download');
+  await page.locator('[data-calendario-plan]').click();
+  const ics = await descargaIcs;
+  assert.match(ics.suggestedFilename(), /^vuelo-\d{4}-\d\d-\d\d\.ics$/);
+  const textoIcs = (await readFile(await ics.path(), 'utf8')).replace(/\r\n /g, '');
+  assert.match(textoIcs, /^BEGIN:VCALENDAR\r\n/);
+  assert.match(textoIcs, /\r\nDTSTART:\d{8}T\d{6}Z\r\n/);
+  assert.match(textoIcs, /\r\nSUMMARY:Vuelo con dron · Getafe<img src=x onerror="window\.__xss=1">\r\n/);
+  assert.match(textoIcs, /\r\nDESCRIPTION:Cliente <b>\\nPrevisión al exportarlo: (verde|ámbar|rojo)/);
   await page.reload();
   await page.locator('#planes .plan').waitFor();
   await page.locator('[data-borrar-plan]').click();

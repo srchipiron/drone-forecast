@@ -179,3 +179,25 @@ test('mis drones: el veredicto de ahora con cada uno de los otros drones del pil
   assert.equal(por.anafiukr.estado, 'ok');
   assert.deepEqual(normalizarAjustes({ misDrones: 'neo' }).misDrones, [], 'lo que no es una lista no vale');
 });
+
+test('mis drones: la mejor ventana de cada día para cada uno de los otros', () => {
+  // Viento flojo de 10 a 14 h de mañana (horas 34-37) y 7 m/s el resto.
+  const meteo = leerPrevision(respuestaOpenMeteo({ viento: (k) => (k >= 34 && k < 38 ? 2 : 7), racha: (k) => (k >= 34 && k < 38 ? 3 : 7) }));
+  const p = construirPrevision({ meteo, lugar: LUGAR, ajustes: { misDrones: ['neo', 'anafiukr', 'mini5pro'] }, ahora: AHORA });
+  assert.deepEqual(p.ventanasDrones.map((d) => d.id), ['neo', 'anafiukr'], 'sin el elegido, en el orden de «Mis drones»');
+  const [neo, anafi] = p.ventanasDrones;
+  assert.equal(neo.nombre, 'DJI Neo');
+  assert.deepEqual(neo.dias.map((d) => d.clave), p.dias.map((d) => d.clave), 'los mismos días que la fila de arriba');
+  // El Neo (8 m/s) solo vuela en el hueco flojo de mañana.
+  assert.equal(neo.dias[1].ventana?.estado, 'ok');
+  assert.deepEqual([neo.dias[1].ventana.inicio, neo.dias[1].ventana.horas], [Date.parse('2026-06-22T08:00:00Z'), 4]);
+  assert.ok(neo.dias.filter((_, k) => k !== 1).every((d) => d.ventana === null || d.ventana.estado !== 'ok'), 'el resto no es verde para el Neo');
+  // El ANAFI (15 m/s) vuela todo el día: su ventana de mañana es más larga.
+  assert.ok(anafi.dias[1].ventana.horas > 4, `ANAFI: ${anafi.dias[1].ventana.horas} h`);
+  // Hoy solo cuentan las horas que quedan (AHORA son las 10:30).
+  assert.ok(anafi.dias[0].ventana.inicio >= Date.parse('2026-06-21T08:00:00Z'));
+  // Para el dron elegido coincide con la fila de días de siempre.
+  const mismo = construirPrevision({ meteo, lugar: LUGAR, ajustes: { dron: 'neo', misDrones: ['mini5pro'] }, ahora: AHORA });
+  assert.deepEqual(mismo.dias.map((d) => d.ventana), neo.dias.map((d) => d.ventana));
+  assert.deepEqual(construirPrevision({ meteo, lugar: LUGAR, ajustes: {}, ahora: AHORA }).ventanasDrones, []);
+});

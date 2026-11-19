@@ -264,7 +264,21 @@ try {
   const otros = page.locator('#ahora .otros-drones li');
   assert.equal(await otros.count(), 1, 'solo el Neo: el Mini 5 Pro es el que ya está elegido');
   assert.match(await otros.first().textContent(), /(Volar|Ojo|No)\s+DJI Neo/);
+  // Y en la vista de días, su ventana de cada día; tocar uno abre ese día.
+  await page.locator('[data-vista="prevision"]').click();
+  assert.ok(await page.locator('#dias-drones').isVisible());
+  assert.equal(await page.locator('#dias-drones li').count(), 1);
+  assert.match(await page.textContent('#dias-drones li strong'), /^DJI Neo$/);
+  if (process.env.CAPTURA_DRONES) await page.locator('#dias-drones').screenshot({ path: process.env.CAPTURA_DRONES });
+  const chipsNeo = page.locator('#dias-drones .chip');
+  assert.equal(await chipsNeo.count(), await page.locator('#dias .dia').count(), 'un día por cada día de la previsión');
+  assert.match(await chipsNeo.nth(1).textContent(), /^Mañ\. (\d\d–\d\d h|—)$/);
+  await chipsNeo.nth(2).click();
+  assert.equal(await page.locator('#dias .dia').nth(2).getAttribute('aria-pressed'), 'true', 'el día tocado se abre');
+  await page.locator('#dias .dia').first().click();
+  await page.locator('[data-vista="ajustes"]').click();
   await page.locator('[data-mi-dron="neo"]').uncheck();
+  assert.equal(await page.locator('#dias-drones').isVisible(), false, 'sin otros drones, no sale la tarjeta');
   assert.equal(await page.locator('#ahora .otros-drones').count(), 0, 'sin otros drones, no sale');
   await page.getByRole('button', { name: 'Diagnóstico' }).click();
   const diag = await page.inputValue('#txt-diagnostico');

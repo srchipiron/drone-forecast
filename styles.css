@@ -547,6 +547,18 @@ details[open] > summary::before { transform: rotate(45deg); }
 
 .chip.no { background: var(--no-fondo); color: var(--no); }
 
+.lista-dias-drones { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.7rem; }
+
+.lista-dias-drones strong { display: block; margin-bottom: 0.3rem; font-size: 0.9rem; }
+
+.dias-dron { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+
+.dias-dron .chip { border: 2px solid transparent; font-weight: 650; min-height: 32px; }
+
+.dias-dron .chip.no { background: var(--tarjeta-2); color: var(--suave); }
+
+.dias-dron .chip.activo { border-color: var(--acento); }
+
 /* Perfil de viento */
 .perfil-viento { padding: 0.3rem 0 0.4rem; }
 

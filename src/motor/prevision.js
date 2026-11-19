@@ -141,6 +141,22 @@ export function construirPrevision({ meteo, consenso = new Map(), kp = [], satel
           return { id, nombre: d.nombre, estado, motivos: factores.filter((f) => f.estado === estado && estado !== 'ok').map((f) => f.nombre) };
         })
     : [];
+  // La mejor ventana de cada día con cada uno de los otros drones del piloto
+  // («Mis drones»): el mismo juicio de cada hora con otro dron en el contexto.
+  const ventanasDrones = aj.misDrones
+    .filter((id) => id !== aj.dron)
+    .map((id) => {
+      const d = dronPorId(id, aj.personalizado);
+      const ctxDron = { ...ctx, dron: d };
+      return {
+        id,
+        nombre: d.nombre,
+        dias: dias.map((dia) => ({
+          clave: dia.clave,
+          ventana: mejorVentana(dia.horas.filter((h) => h.ms + 3600000 > ahora).map((h) => ({ ms: h.ms, estado: evaluarHora(h, ctxDron).estado }))),
+        })),
+      };
+    });
   return {
     ajustes: aj,
     dron,
@@ -152,6 +168,7 @@ export function construirPrevision({ meteo, consenso = new Map(), kp = [], satel
     // La primera ventana verde de aquí en adelante (o ámbar, si no hay verde).
     proxima: proximaVentana(dias),
     otrosDrones,
+    ventanasDrones,
     satelitesDisponibles: sats.length > 0,
   };
 }

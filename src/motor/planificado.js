@@ -17,8 +17,10 @@ export const NOMBRE_ESTADO = { ok: 'verde', precaucion: 'ámbar', no: 'rojo' };
  *   ms: la primera hora (en punto); zona: la del lugar, para escribir la hora;
  *   estado: el de la previsión al planificarlo (la referencia para «empeora»).
  */
-export function crearPlan({ ms, horas, lugar, zona, estado = null, nota = '' }) {
-  const inicio = Math.floor(ms / HORA) * HORA;
+export function crearPlan({ ms, horas, lugar, zona, estado = null, nota = '', ajustes = null }) {
+  // ms es una hora de la previsión: tal cual (redondearla a la hora UTC
+  // adelantaba 30 min los planes en husos de media hora).
+  const inicio = ms;
   return {
     id: `${inicio}-${Math.round(lugar.lat * 1e4)}-${Math.round(lugar.lon * 1e4)}`,
     ms: inicio,
@@ -27,7 +29,16 @@ export function crearPlan({ ms, horas, lugar, zona, estado = null, nota = '' }) 
     zona: String(zona ?? ''),
     estado: estado in RANGO ? estado : null,
     nota: String(nota).slice(0, 200),
+    // El dron, la altura y la misión con que se planificó: el plan se juzga
+    // siempre con ellos, aunque luego cambies de dron para otro trabajo.
+    ajustes: ajustes && typeof ajustes === 'object' ? ajustesDelPlan(ajustes) : null,
   };
+}
+
+// Lo que decide el veredicto; sin «Mis drones» (no cuenta para un plan).
+function ajustesDelPlan(a) {
+  const { misDrones: _fuera, ...resto } = a;
+  return JSON.parse(JSON.stringify(resto));
 }
 
 // Lo leído del almacenamiento son datos: fuera los rotos y los que ya pasaron.

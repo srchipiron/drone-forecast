@@ -53,7 +53,7 @@ export async function comprobarAvisos(registro, { forzar = false, ahora = Date.n
   else if (forzar)
     await registro.showNotification('Mañana no hay ventana verde', { body: `Ninguno de tus ${validos.length} favoritos tiene mañana horas en verde para tu dron.`, icon: 'icons/icono-192.png', tag: ETIQUETA });
   // Sin ventana también cuenta como «mirado hoy»: no se repite la descarga.
-  if (!forzar) await almacen.guardarConfigAviso({ ...cfg, ultimo: hoy(ahora) });
+  if (!forzar) await guardarSobreLoNuevo({ ultimo: hoy(ahora) }, cfg, ahora);
   return { estado: texto ? 'avisado' : 'sin-ventana', ventanas };
 }
 
@@ -66,9 +66,7 @@ export async function revisarPlanes(registro, cfg, contexto, ahora = Date.now())
   const planes = planesValidos(cfg.planes, ahora);
   if (!planes.length) {
     if (!Object.keys(cfg.vistos ?? {}).length) return cfg;
-    const limpia = { ...cfg, vistos: {} }; // los planes ya pasados se olvidan
-    await almacen.guardarConfigAviso(limpia);
-    return limpia;
+    return guardarSobreLoNuevo({ vistos: {} }, cfg, ahora); // los planes ya pasados se olvidan
   }
   const vistos = { ...(cfg.vistos ?? {}) };
   const [kp, gnss] = await contexto();
@@ -81,19 +79,39 @@ export async function revisarPlanes(registro, cfg, contexto, ahora = Date.now())
   for (const plan of planes) {
     const meteo = await porLugar.get(`${plan.lugar.lat},${plan.lugar.lon}`);
     if (!meteo) continue;
-    const p = construirPrevision({ meteo, kp, satelites: gnss.satelites, lugar: plan.lugar, ajustes: cfg.ajustes ?? {}, ahora });
+    // Con el dron y la altura del plan (los de cuando se planificó), no los de ahora.
+    const p = construirPrevision({ meteo, kp, satelites: gnss.satelites, lugar: plan.lugar, ajustes: plan.ajustes ?? cfg.ajustes ?? {}, ahora });
     const val = valorarPlan(plan, p);
     if (val.estado === 'sin-prevision') continue;
     const antes = vistos[plan.id] ?? plan.estado;
+    const tag = `plan-${plan.id}`;
     if (empeora(antes, val.estado)) {
       const t = textoEmpeora(plan, antes, val);
-      await registro.showNotification(t.titulo, { body: t.cuerpo, icon: 'icons/icono-192.png', badge: 'icons/icono-192.png', tag: `plan-${plan.id}` });
+      // renotify: con la misma etiqueta, sin él el aviso nuevo (de ámbar a
+      // rojo) sustituye al viejo SIN sonar ni vibrar.
+      await registro.showNotification(t.titulo, { body: t.cuerpo, icon: 'icons/icono-192.png', badge: 'icons/icono-192.png', tag, renotify: true });
+    } else if (empeora(val.estado, antes)) {
+      // Ha mejorado: el aviso de «empeora» ya no es verdad.
+      for (const n of (await registro.getNotifications?.({ tag })) ?? []) n.close();
     }
     // También si mejora: así, si luego vuelve a empeorar, se avisa otra vez.
     vistos[plan.id] = val.estado;
   }
-  const ids = new Set(planes.map((p) => p.id));
-  const nueva = { ...cfg, vistos: Object.fromEntries(Object.entries(vistos).filter(([id]) => ids.has(id))) };
+  return guardarSobreLoNuevo({ vistos }, cfg, ahora);
+}
+
+// Mirar tarda (descargas de hasta un minuto) y entretanto la página puede
+// haber cambiado la configuración (un plan borrado o nuevo, otro dron). Se
+// vuelve a leer justo antes de escribir y solo se ponen encima `vistos` y
+// `ultimo`, que son lo que escribe el instalador: si no, resucitaría el plan
+// borrado con la copia vieja. `vistos` se queda solo con los planes que hay.
+async function guardarSobreLoNuevo(cambios, leida, ahora = Date.now()) {
+  const fresca = (await almacen.configAviso()) ?? leida;
+  const nueva = { ...fresca, ...cambios };
+  if (cambios.vistos) {
+    const ids = new Set(planesValidos(fresca.planes, ahora).map((p) => p.id));
+    nueva.vistos = Object.fromEntries(Object.entries(cambios.vistos).filter(([id]) => ids.has(id)));
+  }
   await almacen.guardarConfigAviso(nueva);
   return nueva;
 }

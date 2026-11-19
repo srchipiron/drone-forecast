@@ -49,9 +49,11 @@ globalThis.caches = {
 };
 let caida = new Set();
 const pedidas = [];
+let alPedir = null; // para simular lo que hace la página mientras el instalador descarga
 globalThis.fetch = async (url) => {
   const u = String(url);
   pedidas.push(u);
+  if (alPedir && u.includes('api.open-meteo.com')) await alPedir(u);
   const de = (l) => u.includes(`latitude=${l.lat}`);
   let cuerpo = null;
   if (u.includes('api.open-meteo.com')) cuerpo = de(BUENO) ? meteo.bueno : de(MALO) ? meteo.malo : null;
@@ -158,4 +160,59 @@ test('planes: apagado no mira; un plan pasado se olvida; un lugar sin previsión
   const r = registro();
   assert.equal((await comprobarAvisos(r, { ahora: AHORA })).estado, 'avisado');
   assert.deepEqual(r.avisos.map((a) => a.tag), ['aviso-ventana']);
+});
+
+test('planes: lo que cambia la página mientras el instalador descarga no se pisa (plan borrado, otro dron)', async () => {
+  cache.clear();
+  caida = new Set();
+  const toledo = crearPlan({ ms: MANANA_10, horas: 1, lugar: { ...MALO, nombre: 'Toledo' }, zona: 'Europe/Madrid', estado: 'ok' });
+  await almacen.guardarConfigAviso({ activo: true, ajustes: {}, favoritos: [], planes: [planGetafe] });
+  // A mitad de la descarga, el piloto borra Getafe, planifica Toledo y cambia de dron.
+  alPedir = async () => {
+    alPedir = null;
+    await almacen.guardarConfigAviso({ activo: true, ajustes: { dron: 'neo' }, favoritos: [], planes: [toledo], vistos: {} });
+  };
+  try {
+    await comprobarAvisos(registro(), { ahora: AHORA });
+  } finally {
+    alPedir = null;
+  }
+  const cfg = await almacen.configAviso();
+  assert.deepEqual(cfg.planes.map((p) => p.lugar.nombre), ['Toledo'], 'el plan borrado no resucita');
+  assert.deepEqual(cfg.ajustes, { dron: 'neo' }, 'el dron nuevo se queda');
+  assert.deepEqual(cfg.vistos, {}, 'lo visto de un plan que ya no existe no se guarda');
+});
+
+test('planes: el paso a peor suena aunque haya un aviso anterior; si mejora, el aviso viejo se quita', async () => {
+  cache.clear();
+  caida = new Set();
+  const bueno = meteo.bueno;
+  const cerradas = [];
+  const r = registro();
+  r.getNotifications = async ({ tag }) => r.avisos.filter((a) => a.tag === tag).map((a) => ({ close: () => cerradas.push(a.tag) }));
+  try {
+    await almacen.guardarConfigAviso({ activo: true, ajustes: {}, favoritos: [], planes: [planGetafe] });
+    meteo.bueno = meteo.malo;
+    await comprobarAvisos(r, { ahora: AHORA });
+    assert.equal(r.avisos.length, 1);
+    assert.equal(r.avisos[0].renotify, true, 'sin renotify, el mismo tag sustituye en silencio');
+    meteo.bueno = bueno;
+    await comprobarAvisos(r, { ahora: AHORA + 3600000 });
+    assert.deepEqual(cerradas, [`plan-${planGetafe.id}`]);
+  } finally {
+    meteo.bueno = bueno;
+  }
+});
+
+test('planes: se juzgan con el dron del plan, no con el que esté puesto ahora', async () => {
+  cache.clear();
+  caida = new Set();
+  // El mismo día bueno que con los ajustes de siempre da verde (prueba de arriba),
+  // con un dron de 2,5 m/s ya no lo es: avisa.
+  const flojo = crearPlan({ ms: MANANA_10, horas: 2, lugar: BUENO, zona: 'Europe/Madrid', estado: 'ok', ajustes: { dron: 'personalizado', personalizado: { maxViento: 2.5, tempMin: 0, tempMax: 40 } } });
+  await almacen.guardarConfigAviso({ activo: true, ajustes: {}, favoritos: [], planes: [flojo] });
+  const r = registro();
+  await comprobarAvisos(r, { ahora: AHORA });
+  assert.equal(r.avisos.length, 1);
+  assert.match(r.avisos[0].body, /de verde a (ámbar|rojo)/);
 });

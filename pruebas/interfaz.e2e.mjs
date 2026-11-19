@@ -399,6 +399,7 @@ try {
   const textoPlan = await page.textContent('#planes .plan');
   assert.match(textoPlan, /\d{1,2} \w+, 10:00–12:00[^]*Getafe<img[^]*«Cliente <b>»/, textoPlan);
   assert.match(await page.textContent('#planes .estado-plan'), /^(Verde|Ámbar|Rojo)/);
+  assert.match(textoPlan, /· DJI Mini 5 Pro a 120 m ·/, 'el plan dice con qué dron y a qué altura se juzga');
   assert.equal(await page.evaluate(() => window.__xss), undefined);
   if (process.env.CAPTURA_PLAN) await page.locator('#planes').screenshot({ path: process.env.CAPTURA_PLAN });
   // Informe para el cliente del plan: sus dos horas, su peor hora y las zonas de su punto.
@@ -445,6 +446,23 @@ try {
   await page.locator('#planes .plan').first().waitFor();
   await page.locator('[data-borrar-plan]').click();
   assert.equal(await page.locator('#planes').isVisible(), false, 'borrado el único plan, la tarjeta se va');
+  // Con 20 planes (el tope) no se guarda otro a escondidas: lo dice y el diálogo sigue abierto.
+  await page.evaluate(() => {
+    const base = Math.ceil(Date.now() / 3600000) * 3600000 + 48 * 3600000;
+    const planes = Array.from({ length: 20 }, (_, k) => ({ id: `p${k}`, ms: base + k * 3600000, horas: 1, lugar: { nombre: `Sitio ${k}`, lat: 40.3057, lon: -3.7329 }, zona: 'Europe/Madrid', estado: null, nota: '', ajustes: null }));
+    localStorage.setItem('drone-forecast:planes', JSON.stringify(planes));
+  });
+  await page.reload();
+  await page.locator('#planes .plan').first().waitFor();
+  await page.locator('[data-accion="planificar"]').click();
+  await page.locator('#form-plan button[type="submit"]').click();
+  assert.match(await page.textContent('#plan-previa'), /^Ya tienes 20 vuelos planificados: borra alguno para añadir otro\.$/);
+  assert.ok(await page.locator('#dlg-plan').isVisible());
+  assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('drone-forecast:planes')).length), 20);
+  await page.locator('[data-accion="cerrar-plan"]').click();
+  await page.evaluate(() => localStorage.removeItem('drone-forecast:planes'));
+  await page.reload();
+  await page.locator('#ahora .cartel').waitFor();
   await page.locator('[data-vista="ajustes"]').click();
   await page.fill('#aj-sats', minSatsAntes);
   await page.locator('#aj-sats').dispatchEvent('change');

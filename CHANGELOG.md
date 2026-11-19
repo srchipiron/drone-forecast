@@ -3,6 +3,29 @@
 Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
 `0.0.X` para correcciones. La versión sale en el pie de la app.
 
+## 0.29.1
+
+Correcciones en los vuelos planificados (una revisión a fondo de lo nuevo):
+
+- **Cada plan se juzga con su dron y su altura**, los de cuando lo
+  planificaste, y la tarjeta lo dice («… · DJI Mavic 3 Enterprise a 120 m»).
+  Antes, si cambiabas de dron para otro trabajo, te podían llegar avisos de
+  «empeora» sin que hubiera cambiado el tiempo, o no llegarte uno de verdad.
+- **El aviso de «pasa a rojo» suena y vibra** aunque tengas en la bandeja el
+  de «pasa a ámbar» (antes lo sustituía en silencio). Si el plan mejora, el
+  aviso viejo de «empeora» se quita solo.
+- **Un plan que borras ya no puede volver a avisarte**: si lo borrabas justo
+  mientras el móvil miraba en segundo plano, se podía quedar vigilándolo.
+- Si vuelves a guardar un plan (por ejemplo, con otra duración), el aviso
+  vuelve a contar desde cómo está ahora la previsión.
+- La tarjeta y el aviso en segundo plano juzgan igual: la tarjeta ya no dice
+  «ha empeorado» por algo que nunca te llegaría como aviso.
+- La previsión de los planes en otros lugares se renueva cada media hora
+  (con la app abierta días, el informe para el cliente podía salir con una
+  previsión vieja).
+- Con 20 planes (el tope), al intentar guardar otro te lo dice en vez de
+  descartarlo sin avisar.
+
 ## 0.29.0
 
 - **Te sugiere cuándo planificar.** Al planificar un vuelo, debajo de la

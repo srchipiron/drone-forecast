@@ -27,6 +27,7 @@ export function crearMapa(caja, { lat, lon, z = 12, alMarcar, alVer = () => {} }
   /** @type {{anillos: number[][][], clase: string}[]} */
   let formas = [];
   let espera = 0;
+  let fotograma = 0;
   let zoom = z;
   let c = aTesela(lat, lon, zoom);
   let marcado = null;
@@ -110,12 +111,15 @@ export function crearMapa(caja, { lat, lon, z = 12, alMarcar, alVer = () => {} }
     if (Math.hypot(dx, dy) > 6) inicio.movido = true;
     if (!inicio.movido) return;
     c = { x: inicio.c.x - dx / TAM, y: inicio.c.y - dy / TAM };
-    pintar();
+    // Una vez por fotograma como mucho: pointermove llega más a menudo, y
+    // con muchas zonas rehacer todas las rutas en cada evento se arrastra.
+    if (!fotograma) fotograma = requestAnimationFrame(() => ((fotograma = 0), pintar()));
   });
   caja.addEventListener('pointerup', (e) => {
     if (!inicio) return;
     const tocado = !inicio.movido;
     inicio = null;
+    if (fotograma) (cancelAnimationFrame(fotograma), (fotograma = 0), pintar());
     if (!tocado) return avisarVista();
     const r = caja.getBoundingClientRect();
     marcado = puntoEnPixel(c.x, c.y, zoom, r.width, r.height, e.clientX - r.left, e.clientY - r.top);

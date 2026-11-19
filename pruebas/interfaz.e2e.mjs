@@ -67,10 +67,13 @@ try {
   const capasPedidas = [];
   const enaireUrls = [];
   const formasPedidas = [];
+  const enaireMapa = { urbanaCaida: false, lento: false };
   await page.route('https://servais.enaire.es/**', (r) => {
     const u = r.request().url();
     if (u.includes('esriGeometryEnvelope')) {
       formasPedidas.push(u);
+      if (enaireMapa.urbanaCaida && /FeatureServer\/3\//.test(u)) return r.fulfill({ status: 500, body: '' });
+      if (enaireMapa.lento) return new Promise((ok) => setTimeout(ok, 1500)).then(() => r.fulfill({ json: /FeatureServer\/2\/query/.test(u) ? formasAero : { features: [] } }));
       return r.fulfill({ json: /FeatureServer\/2\/query/.test(u) ? formasAero : { features: [] } });
     }
     enaireUrls.push(u);
@@ -454,6 +457,8 @@ try {
   });
   await page.reload();
   await page.locator('#planes .plan').first().waitFor();
+  // Eran planes «de antes» (sin ajustes): al arrancar se quedan con el dron de ahora.
+  assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('drone-forecast:planes')).filter((x) => x.ajustes?.dron === 'mini5pro').length), 20);
   await page.locator('[data-accion="planificar"]').click();
   await page.locator('#form-plan button[type="submit"]').click();
   assert.match(await page.textContent('#plan-previa'), /^Ya tienes 20 vuelos planificados: borra alguno para añadir otro\.$/);
@@ -532,9 +537,12 @@ try {
   await page.mouse.click(centroX, centroY);
   assert.equal(await page.textContent('#punto-mapa'), 'Punto: 40.3057, -3.7329');
   assert.ok(await page.locator('#mapa .mapa-marca').isVisible());
+  // Las zonas del punto se preguntan a ENAIRE por ESE punto (geometría exacta), no a las formas del mapa.
+  await page.locator('#punto-zonas li strong').first().waitFor();
   const enPunto = await page.locator('#punto-zonas li').allTextContents();
   assert.equal(enPunto.length, 6, enPunto.join(' | '));
-  assert.ok(enPunto.some((t) => t.startsWith('CTR MADRID<img') && t.includes('te afecta a 120 m')), 'el HTML de fuera sale como texto');
+  assert.ok(enaireUrls.some((u) => u.includes('esriGeometryPoint') && u.includes('geometry=-3.732900%2C40.305700')), 'consulta del punto tocado');
+  assert.ok(enPunto.some((t) => t.startsWith('MADRID/Getafe<script>') && t.includes('te afecta a 120 m')), 'el HTML de fuera sale como texto');
   assert.match(enPunto.at(-1), /^TMA MADRID .*no te afecta a 120 m$/, 'lo que no te afecta, al final');
   assert.equal(await page.evaluate(() => window.__xss), undefined);
   const pedidasAntes = formasPedidas.length;
@@ -552,6 +560,27 @@ try {
   assert.ok(Math.abs(latM - 40.3057) < 1e-3 && lonM < -3.74, `el centro se fue al oeste: ${lonM}`);
   await page.locator('#mapa [data-zoom="1"]').click();
   assert.ok(teselasPedidas.some((u) => u.includes('/14/')), 'acercar pide teselas de z14');
+  // Una capa que falla no deja esa parte por pedida: al moverse se vuelve a intentar.
+  enaireMapa.urbanaCaida = true;
+  await page.locator('#mapa [data-zoom="1"]').click(); // z15: dos más que lo pedido, se pide otra vez
+  await page.locator('#zonas-mapa').filter({ hasText: 'Faltan las capas: Urbana.' }).waitFor();
+  const conFallo = formasPedidas.length;
+  await page.mouse.move(centroX, centroY);
+  await page.mouse.down();
+  await page.mouse.move(centroX + 20, centroY, { steps: 2 });
+  await page.mouse.up();
+  await page.waitForTimeout(700);
+  assert.ok(formasPedidas.length > conFallo, 'con Urbana caída, un arrastre vuelve a pedir');
+  enaireMapa.urbanaCaida = false;
+  // Una respuesta que llega tarde no pinta zonas cuando ya se ha alejado el mapa.
+  for (let i = 0; i < 6; i++) await page.locator('#mapa [data-zoom="-1"]').click(); // z9
+  enaireMapa.lento = true;
+  await page.waitForTimeout(500); // la de z9 ya está en camino (tarda 1,5 s)
+  await page.locator('#mapa [data-zoom="-1"]').click(); // z8: lejos
+  await page.waitForTimeout(2200);
+  assert.match(await page.textContent('#zonas-mapa'), /^Acerca el mapa/);
+  assert.equal(await page.locator('#mapa .mapa-zonas path').count(), 0, 'nada pintado en z8');
+  enaireMapa.lento = false;
   if (process.env.CAPTURA_MAPA) await page.locator('#panel-mapa').screenshot({ path: process.env.CAPTURA_MAPA });
   await page.locator('#btn-usar-punto').click();
   await page.locator('#nombre-lugar').filter({ hasText: 'Punto del mapa' }).waitFor();

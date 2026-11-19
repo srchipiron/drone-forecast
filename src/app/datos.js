@@ -7,8 +7,10 @@ import { leerBusqueda, leerConsenso, leerPrevision, urlBusqueda, urlConsenso, ur
 import { antiguedadDias, desdeOMM, satValido } from '../motor/satelites.js';
 import { almacen } from './almacen.js';
 
-async function pedir(url, ms = 15000) {
-  const r = await fetch(url, { signal: AbortSignal.timeout(ms) });
+// signal: para cancelar desde fuera (el mapa cancela lo que ya no se mira).
+async function pedir(url, ms = 15000, signal = null) {
+  const tiempo = AbortSignal.timeout(ms);
+  const r = await fetch(url, { signal: signal && AbortSignal.any ? AbortSignal.any([tiempo, signal]) : tiempo });
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
   return r.json();
 }
@@ -109,16 +111,20 @@ export async function consultarEnaire(lat, lon) {
 
 // Las formas de las zonas que tocan un rectángulo, para el mapa. Igual que
 // arriba: una capa que falla no tumba las demás, pero se dice cuál faltó.
-export async function cargarFormasEnaire(caja, simplificar) {
+// ArcGIS corta en resultRecordCount y lo dice con exceededTransferLimit:
+// esa capa está «cortada» (faltan zonas), no completa.
+export async function cargarFormasEnaire(caja, simplificar, signal = null) {
   const resultados = await Promise.all(
     CAPAS.map(async (c) => {
       try {
-        return { capa: c.nombre, ok: true, zonas: leerFormas(await pedir(urlFormasEnaire(c.id, caja, simplificar), 20000), c.nombre) };
+        const json = await pedir(urlFormasEnaire(c.id, caja, simplificar), 20000, signal);
+        return { capa: c.nombre, ok: true, zonas: leerFormas(json, c.nombre), cortada: json?.exceededTransferLimit === true };
       } catch {
         return { capa: c.nombre, ok: false };
       }
     }),
   );
   const fallidas = resultados.filter((r) => !r.ok).map((r) => r.capa);
-  return { zonas: resultados.filter((r) => r.ok).flatMap((r) => r.zonas), fallidas, error: fallidas.length === CAPAS.length };
+  const cortadas = resultados.filter((r) => r.ok && r.cortada).map((r) => r.capa);
+  return { zonas: resultados.filter((r) => r.ok).flatMap((r) => r.zonas), fallidas, cortadas, error: fallidas.length === CAPAS.length };
 }

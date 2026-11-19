@@ -136,3 +136,17 @@ test('huecos: sin verde en toda la previsión, los de ámbar, y lo dice', async 
   const uno = prev({ viento: (k) => (k === 40 || k === 41 ? 3 : 7), racha: (k) => (k === 40 || k === 41 ? 4 : 7) });
   assert.deepEqual(huecosPlan(uno, 2, AHORA).map((x) => x.estado), ['ok']);
 });
+
+test('planes antiguos (sin ajustes): se les fijan los de ahora una vez, sin tocar los que ya los tienen', async () => {
+  const { fijarAjustesPlanes } = await import('../src/motor/planificado.js');
+  const viejo = { ...plan(), ajustes: undefined };
+  delete viejo.ajustes;
+  const nuevo = plan({ ajustes: { dron: 'm3e', altitud: 80 } });
+  const r = fijarAjustesPlanes([viejo, nuevo, null], { dron: 'neo', altitud: 60, misDrones: ['flip'] });
+  assert.equal(r.cambiados, 1);
+  assert.deepEqual(r.planes[0].ajustes, { dron: 'neo', altitud: 60 });
+  assert.deepEqual(r.planes[1].ajustes, { dron: 'm3e', altitud: 80 }, 'el que ya tenía los suyos no cambia');
+  assert.equal(r.planes[2], null, 'lo roto lo descarta planesValidos, no esto');
+  assert.equal(fijarAjustesPlanes(r.planes, { dron: 'flip' }).cambiados, 0, 'una sola vez');
+  assert.deepEqual(fijarAjustesPlanes('basura', {}), { planes: [], cambiados: 0 });
+});

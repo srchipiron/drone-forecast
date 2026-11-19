@@ -9,7 +9,7 @@ import { VALORACIONES, anadirEntrada, crearEntrada, diarioCSV, diarioValido, res
 import { graficaDia } from '../motor/grafica.js';
 import { DRONES } from '../motor/drones.js';
 import { MISIONES, MODOS } from '../motor/misiones.js';
-import { NOMBRE_ESTADO, anadirPlan, crearPlan, cuandoPlan, empeora, planesValidos, valorarPlan } from '../motor/planificado.js';
+import { NOMBRE_ESTADO, anadirPlan, crearPlan, cuandoPlan, empeora, icsPlan, planesValidos, valorarPlan } from '../motor/planificado.js';
 import { construirPrevision, normalizarAjustes, resumenDias } from '../motor/prevision.js';
 import { fmtHora as hora, fmtViento } from '../motor/unidades.js';
 import { umbralesViento } from '../motor/veredicto.js';
@@ -904,6 +904,7 @@ function pintarPlanes(p) {
       <div class="estado-plan">${esc(txt)}</div>
       ${peor ? `<div class="empeora">Ha empeorado: al planificarlo estaba en ${esc(NOMBRE_ESTADO[plan.estado])}.</div>` : ''}
       <button type="button" class="icono" data-borrar-plan="${esc(plan.id)}" aria-label="Borrar el plan del ${esc(cuandoPlan(plan))}">✕</button>
+      <div class="acciones-plan"><button type="button" class="enlace" data-calendario-plan="${esc(plan.id)}">Al calendario</button></div>
     </li>`;
   });
   const aviso = !CON_AVISO
@@ -912,6 +913,27 @@ function pintarPlanes(p) {
       ? 'Si la previsión de un plan empeora, te llega una notificación.'
       : 'Para que te avise si empeora aunque no abras la app, activa el aviso en Ajustes.';
   caja.innerHTML = `<h2 id="titulo-planes">Vuelos planificados</h2><ul class="lista-planes">${filas.join('')}</ul><p class="nota">${esc(aviso)}</p>`;
+}
+
+// El plan como .ics: con «Compartir» del móvil si deja mandar ficheros (al
+// calendario o al cliente por WhatsApp o correo); si no, se descarga.
+async function planAlCalendario(id) {
+  const plan = planesValidos(almacen.planes()).find((x) => x.id === id);
+  if (!plan) return;
+  const pp = previsionPlan(plan, prevision());
+  const ics = icsPlan(plan, pp && pp !== 'error' ? valorarPlan(plan, pp) : null);
+  const nombre = `vuelo-${new Date(plan.ms).toISOString().slice(0, 10)}.ics`;
+  const fichero = typeof File === 'function' ? new File([ics], nombre, { type: 'text/calendar' }) : null;
+  try {
+    if (fichero && navigator.canShare?.({ files: [fichero] })) {
+      await navigator.share({ files: [fichero], title: `Vuelo · ${plan.lugar.nombre}` });
+      return;
+    }
+  } catch (e) {
+    if (e?.name === 'AbortError') return; // cerró el menú de compartir
+    estado.fallo = `Calendario: ${e?.message ?? e}`;
+  }
+  bajarFichero(ics, 'text/calendar;charset=utf-8', nombre);
 }
 
 function abrirPlan() {
@@ -1499,6 +1521,7 @@ function enlazar() {
     else if (b.dataset.accion === 'cerrar-vuelo') $('#dlg-vuelo').close();
     else if (b.dataset.accion === 'planificar') abrirPlan();
     else if (b.dataset.accion === 'cerrar-plan') $('#dlg-plan').close();
+    else if (b.dataset.calendarioPlan) planAlCalendario(b.dataset.calendarioPlan);
     else if (b.dataset.borrarPlan) {
       almacen.guardarPlanes(planesValidos(almacen.planes()).filter((x) => x.id !== b.dataset.borrarPlan));
       sincronizarAviso();

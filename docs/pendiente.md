@@ -62,7 +62,7 @@ bloqueada (con el motivo, y se pasa a la siguiente).
 
 ### Propuestas (19-11-2026; Javi puede reordenarlas o tacharlas)
 
-- [ ] **Vuelo planificado al calendario**: desde la tarjeta de planes, un
+- [x] **Vuelo planificado al calendario** (0.27.0): desde la tarjeta de planes, un
   botón que baje un `.ics` (fecha, hora, lugar con enlace al mapa y la nota)
   para meterlo en el calendario del móvil o mandárselo al cliente.
 - [ ] **Informe del vuelo planificado**: el «Informe para el cliente» de un

@@ -91,3 +91,75 @@ export function textoEmpeora(plan, antes, val) {
     cuerpo: `${cuandoPlan(plan)}: de ${NOMBRE_ESTADO[antes]} a ${NOMBRE_ESTADO[val.estado]}${val.motivos.length ? ` (${val.motivos.join(', ').toLowerCase()})` : ''}.`,
   };
 }
+
+// ---------- Al calendario (.ics, RFC 5545) ----------
+
+// Texto de una propiedad: \ ; , y saltos de línea van escapados.
+const escIcs = (s) => String(s ?? '').replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
+
+// Las líneas de más de 75 octetos se doblan (CRLF + espacio). Se cuentan
+// bytes de UTF-8, no letras: una «ñ» son dos, y un calendario estricto
+// rechaza la línea si se pasa.
+function doblar(linea) {
+  const trozos = [];
+  let actual = '';
+  let bytes = 0;
+  for (const c of linea) {
+    const n = c.codePointAt(0) < 0x80 ? 1 : c.codePointAt(0) < 0x800 ? 2 : c.codePointAt(0) < 0x10000 ? 3 : 4;
+    // La primera línea admite 75; las de continuación, 74 más el espacio.
+    if (bytes + n > (trozos.length ? 74 : 75)) {
+      trozos.push(actual);
+      actual = '';
+      bytes = 0;
+    }
+    actual += c;
+    bytes += n;
+  }
+  trozos.push(actual);
+  return trozos.join('\r\n ');
+}
+
+const fechaIcs = (ms) => new Date(ms).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+
+/**
+ * El plan como evento de calendario. Las horas van en UTC (sufijo Z): el
+ * calendario las pone en la hora del móvil, sin líos de zonas.
+ * @param {object} plan
+ * @param {{estado?: string, motivos?: string[]}|null} val  valorarPlan() al exportarlo
+ * @param {number} [ahora]
+ */
+export function icsPlan(plan, val = null, ahora = Date.now()) {
+  const { lat, lon } = plan.lugar;
+  const mapa = `https://www.openstreetmap.org/?mlat=${lat.toFixed(5)}&mlon=${lon.toFixed(5)}#map=15/${lat.toFixed(5)}/${lon.toFixed(5)}`;
+  const prevision =
+    val && val.estado in NOMBRE_ESTADO
+      ? `Previsión al exportarlo: ${NOMBRE_ESTADO[val.estado]}${val.motivos?.length ? ` (${val.motivos.join(', ').toLowerCase()})` : ''}.`
+      : 'Previsión al exportarlo: aún no llega a ese día.';
+  const descripcion = [plan.nota, prevision, 'Mírala otra vez en Drone Forecast antes de salir.', mapa].filter(Boolean).join('\n');
+  const lineas = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Drone Forecast//Vuelo planificado//ES',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
+    'BEGIN:VEVENT',
+    `UID:${plan.id}@drone-forecast`,
+    `DTSTAMP:${fechaIcs(ahora)}`,
+    `DTSTART:${fechaIcs(plan.ms)}`,
+    `DTEND:${fechaIcs(plan.ms + plan.horas * HORA)}`,
+    `SUMMARY:${escIcs(`Vuelo con dron · ${plan.lugar.nombre || 'lugar planificado'}`)}`,
+    `LOCATION:${escIcs(plan.lugar.nombre || `${lat.toFixed(5)}, ${lon.toFixed(5)}`)}`,
+    `GEO:${lat.toFixed(6)};${lon.toFixed(6)}`,
+    `DESCRIPTION:${escIcs(descripcion)}`,
+    `URL:${mapa}`,
+    // Un recordatorio la víspera: es cuando la previsión ya es fiable.
+    'BEGIN:VALARM',
+    'ACTION:DISPLAY',
+    `DESCRIPTION:${escIcs('Mira la previsión del vuelo de mañana')}`,
+    'TRIGGER:-PT18H',
+    'END:VALARM',
+    'END:VEVENT',
+    'END:VCALENDAR',
+  ];
+  return `${lineas.map(doblar).join('\r\n')}\r\n`;
+}

@@ -343,6 +343,32 @@ try {
   if (process.env.CAPTURA_GRAFICA) await page.locator('#horas .grafica').screenshot({ path: process.env.CAPTURA_GRAFICA });
   if (process.env.CAPTURA_HORAS) await page.locator('#horas .tabla-horas').screenshot({ path: process.env.CAPTURA_HORAS });
 
+  // Vuelo planificado: mañana de 10 a 12, con nota; sale en su tarjeta y se borra.
+  assert.equal(await page.locator('#planes').isVisible(), false, 'sin planes no hay tarjeta');
+  await page.locator('[data-accion="planificar"]').click();
+  await page.locator('#dlg-plan').waitFor();
+  assert.match(await page.textContent('#plan-lugar'), /^En Getafe<img[^]*a 120 m\.$/);
+  await page.selectOption('#plan-dia', '1');
+  const horasManana = await page.locator('#plan-hora option').count();
+  assert.ok(horasManana >= 23 && horasManana <= 25, `mañana tiene todas sus horas (${horasManana}; 23 o 25 el día del cambio de hora)`);
+  await page.selectOption('#plan-hora', { label: '10:00' });
+  await page.selectOption('#plan-horas', '2');
+  assert.match(await page.textContent('#plan-previa'), /^Ahora mismo: (verde|ámbar|rojo)/);
+  await page.fill('#plan-nota', 'Cliente <b>');
+  if (process.env.CAPTURA_PLAN) await page.locator('#dlg-plan').screenshot({ path: process.env.CAPTURA_PLAN.replace('.png', '-dialogo.png') });
+  await page.locator('#form-plan button[type="submit"]').click();
+  await page.locator('#planes .plan').waitFor();
+  assert.equal(await page.locator('#dlg-plan').isVisible(), false);
+  const textoPlan = await page.textContent('#planes .plan');
+  assert.match(textoPlan, /\d{1,2} \w+, 10:00–12:00[^]*Getafe<img[^]*«Cliente <b>»/, textoPlan);
+  assert.match(await page.textContent('#planes .estado-plan'), /^(Verde|Ámbar|Rojo)/);
+  assert.equal(await page.evaluate(() => window.__xss), undefined);
+  if (process.env.CAPTURA_PLAN) await page.locator('#planes').screenshot({ path: process.env.CAPTURA_PLAN });
+  await page.reload();
+  await page.locator('#planes .plan').waitFor();
+  await page.locator('[data-borrar-plan]').click();
+  assert.equal(await page.locator('#planes').isVisible(), false, 'borrado el único plan, la tarjeta se va');
+
   // Diario: «He volado» → valoración → aparece en el diario y en su resumen.
   await page.locator('[data-accion="volado"]').click();
   await page.locator('#dlg-vuelo input[value="regular"]').check();

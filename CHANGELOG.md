@@ -3,6 +3,22 @@
 Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
 `0.0.X` para correcciones. La versión sale en el pie de la app.
 
+## 0.25.0
+
+- **Vuelos planificados.** Con el botón **Planificar vuelo** (debajo del
+  cartel) eliges el día, la hora de empezar y cuánto dura el vuelo, por
+  ejemplo el de un cliente, y una nota. Antes de guardarlo ya te dice cómo
+  está la previsión de esas horas.
+- Los planes salen en la tarjeta **Vuelos planificados** de la pantalla
+  principal, con su estado de ahora (verde, ámbar o rojo, y por qué). Si ha
+  empeorado desde que lo planificaste, lo dice en rojo.
+- **Te avisa si empeora.** Con el aviso activado en Ajustes, el móvil mira
+  tus planes cuando revisa en segundo plano y te manda una notificación si
+  la previsión pasa de verde a ámbar o rojo, o de ámbar a rojo. Si mejora y
+  luego vuelve a empeorar, te avisa otra vez. Los planes que ya pasaron
+  desaparecen solos.
+- Para planificar, el día tiene que estar dentro de la previsión (7 días).
+
 ## 0.24.0
 
 - **El diario, a hoja de cálculo.** En Diario, el botón **Exportar a hoja

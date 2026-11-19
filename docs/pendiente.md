@@ -54,7 +54,7 @@ bloqueada (con el motivo, y se pasa a la siguiente).
 - [x] **Diario a CSV** (0.24.0): además del JSON, exportar el diario como CSV para
   abrirlo en una hoja de cálculo (fecha, lugar, dron, misión, previsión y
   valoración).
-- [ ] **Vuelo planificado**: marcar un día y hora de vuelo (para un cliente)
+- [x] **Vuelo planificado** (0.25.0): marcar un día y hora de vuelo (para un cliente)
   y que el aviso de ventana avise si la previsión de esa hora empeora a ámbar
   o rojo.
 - [ ] **Ventanas de la semana para todos mis drones**: en la vista de días,

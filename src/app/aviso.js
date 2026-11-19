@@ -4,6 +4,8 @@
 // está en almacen.configAviso().
 
 import { textoAviso, ventanasManana } from '../motor/aviso.js';
+import { empeora, planesValidos, textoEmpeora, valorarPlan } from '../motor/planificado.js';
+import { construirPrevision } from '../motor/prevision.js';
 import { almacen } from './almacen.js';
 import { cargarKp, cargarSatelites, cargarSoloPrevision } from './datos.js';
 
@@ -19,14 +21,20 @@ const hoy = (ahora) => new Intl.DateTimeFormat('en-CA', { year: 'numeric', month
  * @returns {Promise<{estado: string, ventanas?: object[]}>}
  */
 export async function comprobarAvisos(registro, { forzar = false, ahora = Date.now() } = {}) {
-  const cfg = await almacen.configAviso();
+  let cfg = await almacen.configAviso();
   if (!cfg || (!cfg.activo && !forzar)) return { estado: 'apagado' };
+  // Kp y órbitas, una vez para los planes y los favoritos.
+  let ctx = null;
+  const contexto = () => (ctx ??= Promise.all([cargarKp(), cargarSatelites()]));
+  // Los vuelos planificados se miran cada vez (no una al día): lo que importa
+  // es enterarse en cuanto empeoran.
+  const sinPlanes = cfg;
+  cfg = await revisarPlanes(registro, cfg, contexto, ahora).catch(() => sinPlanes); // un fallo aquí no tapa el aviso de ventana
   const favoritos = Array.isArray(cfg.favoritos) ? cfg.favoritos.filter((l) => Number.isFinite(l?.lat) && Number.isFinite(l?.lon)) : [];
   if (!favoritos.length) return { estado: 'sin-favoritos' };
   if (!forzar && cfg.ultimo === hoy(ahora)) return { estado: 'ya-avisado' };
-  const [kp, gnss, lugares] = await Promise.all([
-    cargarKp(),
-    cargarSatelites(),
+  const [[kp, gnss], lugares] = await Promise.all([
+    contexto(),
     Promise.all(
       favoritos.map(async (lugar) => {
         try {
@@ -47,4 +55,45 @@ export async function comprobarAvisos(registro, { forzar = false, ahora = Date.n
   // Sin ventana también cuenta como «mirado hoy»: no se repite la descarga.
   if (!forzar) await almacen.guardarConfigAviso({ ...cfg, ultimo: hoy(ahora) });
   return { estado: texto ? 'avisado' : 'sin-ventana', ventanas };
+}
+
+/**
+ * Los vuelos planificados: si alguno ha empeorado desde lo último que se
+ * sabía (al planificarlo, o el último aviso), notifica. Devuelve la
+ * configuración con lo visto guardado.
+ */
+export async function revisarPlanes(registro, cfg, contexto, ahora = Date.now()) {
+  const planes = planesValidos(cfg.planes, ahora);
+  if (!planes.length) {
+    if (!Object.keys(cfg.vistos ?? {}).length) return cfg;
+    const limpia = { ...cfg, vistos: {} }; // los planes ya pasados se olvidan
+    await almacen.guardarConfigAviso(limpia);
+    return limpia;
+  }
+  const vistos = { ...(cfg.vistos ?? {}) };
+  const [kp, gnss] = await contexto();
+  // Una previsión por lugar, aunque haya varios planes en él.
+  const porLugar = new Map();
+  for (const plan of planes) {
+    const clave = `${plan.lugar.lat},${plan.lugar.lon}`;
+    if (!porLugar.has(clave)) porLugar.set(clave, cargarSoloPrevision(plan.lugar.lat, plan.lugar.lon).catch(() => null));
+  }
+  for (const plan of planes) {
+    const meteo = await porLugar.get(`${plan.lugar.lat},${plan.lugar.lon}`);
+    if (!meteo) continue;
+    const p = construirPrevision({ meteo, kp, satelites: gnss.satelites, lugar: plan.lugar, ajustes: cfg.ajustes ?? {}, ahora });
+    const val = valorarPlan(plan, p);
+    if (val.estado === 'sin-prevision') continue;
+    const antes = vistos[plan.id] ?? plan.estado;
+    if (empeora(antes, val.estado)) {
+      const t = textoEmpeora(plan, antes, val);
+      await registro.showNotification(t.titulo, { body: t.cuerpo, icon: 'icons/icono-192.png', badge: 'icons/icono-192.png', tag: `plan-${plan.id}` });
+    }
+    // También si mejora: así, si luego vuelve a empeorar, se avisa otra vez.
+    vistos[plan.id] = val.estado;
+  }
+  const ids = new Set(planes.map((p) => p.id));
+  const nueva = { ...cfg, vistos: Object.fromEntries(Object.entries(vistos).filter(([id]) => ids.has(id))) };
+  await almacen.guardarConfigAviso(nueva);
+  return nueva;
 }

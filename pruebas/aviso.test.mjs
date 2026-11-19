@@ -103,3 +103,59 @@ test('instalador: un favorito sin previsión no tapa a los demás; «Probar ahor
   caida = new Set([BUENO, MALO]);
   assert.equal((await comprobarAvisos(registro(), { forzar: true, ahora: AHORA })).estado, 'sin-datos');
 });
+
+// ---- Vuelos planificados ----
+const { crearPlan } = await import('../src/motor/planificado.js');
+const MANANA_10 = Date.parse('2026-06-22T08:00:00Z'); // 10:00 en Madrid
+const planGetafe = crearPlan({ ms: MANANA_10, horas: 2, lugar: BUENO, zona: 'Europe/Madrid', estado: 'ok', nota: 'Cliente' });
+
+test('planes: si la previsión del plan empeora avisa una vez, aunque no haya favoritos ni sea la primera vez del día', async () => {
+  cache.clear();
+  caida = new Set();
+  const bueno = meteo.bueno;
+  try {
+    await almacen.guardarConfigAviso({ activo: true, ajustes: {}, favoritos: [], planes: [planGetafe], ultimo: '2026-06-21', vistos: { viejo: 'no' } });
+    const r = registro();
+    await comprobarAvisos(r, { ahora: AHORA });
+    assert.equal(r.avisos.length, 0, 'sigue en verde: nada');
+    assert.deepEqual((await almacen.configAviso()).vistos, { [planGetafe.id]: 'ok' });
+    // Ahora el viento sube en Getafe.
+    meteo.bueno = meteo.malo;
+    await comprobarAvisos(r, { ahora: AHORA + 3600000 });
+    assert.equal(r.avisos.length, 1);
+    assert.equal(r.avisos[0].titulo, 'Empeora tu vuelo en Getafe');
+    assert.match(r.avisos[0].body, /^lun 22 jun, 10:00–12:00: de verde a rojo \(.*viento.*\)\.$/);
+    assert.equal(r.avisos[0].tag, `plan-${planGetafe.id}`);
+    // Sigue en rojo: no repite.
+    await comprobarAvisos(r, { ahora: AHORA + 2 * 3600000 });
+    assert.equal(r.avisos.length, 1, 'no repite mientras siga igual');
+    // Mejora y vuelve a empeorar: avisa otra vez.
+    meteo.bueno = bueno;
+    await comprobarAvisos(r, { ahora: AHORA + 3 * 3600000 });
+    meteo.bueno = meteo.malo;
+    await comprobarAvisos(r, { ahora: AHORA + 4 * 3600000 });
+    assert.equal(r.avisos.length, 2);
+  } finally {
+    meteo.bueno = bueno;
+  }
+});
+
+test('planes: apagado no mira; un plan pasado se olvida; un lugar sin previsión no tapa el aviso de ventana', async () => {
+  cache.clear();
+  caida = new Set();
+  pedidas.length = 0;
+  await almacen.guardarConfigAviso({ activo: false, ajustes: {}, favoritos: [], planes: [planGetafe] });
+  assert.equal((await comprobarAvisos(registro(), { ahora: AHORA })).estado, 'apagado');
+  assert.equal(pedidas.length, 0);
+  // Plan ya pasado: no se descarga nada para él y sale de «vistos».
+  await almacen.guardarConfigAviso({ activo: true, ajustes: {}, favoritos: [], planes: [planGetafe], vistos: { [planGetafe.id]: 'ok', viejo: 'no' } });
+  await comprobarAvisos(registro(), { ahora: MANANA_10 + 3 * 3600000 });
+  assert.equal(pedidas.filter((u) => u.includes('api.open-meteo.com')).length, 0);
+  assert.deepEqual((await almacen.configAviso()).vistos, {}, 'lo visto de los planes pasados se olvida');
+  // El lugar del plan cae; el favorito bueno sigue avisando.
+  const lejos = crearPlan({ ms: MANANA_10, horas: 1, lugar: { nombre: 'Sin red', lat: 1, lon: 1 }, zona: 'UTC', estado: 'ok' });
+  await almacen.guardarConfigAviso({ activo: true, ajustes: {}, favoritos: [BUENO], planes: [lejos] });
+  const r = registro();
+  assert.equal((await comprobarAvisos(r, { ahora: AHORA })).estado, 'avisado');
+  assert.deepEqual(r.avisos.map((a) => a.tag), ['aviso-ventana']);
+});

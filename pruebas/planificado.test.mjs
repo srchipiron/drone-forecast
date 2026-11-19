@@ -150,3 +150,17 @@ test('planes antiguos (sin ajustes): se les fijan los de ahora una vez, sin toca
   assert.equal(fijarAjustesPlanes(r.planes, { dron: 'flip' }).cambiados, 0, 'una sola vez');
   assert.deepEqual(fijarAjustesPlanes('basura', {}), { planes: [], cambiados: 0 });
 });
+
+test('fases: pendiente, en marcha y terminado; el terminado se queda 12 h en la tarjeta, no en el aviso', async () => {
+  const { fasePlan, MARGEN_DIARIO } = await import('../src/motor/planificado.js');
+  const p = plan(); // de 10 a 12
+  assert.equal(fasePlan(p, MANANA_10 - 1), 'pendiente');
+  assert.equal(fasePlan(p, MANANA_10), 'en-marcha');
+  assert.equal(fasePlan(p, MANANA_10 + 2 * H - 1), 'en-marcha');
+  assert.equal(fasePlan(p, MANANA_10 + 2 * H), 'terminado');
+  const fin = MANANA_10 + 2 * H;
+  assert.deepEqual(planesValidos([p], fin + H), [], 'sin margen (el aviso) ya no está');
+  assert.deepEqual(planesValidos([p], fin + H, MARGEN_DIARIO), [p], 'con margen (la tarjeta) sigue');
+  assert.deepEqual(planesValidos([p], fin + MARGEN_DIARIO, MARGEN_DIARIO), [], 'a las 12 h se va');
+  assert.equal(anadirPlan([p], plan({ ms: MANANA_10 + 24 * H }), fin + H, MARGEN_DIARIO).length, 2, 'guardar otro no tira el terminado');
+});

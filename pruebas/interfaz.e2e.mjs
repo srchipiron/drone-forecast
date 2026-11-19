@@ -473,6 +473,40 @@ try {
   await page.locator('#aj-sats').dispatchEvent('change');
   await page.locator('[data-vista="prevision"]').click();
 
+  // Un plan en marcha y otro terminado: «He volado» / «Guardar en el diario» lo apunta con SU hora y se va de la tarjeta.
+  await page.evaluate(() => {
+    const H = 3600000;
+    const hora = Math.floor(Date.now() / H) * H;
+    const lugar = { nombre: 'Getafe plan', lat: 40.3057, lon: -3.7329 };
+    const base = { horas: 1, lugar, zona: 'Europe/Madrid', estado: 'ok', ajustes: null };
+    localStorage.setItem('drone-forecast:planes', JSON.stringify([
+      { ...base, id: 'terminado', ms: hora - 3 * H, nota: 'Nave 3' },
+      { ...base, id: 'en-marcha', ms: hora, nota: '' },
+    ]));
+  });
+  await page.reload();
+  await page.locator('#planes [data-volado-plan="terminado"]').waitFor();
+  assert.equal(await page.textContent('#planes [data-volado-plan="terminado"]'), 'Guardar en el diario');
+  assert.equal(await page.textContent('#planes [data-volado-plan="en-marcha"]'), 'He volado');
+  assert.match(await page.locator('#planes .plan.e-terminado .estado-plan').textContent(), /^Terminado: ¿cómo ha ido\?$/);
+  assert.equal(await page.locator('#planes .plan.e-terminado [data-calendario-plan]').count(), 0, 'pasado, sin calendario');
+  await page.locator('#planes [data-volado-plan="terminado"]').click();
+  await page.locator('#dlg-vuelo').waitFor();
+  assert.match(await page.textContent('#vuelo-prevision'), /Getafe plan\. La app decía: /);
+  assert.equal(await page.inputValue('#txt-vuelo'), 'Nave 3', 'la nota del plan, de partida');
+  await page.locator('#dlg-vuelo input[value="bien"]').check();
+  await page.locator('#form-vuelo button[type="submit"]').click();
+  await page.locator('#diario .lista-vuelos li').first().waitFor();
+  assert.match(await page.textContent('#diario .lista-vuelos li'), /Getafe plan[^]*Bien[^]*«Nave 3»/);
+  assert.deepEqual(await page.evaluate(() => JSON.parse(localStorage.getItem('drone-forecast:planes')).map((x) => x.id)), ['en-marcha'], 'el apuntado sale de los planes');
+  // Se limpia para lo que sigue.
+  await page.evaluate(() => {
+    localStorage.removeItem('drone-forecast:planes');
+    localStorage.removeItem('drone-forecast:diario');
+  });
+  await page.reload();
+  await page.locator('#ahora .cartel').waitFor();
+
   // Diario: «He volado» → valoración → aparece en el diario y en su resumen.
   await page.locator('[data-accion="volado"]').click();
   await page.locator('#dlg-vuelo input[value="regular"]').check();

@@ -41,8 +41,18 @@ function ajustesDelPlan(a) {
   return JSON.parse(JSON.stringify(resto));
 }
 
-// Lo leído del almacenamiento son datos: fuera los rotos y los que ya pasaron.
-export function planesValidos(lista, ahora = Date.now()) {
+// Un plan terminado se queda este tiempo en la tarjeta para apuntarlo en el
+// diario («¿cómo ha ido?»). El aviso en segundo plano no lo mira (margen 0).
+export const MARGEN_DIARIO = 12 * HORA;
+
+/** 'pendiente' (aún no empieza), 'en-marcha' o 'terminado'. */
+export function fasePlan(plan, ahora = Date.now()) {
+  if (ahora < plan.ms) return 'pendiente';
+  return ahora < plan.ms + plan.horas * HORA ? 'en-marcha' : 'terminado';
+}
+
+/** Lo leído del almacenamiento, sin rotos ni pasados (`margen` después del final). */
+export function planesValidos(lista, ahora = Date.now(), margen = 0) {
   if (!Array.isArray(lista)) return [];
   return lista
     .filter(
@@ -54,14 +64,14 @@ export function planesValidos(lista, ahora = Date.now()) {
         p.lugar &&
         Number.isFinite(p.lugar.lat) &&
         Number.isFinite(p.lugar.lon) &&
-        p.ms + p.horas * HORA > ahora,
+        p.ms + p.horas * HORA + margen > ahora,
     )
     .sort((a, b) => a.ms - b.ms)
     .slice(0, MAXIMO_PLANES);
 }
 
-export function anadirPlan(lista, plan, ahora = Date.now()) {
-  return planesValidos([plan, ...lista.filter((p) => p.id !== plan.id)], ahora);
+export function anadirPlan(lista, plan, ahora = Date.now(), margen = 0) {
+  return planesValidos([plan, ...lista.filter((p) => p.id !== plan.id)], ahora, margen);
 }
 
 /**

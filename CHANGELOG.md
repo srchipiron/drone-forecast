@@ -3,6 +3,16 @@
 Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
 `0.0.X` para correcciones. La versión sale en el pie de la app.
 
+## 0.30.0
+
+- **Del vuelo planificado al diario, con un toque.** Cuando llega la hora de
+  un plan, su tarjeta dice «En marcha» y tiene **He volado**. Cuando
+  termina, se queda 12 horas más con «Terminado: ¿cómo ha ido?» y el botón
+  **Guardar en el diario**.
+- Al guardarlo, el diario apunta el vuelo con su lugar y su hora (no la de
+  ahora), lo que decía la previsión en su peor hora y, de partida, la nota
+  del plan. Después el plan sale de la tarjeta.
+
 ## 0.29.2
 
 Correcciones del mapa de zonas de ENAIRE (otra revisión a fondo):

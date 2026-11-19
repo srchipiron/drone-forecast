@@ -771,6 +771,10 @@ dialog h3 { font-size: 0.75rem; font-weight: 700; color: var(--suave); text-tran
 
 .plan.e-no { border-left-color: var(--no); }
 
+.plan.e-terminado { border-left-color: var(--acento); }
+
+.plan.e-terminado .estado-plan { color: var(--acento); }
+
 .plan .estado-plan { font-weight: 650; }
 
 .plan.e-ok .estado-plan { color: var(--ok); }

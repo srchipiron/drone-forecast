@@ -9,7 +9,7 @@ import { VALORACIONES, anadirEntrada, crearEntrada, diarioCSV, diarioValido, res
 import { graficaDia } from '../motor/grafica.js';
 import { DRONES } from '../motor/drones.js';
 import { MISIONES, MODOS } from '../motor/misiones.js';
-import { MAXIMO_PLANES, NOMBRE_ESTADO, anadirPlan, crearPlan, cuandoPlan, empeora, fijarAjustesPlanes, huecosPlan, icsPlan, planesValidos, valorarPlan } from '../motor/planificado.js';
+import { MARGEN_DIARIO, MAXIMO_PLANES, NOMBRE_ESTADO, anadirPlan, crearPlan, cuandoPlan, empeora, fasePlan, fijarAjustesPlanes, huecosPlan, icsPlan, planesValidos, valorarPlan } from '../motor/planificado.js';
 import { construirPrevision, normalizarAjustes, resumenDias } from '../motor/prevision.js';
 import { fmtHora as hora, fmtViento } from '../motor/unidades.js';
 import { umbralesViento } from '../motor/veredicto.js';
@@ -855,13 +855,40 @@ function abrirVuelo(ms) {
   const h = p?.horas.find((x) => x.ms === ms);
   if (!h) return;
   estado.vueloMs = ms;
+  estado.vueloPlan = null;
   $('#vuelo-prevision').textContent = `La app decía: ${ESTADOS[h.estado].texto.toLowerCase()} · viento ${fmtViento(h.vientoAlt, p.ajustes.unidades)} · rachas ${fmtViento(h.rachaAlt, p.ajustes.unidades)}`;
   $('#form-vuelo').reset();
   $('#dlg-vuelo').showModal();
 }
 
+// Un vuelo planificado, al diario: con la previsión de SU peor hora (la que
+// decidía), su lugar y su hora, no la de ahora.
+function abrirVueloPlan(id) {
+  const plan = planesGuardados().find((x) => x.id === id);
+  if (!plan) return;
+  const pp = previsionPlan(plan);
+  const p = pp && pp !== 'error' ? pp : null;
+  const rango = { ok: 0, precaucion: 1, no: 2 };
+  const horas = (p?.horas ?? []).filter((x) => x.ms >= plan.ms && x.ms < plan.ms + plan.horas * 3600000);
+  // Si la previsión ya no trae esas horas (de ayer), se guarda igual, sin datos.
+  const h = horas.reduce((a, x) => (!a || (rango[x.estado] ?? 0) > (rango[a.estado] ?? 0) ? x : a), null) ?? {
+    ms: plan.ms, estado: 'sin-dato', vientoAlt: null, rachaAlt: null, kp: null, sats: null, factores: [],
+  };
+  const pe = p ?? { dron: { nombre: DRONES.find((d) => d.id === plan.ajustes?.dron)?.nombre ?? '—' }, ajustes: { modo: plan.ajustes?.modo, altitud: plan.ajustes?.altitud ?? null, unidades: estado.ajustes.unidades }, mision: { nombre: '—' } };
+  estado.vueloPlan = { id, p: pe, h, lugar: plan.lugar, ms: plan.ms };
+  const u = pe.ajustes.unidades ?? estado.ajustes.unidades;
+  $('#vuelo-prevision').textContent = `${cuandoPlan(plan)} · ${plan.lugar.nombre}. ${
+    h.estado === 'sin-dato' ? 'La previsión de esas horas ya no está.' : `La app decía: ${ESTADOS[h.estado].texto.toLowerCase()} · viento ${fmtViento(h.vientoAlt, u)} · rachas ${fmtViento(h.rachaAlt, u)}`
+  }`;
+  $('#form-vuelo').reset();
+  if (plan.nota) $('#txt-vuelo').value = plan.nota;
+  $('#dlg-vuelo').showModal();
+}
+
 // ---------- Vuelos planificados ----------
 
+// Los de la tarjeta: los que vienen y los terminados hace menos de MARGEN_DIARIO.
+const planesGuardados = () => planesValidos(almacen.planes(), Date.now(), MARGEN_DIARIO);
 const mismoSitio = (a, b) => Boolean(a && b) && Math.abs(a.lat - b.lat) < 1e-4 && Math.abs(a.lon - b.lon) < 1e-4;
 // Los planes se juzgan COMO EL INSTALADOR que avisa en segundo plano: con
 // el dron y la altura del plan y sin el acuerdo entre modelos (que el
@@ -909,20 +936,26 @@ function textoValoracion(val) {
 
 function pintarPlanes() {
   const caja = $('#planes');
-  const planes = planesValidos(almacen.planes());
+  const planes = planesGuardados();
   caja.hidden = !planes.length;
   if (!planes.length) return;
   const filas = planes.map((plan) => {
     const pp = previsionPlan(plan);
-    const val = pp && pp !== 'error' ? valorarPlan(plan, pp) : null;
-    const txt = pp === 'error' ? 'No se pudo descargar la previsión' : val ? textoValoracion(val) : 'Mirando la previsión…';
+    const fase = fasePlan(plan, Date.now());
+    const val = pp && pp !== 'error' && fase !== 'terminado' ? valorarPlan(plan, pp) : null;
+    const txt =
+      fase === 'terminado' ? 'Terminado: ¿cómo ha ido?' : pp === 'error' ? 'No se pudo descargar la previsión' : val ? `${fase === 'en-marcha' ? 'En marcha · ' : ''}${textoValoracion(val)}` : 'Mirando la previsión…';
     const peor = val && empeora(plan.estado, val.estado);
-    return `<li class="plan e-${esc(val?.estado ?? 'sin-dato')}">
+    return `<li class="plan e-${esc(fase === 'terminado' ? 'terminado' : (val?.estado ?? 'sin-dato'))}">
       <div><strong>${esc(cuandoPlan(plan))}</strong> · ${esc(plan.lugar.nombre)}${pp && pp !== 'error' ? ` · ${esc(pp.dron.nombre)} a ${esc(pp.ajustes.altitud)} m` : ''}${plan.nota ? ` · «${esc(plan.nota)}»` : ''}</div>
       <div class="estado-plan">${esc(txt)}</div>
       ${peor ? `<div class="empeora">Ha empeorado: al planificarlo estaba en ${esc(NOMBRE_ESTADO[plan.estado])}.</div>` : ''}
       <button type="button" class="icono" data-borrar-plan="${esc(plan.id)}" aria-label="Borrar el plan del ${esc(cuandoPlan(plan))}">✕</button>
-      <div class="acciones-plan"><button type="button" class="enlace" data-calendario-plan="${esc(plan.id)}">Al calendario</button>${val && val.estado !== 'sin-prevision' ? `<button type="button" class="enlace" data-informe-plan="${esc(plan.id)}">Informe para el cliente</button>` : ''}</div>
+      <div class="acciones-plan">${
+        fase === 'pendiente'
+          ? `<button type="button" class="enlace" data-calendario-plan="${esc(plan.id)}">Al calendario</button>${val && val.estado !== 'sin-prevision' ? `<button type="button" class="enlace" data-informe-plan="${esc(plan.id)}">Informe para el cliente</button>` : ''}`
+          : `<button type="button" class="enlace" data-volado-plan="${esc(plan.id)}">${fase === 'terminado' ? 'Guardar en el diario' : 'He volado'}</button>`
+      }</div>
     </li>`;
   });
   const aviso = !CON_AVISO
@@ -936,7 +969,7 @@ function pintarPlanes() {
 // El plan como .ics: con «Compartir» del móvil si deja mandar ficheros (al
 // calendario o al cliente por WhatsApp o correo); si no, se descarga.
 async function planAlCalendario(id) {
-  const plan = planesValidos(almacen.planes()).find((x) => x.id === id);
+  const plan = planesGuardados().find((x) => x.id === id);
   if (!plan) return;
   const pp = previsionPlan(plan);
   const ics = icsPlan(plan, pp && pp !== 'error' ? valorarPlan(plan, pp) : null);
@@ -957,7 +990,7 @@ async function planAlCalendario(id) {
 // Informe de un plan. Las zonas de ENAIRE son las de SU punto: si no es el
 // de la pantalla, se preguntan a ENAIRE en el momento.
 async function informePlan(id, boton) {
-  const plan = planesValidos(almacen.planes()).find((x) => x.id === id);
+  const plan = planesGuardados().find((x) => x.id === id);
   const pp = plan && previsionPlan(plan);
   if (!pp || pp === 'error') return;
   const aqui = mismoSitio(plan.lugar, estado.lugar);
@@ -1036,12 +1069,12 @@ function guardarPlan(e) {
   const p = prevision();
   const r = p && planDelFormulario(p);
   if (!r) return;
-  const lista = planesValidos(almacen.planes());
+  const lista = planesGuardados();
   if (!lista.some((x) => x.id === r.plan.id) && lista.length >= MAXIMO_PLANES) {
     $('#plan-previa').textContent = `Ya tienes ${MAXIMO_PLANES} vuelos planificados: borra alguno para añadir otro.`;
     return;
   }
-  almacen.guardarPlanes(anadirPlan(lista, r.plan));
+  almacen.guardarPlanes(anadirPlan(lista, r.plan, Date.now(), MARGEN_DIARIO));
   $('#dlg-plan').close();
   sincronizarAviso([r.plan.id]); // guardado otra vez: lo visto antes ya no vale
   pintarPlanes();
@@ -1050,12 +1083,20 @@ function guardarPlan(e) {
 
 function guardarVuelo(e) {
   e.preventDefault();
-  const p = prevision();
-  const h = p?.horas.find((x) => x.ms === estado.vueloMs);
+  const vp = estado.vueloPlan;
+  const p = vp ? vp.p : prevision();
+  const h = vp ? vp.h : p?.horas.find((x) => x.ms === estado.vueloMs);
   const valoracion = new FormData($('#form-vuelo')).get('valoracion');
   if (!h || !valoracion) return;
-  const entrada = crearEntrada(p, h, estado.lugar, { valoracion, nota: $('#txt-vuelo').value, ms: Date.now() });
+  const entrada = crearEntrada(p, h, vp ? vp.lugar : estado.lugar, { valoracion, nota: $('#txt-vuelo').value, ms: vp ? vp.ms : Date.now() });
   almacen.guardarDiario(anadirEntrada(diarioValido(almacen.diario()), entrada));
+  if (vp) {
+    // Apuntado: el plan ya ha cumplido.
+    almacen.guardarPlanes(planesGuardados().filter((x) => x.id !== vp.id));
+    estado.vueloPlan = null;
+    sincronizarAviso([vp.id]);
+    pintarPlanes();
+  }
   $('#dlg-vuelo').close();
   pintarDiario();
   cambiarVista('diario');
@@ -1631,9 +1672,10 @@ function enlazar() {
     else if (b.dataset.accion === 'cerrar-plan') $('#dlg-plan').close();
     else if (b.dataset.hueco) elegirHueco(b);
     else if (b.dataset.calendarioPlan) planAlCalendario(b.dataset.calendarioPlan);
+    else if (b.dataset.voladoPlan) abrirVueloPlan(b.dataset.voladoPlan);
     else if (b.dataset.informePlan) informePlan(b.dataset.informePlan, b);
     else if (b.dataset.borrarPlan) {
-      almacen.guardarPlanes(planesValidos(almacen.planes()).filter((x) => x.id !== b.dataset.borrarPlan));
+      almacen.guardarPlanes(planesGuardados().filter((x) => x.id !== b.dataset.borrarPlan));
       sincronizarAviso([b.dataset.borrarPlan]);
       pintarPlanes();
     }

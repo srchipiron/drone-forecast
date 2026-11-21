@@ -262,6 +262,27 @@ try {
   await page.locator('#aj-aviso').click();
   await page.locator('#estado-aviso').filter({ hasText: 'Sin permiso de notificaciones' }).waitFor();
   assert.equal(await page.locator('#aj-aviso').isChecked(), false, 'sin permiso no se queda activado');
+  // Pantalla «al sol»: se aplica, se guarda y no hace que nada se salga a lo ancho.
+  assert.equal(await page.inputValue('#aj-pantalla'), 'auto');
+  await page.selectOption('#aj-pantalla', 'sol');
+  assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), 'sol');
+  assert.equal(await page.evaluate(() => getComputedStyle(document.body).backgroundColor), 'rgb(255, 255, 255)');
+  assert.equal(await page.evaluate(() => getComputedStyle(document.documentElement).fontSize), '18px', 'letra un poco más grande');
+  await page.reload();
+  assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), 'sol', 'se guarda');
+  await page.setViewportSize({ width: 360, height: 800 });
+  for (const v of ['prevision', 'ajustes']) {
+    await page.locator(`[data-vista="${v}"]`).click();
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1), `al sol, nada se sale a 360 px (${v})`);
+  }
+  if (process.env.CAPTURA_SOL) {
+    await page.locator('[data-vista="prevision"]').click();
+    await page.screenshot({ path: process.env.CAPTURA_SOL });
+    await page.locator('[data-vista="ajustes"]').click();
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.selectOption('#aj-pantalla', 'auto');
+  assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), undefined);
   // Mis drones: marcar uno en Ajustes lo compara en el cartel; el elegido no se repite.
   await page.locator('[data-mi-dron="neo"]').check();
   await page.locator('[data-mi-dron="mini5pro"]').check();

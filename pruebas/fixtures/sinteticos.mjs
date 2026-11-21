@@ -5,7 +5,7 @@ export const AHORA = Date.parse('2026-06-21T08:30:00Z'); // 10:30 en Madrid
 export const LUGAR = { lat: 40.4168, lon: -3.7038 };
 
 // 7 días de Open-Meteo en horas Unix, Madrid (UTC+2 en verano).
-export function respuestaOpenMeteo({ viento = 3, racha = 5, lluvia = 0, prob = 0, nubes = 10, temp = 22, td = 10, vis = 24000, radiacion = 700 } = {}) {
+export function respuestaOpenMeteo({ viento = 3, racha = 5, lluvia = 0, prob = 0, nubes = 10, temp = 22, td = 10, vis = 24000, radiacion = 700, codigo = 1 } = {}) {
   const inicio = Date.parse('2026-06-20T22:00:00Z') / 1000; // 00:00 local del 21
   const n = 168;
   const t = Array.from({ length: n }, (_, k) => inicio + k * 3600);
@@ -15,7 +15,7 @@ export function respuestaOpenMeteo({ viento = 3, racha = 5, lluvia = 0, prob = 0
     hourly: {
       time: t,
       temperature_2m: fill(temp), dew_point_2m: fill(td), precipitation_probability: fill(prob), precipitation: fill(lluvia),
-      weather_code: fill(1), cloud_cover: fill(nubes), visibility: fill(vis),
+      weather_code: fill(codigo), cloud_cover: fill(nubes), visibility: fill(vis),
       wind_speed_10m: fill(viento), wind_speed_80m: fill((k) => (typeof viento === 'function' ? viento(k) : viento) * 1.3),
       wind_speed_120m: fill((k) => (typeof viento === 'function' ? viento(k) : viento) * 1.4),
       wind_speed_180m: fill((k) => (typeof viento === 'function' ? viento(k) : viento) * 1.5),

@@ -201,3 +201,24 @@ test('mis drones: la mejor ventana de cada día para cada uno de los otros', () 
   assert.deepEqual(mismo.dias.map((d) => d.ventana), neo.dias.map((d) => d.ventana));
   assert.deepEqual(construirPrevision({ meteo, lugar: LUGAR, ajustes: {}, ahora: AHORA }).ventanasDrones, []);
 });
+
+test('hielo en las hélices: solo con frío; con humedad visible avisa; engelante, no se vuela', () => {
+  const factor = (op, aj = {}) => prev(op, aj).actual.factores.find((f) => f.id === 'hielo');
+  assert.equal(factor({ temp: 22, td: 10 }), undefined, 'con calor ni sale');
+  // 2 °C a 10 m, a 120 m ≈ 1,2 °C; aire seco: sin riesgo.
+  assert.equal(factor({ temp: 2, td: -8 }).estado, 'ok');
+  // Mismo frío con el aire saturado (punto de rocío casi igual): precaución.
+  const sat = factor({ temp: 2, td: 1.5 });
+  assert.equal(sat.estado, 'precaucion');
+  assert.match(sat.detalle, /aire saturado/);
+  assert.equal(sat.valor, '1 °C a 120 m', 'la temperatura a tu altura');
+  // A 4 °C abajo y volando a 180 m (≈ 2,8 °C arriba) ya cuenta.
+  assert.equal(factor({ temp: 4, td: 3.5 }, { altitud: 180, modo: 'profesional' }).estado, 'precaucion');
+  assert.equal(factor({ temp: 4, td: 3.5 }, { altitud: 30 }), undefined, 'a 30 m hace 3,8 °C: no sale');
+  // Llovizna engelante (WMO 56): rojo, y decide la hora.
+  const p = prev({ temp: -1, td: -2, codigo: 56 });
+  assert.equal(p.actual.factores.find((f) => f.id === 'hielo').estado, 'no');
+  assert.equal(p.actual.estado, 'no');
+  // Con −25 °C el agua ya está helada: no se pega.
+  assert.equal(factor({ temp: -25, td: -26 }), undefined);
+});

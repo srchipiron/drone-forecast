@@ -7,6 +7,11 @@ import { fmtViento, puntoCardinal } from './unidades.js';
 const TORMENTA = new Set([95, 96, 99]);
 const NIEBLA = new Set([45, 48]);
 const NIEVE = new Set([71, 73, 75, 77, 85, 86]);
+// Engelante: llovizna o lluvia que se congela al tocar (WMO 56, 57, 66, 67).
+const ENGELANTE = new Set([56, 57, 66, 67]);
+// Humedad visible (niebla, llovizna, lluvia, nieve, chubascos): lo que hace
+// falta, con frío, para que se forme hielo.
+const HUMEDAD_VISIBLE = new Set([45, 48, 51, 53, 55, 61, 63, 65, 71, 73, 75, 77, 80, 81, 82, 85, 86]);
 
 // Los dos umbrales del viento: hasta «comodo» es verde, hasta «limite»
 // ámbar. Los usa el factor y el perfil de viento, para que digan lo mismo.
@@ -73,6 +78,32 @@ function fTemperatura(h, ctx) {
     detalle = t < 5 ? 'Frío: calienta las baterías antes de despegar' : 'Calor: vigila la temperatura de las baterías';
   }
   return factor('temperatura', 'Temperatura', estado, `${Math.round(t)} °C`, detalle);
+}
+
+// Hielo en las hélices (como «icing» en Aloft o UAV Forecast). El hielo se
+// forma con humedad visible y temperatura entre 0 y −20 °C (FAA, Aviation
+// Weather Handbook, FAA-H-8083-28, cap. 18); se avisa ya desde +3 °C
+// porque a la altura de vuelo hace algo más de frío (−0,65 °C cada 100 m) y
+// la pala, al girar, se enfría por evaporación. Por debajo de −20 °C el agua
+// ya está congelada y no se pega. Un poco de hielo en las palas basta para
+// que pierdan sustentación. Solo sale cuando hay frío: con calor, no estorba.
+function fHielo(h, ctx) {
+  if (!Number.isFinite(h.temp)) return null;
+  const t = h.temp - 0.0065 * ctx.ajustes.altitud;
+  if (t > 3 || t < -20) return null;
+  const valor = `${Math.round(t)} °C a ${ctx.ajustes.altitud} m`;
+  if (ENGELANTE.has(h.codigo)) return factor('hielo', 'Hielo en las hélices', 'no', valor, 'Lluvia o llovizna engelante: el hielo se forma seguro');
+  const saturado = Number.isFinite(h.td) && h.temp - h.td <= 1;
+  const enNube = Number.isFinite(h.techo) && (h.nubes ?? 0) >= 50 && h.techo <= ctx.ajustes.altitud;
+  if (HUMEDAD_VISIBLE.has(h.codigo) || saturado || enNube)
+    return factor(
+      'hielo',
+      'Hielo en las hélices',
+      'precaucion',
+      valor,
+      `Frío con ${enNube ? 'nubes a tu altura' : saturado ? 'el aire saturado' : 'humedad visible'}: puede formarse hielo en las palas. Mira las hélices antes y después de cada vuelo`,
+    );
+  return factor('hielo', 'Hielo en las hélices', 'ok', valor, 'Hace frío pero el aire está seco: sin riesgo de hielo');
 }
 
 function fVisibilidad(h) {
@@ -165,6 +196,7 @@ export function evaluarHora(h, ctx) {
     fRachas(h, ctx),
     fLluvia(h, ctx),
     fTemperatura(h, ctx),
+    fHielo(h, ctx),
     fVisibilidad(h),
     fTecho(h, ctx),
     fLuz(h, ctx),
@@ -172,6 +204,6 @@ export function evaluarHora(h, ctx) {
     fSatelites(h, ctx),
     fConsenso(h, ctx),
     ...(ctx.mision.extra ? ctx.mision.extra(h, ctx) : []),
-  ];
+  ].filter(Boolean);
   return { factores, estado: peor(factores) };
 }

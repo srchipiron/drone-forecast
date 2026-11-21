@@ -163,11 +163,11 @@ try {
   await page.evaluate(() => navigator.serviceWorker.dispatchEvent(new Event('controllerchange')));
   assert.ok(await page.locator('#actualizar').isHidden(), 'sin instalador previo no hay aviso de versión nueva');
 
-  // Selector de dron: la gama actual agrupada por marca, Mini 5 Pro por defecto.
+  // Selector de dron: agrupado por marca, con toda la gama de DJI (también la anterior); Mini 5 Pro por defecto.
   assert.equal(await page.inputValue('#sel-dron'), 'mini5pro');
   const marcas = await page.locator('#sel-dron optgroup').evaluateAll((g) => g.map((x) => x.label));
-  assert.deepEqual(marcas, ['DJI', 'DJI Enterprise', 'Autel', 'Skydio', 'Parrot']);
-  assert.equal(await page.locator('#sel-dron option[value="mini4pro"]').count(), 0, 'sin modelos viejos');
+  assert.deepEqual(marcas, ['DJI', 'DJI (anteriores)', 'DJI Enterprise', 'DJI Agras y FlyCart', 'Autel', 'Skydio', 'Parrot']);
+  assert.equal(await page.locator('#sel-dron optgroup[label="DJI (anteriores)"] option[value="mini4pro"]').count(), 1, 'los DJI anteriores, en su grupo');
 
   // Modo profesional: aparece misión y checklist; termografía FV mira la irradiancia.
   assert.ok(await page.locator('#campo-mision').isHidden());
@@ -273,7 +273,8 @@ try {
   await page.setViewportSize({ width: 360, height: 800 });
   for (const v of ['prevision', 'ajustes']) {
     await page.locator(`[data-vista="${v}"]`).click();
-    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1), `al sol, nada se sale a 360 px (${v})`);
+    const fuera = await page.evaluate(() => [...document.querySelectorAll('body *')].filter((e) => e.getClientRects().length && e.getBoundingClientRect().right > document.documentElement.clientWidth + 1).slice(0, 5).map((e) => `${e.tagName}.${e.className}#${e.id} «${(e.textContent || '').trim().slice(0, 30)}»`));
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1), `al sol, nada se sale a 360 px (${v}): ${fuera.join(' | ')}`);
   }
   if (process.env.CAPTURA_SOL) {
     await page.locator('[data-vista="prevision"]').click();

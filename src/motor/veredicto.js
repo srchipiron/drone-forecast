@@ -37,15 +37,59 @@ function fViento(h, ctx) {
   );
 }
 
+// El rojo sale de la previsión principal (la que mejor acierta en el sitio):
+// si ella dice que las rachas pasan el límite del dron, no se vuela. Si solo
+// otro modelo las ve así, ámbar: no se esconde, pero tampoco se da por hecho.
 function fRachas(h, ctx) {
   const { dron, ajustes } = ctx;
-  return factor(
-    'rachas',
-    'Rachas',
-    escalonMax(h.rachaAlt, dron.maxViento * 0.8, dron.maxViento),
-    fmtViento(h.rachaAlt, ajustes.unidades),
-    'Estimadas en altura a partir de la racha a 10 m',
-  );
+  let estado = escalonMax(h.rachaAlt, dron.maxViento * 0.8, dron.maxViento);
+  let detalle = 'Estimadas en altura a partir de la racha a 10 m';
+  const m = h.rachaModelos;
+  if (m && Number.isFinite(m.valor) && m.valor > dron.maxViento && (estado === 'ok' || estado === 'precaucion')) {
+    estado = 'precaucion';
+    detalle = `${NOMBRES_MODELO[m.modelo] ?? m.modelo} ve rachas de ${fmtViento(m.valor, ajustes.unidades)}, por encima del límite de tu dron`;
+  }
+  return factor('rachas', 'Rachas', estado, fmtViento(h.rachaAlt, ajustes.unidades), detalle);
+}
+
+// Tormenta posible aunque el modelo no la pinte (CAPE y índice de elevación,
+// lo que miran Windy o Meteoblue para las tormentas de tarde). Umbrales del
+// NOAA SPC: CAPE > 1000 J/kg es inestabilidad moderada; índice de
+// elevación ≤ −2, aire inestable. Ámbar, no rojo: indica que PUEDEN
+// formarse, no que vaya a haber; el rojo lo pone la tormenta prevista.
+function fTormenta(h) {
+  if (!Number.isFinite(h.cape)) return null;
+  if (TORMENTA.has(h.codigo)) return null; // ya la pone en rojo fLluvia
+  const li = Number.isFinite(h.li) ? h.li : null;
+  const valor = `CAPE ${Math.round(h.cape)} J/kg${li !== null ? ` · índice ${li.toFixed(1)}` : ''}`;
+  if (h.cape >= 1000 && (li === null || li <= -2))
+    return factor('tormenta', 'Riesgo de tormenta', 'precaucion', valor, 'Aire muy inestable: pueden formarse tormentas de repente. Mira el cielo y ten un plan para aterrizar rápido');
+  if (h.cape >= 300 && li !== null && li <= 0 && (h.probLluvia ?? 0) >= 30)
+    return factor('tormenta', 'Riesgo de tormenta', 'precaucion', valor, 'Aire inestable y chubascos posibles: puede caer alguno tormentoso');
+  return factor('tormenta', 'Riesgo de tormenta', 'ok', valor, 'Atmósfera estable');
+}
+
+const giro = (a, b) => {
+  const d = Math.abs(((a - b) % 360) + 360) % 360;
+  return d > 180 ? 360 - d : d;
+};
+
+// Turbulencia: lo que no dice el viento medio. Factor de racha (racha ÷
+// viento a 10 m): sobre tierra lo normal es 1,3-1,5 (OMM, Guía de
+// instrumentos, 8.ª ed.); desde 1,7 con rachas de 7 m/s o más el aire va
+// a golpes. Y cizalladura: el viento que gira 60° o más entre el suelo y
+// los 120 m, o que aumenta 6 m/s o más, sacude el dron al subir.
+function fTurbulencia(h, ctx) {
+  const v10 = h.niveles?.[10];
+  if (!Number.isFinite(v10) || !Number.isFinite(h.racha10)) return null;
+  const avisos = [];
+  const fr = v10 >= 3 ? h.racha10 / v10 : null;
+  if (fr !== null && fr >= 1.7 && h.racha10 >= 7) avisos.push(`viento racheado (rachas ${fr.toFixed(1)} veces el viento medio)`);
+  if (ctx.ajustes.altitud >= 60 && Number.isFinite(h.dir10) && Number.isFinite(h.dir120) && Number.isFinite(h.vientoAlt) && h.vientoAlt >= 5 && giro(h.dir10, h.dir120) >= 60)
+    avisos.push(`el viento gira ${Math.round(giro(h.dir10, h.dir120))}° entre el suelo y 120 m`);
+  if (Number.isFinite(h.vientoAlt) && h.vientoAlt - v10 >= 6) avisos.push(`a tu altura sopla ${fmtViento(h.vientoAlt - v10, ctx.ajustes.unidades)} más que en el suelo`);
+  if (!avisos.length) return factor('turbulencia', 'Turbulencia', 'ok', 'Sin señales', 'Viento regular y sin cambios bruscos con la altura');
+  return factor('turbulencia', 'Turbulencia', 'precaucion', avisos.length === 1 ? 'Posible' : 'Probable', `${avisos.join('; ')}. Despega y prueba a poca altura antes de subir`);
 }
 
 function fLluvia(h, ctx) {
@@ -194,7 +238,9 @@ export function evaluarHora(h, ctx) {
   const factores = [
     fViento(h, ctx),
     fRachas(h, ctx),
+    fTurbulencia(h, ctx),
     fLluvia(h, ctx),
+    fTormenta(h),
     fTemperatura(h, ctx),
     fHielo(h, ctx),
     fVisibilidad(h),

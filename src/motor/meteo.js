@@ -18,6 +18,10 @@ export const VARIABLES = [
   'wind_direction_120m',
   'wind_gusts_10m',
   'shortwave_radiation',
+  // Para el riesgo de tormenta aunque el modelo no la pinte: energía
+  // disponible para la convección y estabilidad del aire.
+  'cape',
+  'lifted_index',
 ];
 
 // Modelos para medir el acuerdo: si discrepan, la previsión vale menos.
@@ -42,7 +46,7 @@ export function urlPrevision(lat, lon) {
 }
 
 export function urlConsenso(lat, lon) {
-  return `${BASE}?latitude=${coord(lat)}&longitude=${coord(lon)}&hourly=wind_speed_10m&models=${MODELOS_CONSENSO.join(',')}&${COMUNES}`;
+  return `${BASE}?latitude=${coord(lat)}&longitude=${coord(lon)}&hourly=wind_speed_10m,wind_gusts_10m&models=${MODELOS_CONSENSO.join(',')}&${COMUNES}`;
 }
 
 export function urlBusqueda(texto) {
@@ -76,6 +80,8 @@ export function leerPrevision(json) {
     dir10: num(col('wind_direction_10m')[k]),
     dir120: num(col('wind_direction_120m')[k]),
     radiacion: num(col('shortwave_radiation')[k]),
+    cape: num(col('cape')[k]),
+    li: num(col('lifted_index')[k]),
   }));
   return {
     horas,
@@ -89,9 +95,12 @@ export function leerPrevision(json) {
 export function leerConsenso(json) {
   const h = json?.hourly;
   if (!h || !Array.isArray(h.time)) return new Map();
-  const series = Object.keys(h)
-    .filter((k) => k.startsWith('wind_speed_10m_'))
-    .map((k) => [k.slice('wind_speed_10m_'.length), h[k]]);
+  const serie = (prefijo) =>
+    Object.keys(h)
+      .filter((k) => k.startsWith(prefijo))
+      .map((k) => [k.slice(prefijo.length), h[k]]);
+  const series = serie('wind_speed_10m_');
+  const seriesRacha = serie('wind_gusts_10m_');
   const salida = new Map();
   h.time.forEach((t, i) => {
     const valores = {};
@@ -99,9 +108,17 @@ export function leerConsenso(json) {
       const v = num(s?.[i]);
       if (v !== null) valores[modelo] = v;
     }
+    // Las rachas de cada modelo: la peor se mira aparte (fRachas), para que
+    // no se escape un modelo que ve rachas fuertes.
+    const rachas = {};
+    for (const [modelo, s] of seriesRacha) {
+      const v = num(s?.[i]);
+      if (v !== null) rachas[modelo] = v;
+    }
     const vals = Object.values(valores);
     if (vals.length >= 2)
-      salida.set(t * 1000, { dispersion: Math.max(...vals) - Math.min(...vals), modelos: vals.length, valores });
+      salida.set(t * 1000, { dispersion: Math.max(...vals) - Math.min(...vals), modelos: vals.length, valores, rachas });
+    else if (Object.keys(rachas).length) salida.set(t * 1000, { dispersion: null, modelos: vals.length, valores, rachas });
   });
   return salida;
 }

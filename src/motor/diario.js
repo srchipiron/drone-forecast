@@ -79,6 +79,8 @@ const NOMBRE_AVISO = {
   lluvia: 'lluvia',
   temperatura: 'temperatura',
   hielo: 'hielo en las hélices',
+  tormenta: 'riesgo de tormenta',
+  turbulencia: 'turbulencia',
   visibilidad: 'visibilidad',
   techo: 'nubes bajas',
   kp: 'Kp',

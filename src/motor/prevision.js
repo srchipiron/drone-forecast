@@ -111,6 +111,12 @@ export function construirPrevision({ meteo, consenso = new Map(), kp = [], satel
       lluviaPrev6h: sumaPrevia(todas, k, 6),
       ...(consenso.get(base.ms) ?? { dispersion: null, modelos: 0 }),
     };
+    // La peor racha de los modelos, llevada a la altura de vuelo como la
+    // principal (mismo exceso sobre el viento medio que a 10 m).
+    const rachasM = Object.entries(h.rachas ?? {});
+    h.rachaModelos = rachasM.length
+      ? rachasM.map(([modelo, g]) => ({ modelo, valor: rachaEnAltura(g, base.niveles[10], viento.valor) })).reduce((a, b) => (b.valor > a.valor ? b : a))
+      : null;
     return { ...h, ...evaluarHora(h, ctx) };
   });
 

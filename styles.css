@@ -624,13 +624,17 @@ details[open] > summary::before { transform: rotate(45deg); }
 
 #mis-drones .nota { margin: 0; }
 
-.lista-mis-drones { display: grid; grid-template-columns: 1fr 1fr; column-gap: 0.75rem; }
+.lista-mis-drones { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 0.75rem; }
+
+.lista-mis-drones .casilla { overflow-wrap: anywhere; }
 
 .otros-drones { margin-top: 0.6rem; padding-top: 0.4rem; border-top: 1px solid var(--separador); }
 
 .otros-drones ul { list-style: none; padding: 0; margin: 0.25rem 0 0; display: grid; gap: 0.35rem; font-size: 0.9rem; }
 
-fieldset { border: 1px solid var(--borde); border-radius: 14px; padding: 0.85rem; margin-top: 0.85rem; }
+/* min-width: 0 — un fieldset, por defecto, no encoge por debajo de su palabra
+   más larga («Multispectral» al sol, a 360 px, se salía). */
+fieldset { border: 1px solid var(--borde); border-radius: 14px; padding: 0.85rem; margin-top: 0.85rem; min-width: 0; }
 
 legend { font-weight: 700; padding: 0 0.3rem; font-size: 0.9rem; }
 

@@ -15,6 +15,7 @@ function tokens(cabecera) {
 
 const claro = tokens(':root {');
 const oscuro = { ...claro, ...tokens(':root[data-theme="dark"] {') };
+const sol = { ...claro, ...tokens(':root[data-theme="sol"] {') };
 
 function luminancia(hex) {
   const c = [1, 3, 5].map((k) => parseInt(hex.slice(k, k + 2), 16) / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
@@ -58,4 +59,13 @@ for (const [nombre, t] of [['claro', claro], ['oscuro', oscuro]]) {
 
 test('el modo oscuro del sistema y el forzado usan los mismos colores', () => {
   assert.deepEqual(tokens(':root:not([data-theme="light"]) {'), tokens(':root[data-theme="dark"] {'));
+});
+
+test('modo al sol: todo el texto pasa 7:1 (AAA) y los símbolos 4,5:1', () => {
+  for (const [a, b] of TEXTO) {
+    const c = contraste(sol[a], sol[b]);
+    assert.ok(c >= 7, `${a} (${sol[a]}) sobre ${b} (${sol[b]}): ${c.toFixed(2)}:1`);
+  }
+  for (const [a, b] of SIMBOLOS) assert.ok(contraste(sol[a], sol[b]) >= 4.5, `${a} sobre ${b}`);
+  assert.equal(sol.texto, '#000000');
 });

@@ -46,6 +46,8 @@ export const almacen = {
   guardarDiario: (d) => escribir('diario', d),
   checklist: () => leer('checklist', { dia: '', hechos: [] }),
   guardarChecklist: (c) => escribir('checklist', c),
+  pantalla: () => leer('pantalla', 'auto'),
+  guardarPantalla: (v) => escribir('pantalla', v),
   aviso: () => leer('aviso', false) === true,
   guardarAviso: (v) => escribir('aviso', Boolean(v)),
   // El instalador no ve localStorage: lo que necesita el aviso de ventana

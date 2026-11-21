@@ -1630,6 +1630,7 @@ function enlazar() {
   $('#sel-mision').addEventListener('change', (e) => cambiarAjustes({ mision: e.target.value }));
   $('#sel-altitud').addEventListener('change', (e) => cambiarAjustes({ altitud: Number(e.target.value) }));
   $('#aj-unidades').addEventListener('change', (e) => cambiarAjustes({ unidades: e.target.value }));
+  $('#aj-pantalla').addEventListener('change', (e) => almacen.guardarPantalla(ponerPantalla(e.target.value)));
   const numero = (id, clave) => $(id).addEventListener('change', (e) => cambiarAjustes({ [clave]: Number(e.target.value) }));
   numero('#aj-margen', 'margenViento');
   numero('#aj-sats', 'minSats');
@@ -1800,7 +1801,19 @@ function vigilarVersionNueva() {
   });
 }
 
+// Pantalla: la del móvil, clara, oscura o «al sol». Va en <html data-theme>,
+// que es lo que leen los colores de styles.css.
+const PANTALLAS = ['auto', 'light', 'dark', 'sol'];
+function ponerPantalla(v) {
+  const valor = PANTALLAS.includes(v) ? v : 'auto';
+  if (valor === 'auto') delete document.documentElement.dataset.theme;
+  else document.documentElement.dataset.theme = valor;
+  $('#aj-pantalla').value = valor;
+  return valor;
+}
+
 async function arrancar() {
+  ponerPantalla(almacen.pantalla());
   // Planes de antes de 0.29.1: se quedan con los ajustes de ahora (una vez).
   const migrados = fijarAjustesPlanes(almacen.planes(), estado.ajustes);
   if (migrados.cambiados) almacen.guardarPlanes(migrados.planes);

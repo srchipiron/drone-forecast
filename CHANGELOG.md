@@ -3,6 +3,16 @@
 Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
 `0.0.X` para correcciones. La versión sale en el pie de la app.
 
+## 0.31.0
+
+- **Modo «Al sol».** En Ajustes → **Pantalla** puedes elegir «Al sol
+  (máximo contraste)»: fondo blanco puro, texto negro, colores del
+  semáforo más oscuros, bordes marcados y la letra un poco más grande. Se
+  lee bastante mejor a pleno sol en el campo. Todo el texto pasa el nivel
+  más alto de contraste (WCAG AAA).
+- En el mismo sitio puedes fijar la pantalla clara u oscura, o dejar la del
+  móvil (como hasta ahora). Se recuerda al volver a abrir la app.
+
 ## 0.30.0
 
 - **Del vuelo planificado al diario, con un toque.** Cuando llega la hora de

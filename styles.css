@@ -75,6 +75,36 @@
   color-scheme: dark;
 }
 
+:root[data-theme="sol"] {
+  /* Para leer a pleno sol: blanco y negro puros, colores de estado más
+     oscuros y saturados (todo el texto pasa 7:1, WCAG AAA), bordes que se
+     ven y letra un poco más grande. */
+  --fondo: #ffffff;
+  --tarjeta: #ffffff;
+  --tarjeta-2: #f0f0f0;
+  --texto: #000000;
+  --suave: #2b2b2b;
+  --borde: #3a3a3a;
+  --separador: #d6d6d6;
+  --acento: #003d99;
+  --boton: #003d99;
+  --sobre-boton: #ffffff;
+  --ok: #00561c;
+  --ok-fondo: #e3f6e9;
+  --precaucion: #6e3000;
+  --precaucion-fondo: #ffe9cc;
+  --no: #8f0010;
+  --no-fondo: #ffdde0;
+  --sin-dato: #2b2b2b;
+  --cabecera: rgba(255, 255, 255, 0.97);
+  color-scheme: light;
+  font-size: 112.5%;
+}
+
+:root[data-theme="sol"] .tarjeta { border: 2px solid var(--borde); box-shadow: none; }
+
+:root[data-theme="sol"] body { font-weight: 500; }
+
 * { box-sizing: border-box; }
 
 html { -webkit-text-size-adjust: 100%; }

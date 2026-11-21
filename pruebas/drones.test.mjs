@@ -9,7 +9,7 @@ test('cada dron tiene marca, fuente oficial y límites con sentido', () => {
     assert.ok(!ids.has(d.id), `id repetido: ${d.id}`);
     ids.add(d.id);
     assert.ok(d.marca && d.nombre, d.id);
-    assert.match(d.fuente, /^https:\/\/(www\.|enterprise\.)?(dji|autelrobotics|skydio|parrot)\.com\//, `${d.id}: la fuente es la web del fabricante`);
+    assert.match(d.fuente, /^https:\/\/(www\.|enterprise\.|ag\.)?(dji|autelrobotics|skydio|parrot)\.com\//, `${d.id}: la fuente es la web del fabricante`);
     assert.ok(d.maxViento >= 5 && d.maxViento <= 20, `${d.id}: viento ${d.maxViento}`);
     assert.ok(d.tempMin < d.tempMax && d.tempMin >= -40 && d.tempMax <= 60, `${d.id}: temperatura`);
     assert.ok(d.ip === null || /^IP\d5$|^IP\d[6-8]$/.test(d.ip), `${d.id}: solo IPx5 o más cuenta como lluvia`);
@@ -20,11 +20,14 @@ test('ya no están los modelos viejos', () => {
   for (const viejo of Object.keys(SUCESORES)) assert.equal(DRONES.some((d) => d.id === viejo), false, viejo);
 });
 
-test('un dron viejo guardado pasa a su sucesor, no al primero de la lista', () => {
-  assert.equal(idDron('mini4pro'), 'mini5pro');
-  assert.equal(idDron('m350'), 'm400');
-  assert.equal(normalizarAjustes({ dron: 'air3' }).dron, 'air3s');
-  assert.equal(dronPorId('mavic3').nombre, 'DJI Mavic 4 Pro');
+test('los DJI anteriores están tal cual (Javi: que no falte ninguno)', () => {
+  for (const id of ['mini2', 'minise', 'mini3', 'mini3pro', 'mini4pro', 'air2s', 'air3', 'mavic2pro', 'mavic3', 'mavic3pro', 'avata2', 'fpv', 'p4pro2', 'p4rtk', 'inspire2', 'inspire3', 'm2ea', 'm3m', 'm30', 'm300', 'm350', 'm3d', 'flycart30', 'agrast50']) {
+    assert.equal(idDron(id), id, id);
+  }
+  assert.equal(normalizarAjustes({ dron: 'air3' }).dron, 'air3', 'quien tenía un Air 3 sigue con su Air 3');
+  assert.equal(dronPorId('mavic2pro').maxViento, 8.1, '29 km/h, el bajo del rango');
+  assert.equal(dronPorId('m300').ip, 'IP45', 'IPx5 cuenta como lluvia ligera');
+  assert.equal(dronPorId('m3d').ip, null, 'IP54: salpicaduras, no lluvia');
   for (const nuevo of Object.values(SUCESORES)) assert.ok(DRONES.some((d) => d.id === nuevo), `sucesor inexistente: ${nuevo}`);
 });
 

@@ -3,6 +3,36 @@
 Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
 `0.0.X` para correcciones. La versión sale en el pie de la app.
 
+## 0.32.0
+
+Una previsión más fina a la altura de vuelo, mirando lo que miran las
+grandes apps de drones y del tiempo (Aloft, UAV Forecast, Windy). El rojo
+(«No vueles») sigue saliendo solo cuando la previsión principal pasa un
+límite claro; lo dudoso sale en ámbar con su porqué, para que no se escape
+nada.
+
+- **Hielo en las hélices.** Con 3 °C o menos a tu altura, la app mira si hay
+  humedad visible (niebla, llovizna, nubes a tu altura, aire saturado): si
+  la hay, ámbar, porque el hielo en las palas les quita sustentación. Con
+  lluvia o llovizna engelante, rojo. Con calor ni sale.
+- **Riesgo de tormenta aunque no esté prevista.** Con aire muy inestable
+  (mucha energía para nubes de tormenta, el CAPE), ámbar: pueden formarse de
+  repente, sobre todo por la tarde. La tormenta prevista sigue en rojo.
+- **Las rachas de los cuatro modelos.** Además de la previsión principal, se
+  miran las rachas que ven ECMWF, GFS, ICON y Météo-France. Si alguno las ve
+  por encima del límite de tu dron, ámbar y te dice cuál.
+- **Turbulencia.** Avisa del viento muy racheado (rachas mucho más fuertes
+  que el viento medio), del viento que cambia de dirección entre el suelo y
+  los 120 m y del que crece mucho con la altura.
+- **Toda la gama de DJI.** Además de la actual, ya están los modelos
+  anteriores (Mini 2, Mini SE, Mini 3, Mini 3 Pro, Mini 4 Pro, Air 2, Air 2S,
+  Air 3, Mavic 2, Mavic 3 / Classic / Pro, Avata, Avata 2, FPV, Phantom 4
+  Pro / RTK / Multispectral, Inspire 2 y 3), los Enterprise (Mavic 2
+  Enterprise Advanced, Mavic 3 Multispectral, Matrice 30, 300, 350 y 3D) y
+  los de carga y campo (FlyCart 30, Agras T50 y T25), con el viento y la
+  temperatura de su ficha. Si tenías guardado un modelo anterior, ahora
+  sale tal cual en vez de su sucesor.
+
 ## 0.31.0
 
 - **Modo «Al sol».** En Ajustes → **Pantalla** puedes elegir «Al sol

@@ -173,7 +173,7 @@ test('mis drones: el veredicto de ahora con cada uno de los otros drones del pil
   const p = construirPrevision({ meteo, lugar: LUGAR, ajustes: { misDrones: ['mini5pro', 'neo', 'anafiukr', 'basura', 'mini4pro'] }, ahora: AHORA });
   assert.equal(p.actual.estado, 'precaucion');
   const por = Object.fromEntries(p.otrosDrones.map((d) => [d.id, d]));
-  assert.deepEqual(Object.keys(por).sort(), ['anafiukr', 'neo'], 'sin el que ya está elegido, sin basura; el Mini 4 Pro retirado pasa a Mini 5 Pro y se quita');
+  assert.deepEqual(Object.keys(por).sort(), ['anafiukr', 'mini4pro', 'neo'], 'sin el que ya está elegido y sin basura; el Mini 4 Pro es otro dron');
   assert.equal(por.neo.estado, 'no');
   assert.ok(por.neo.motivos.some((m) => /Viento/.test(m)));
   assert.equal(por.anafiukr.estado, 'ok');
@@ -200,4 +200,76 @@ test('mis drones: la mejor ventana de cada día para cada uno de los otros', () 
   const mismo = construirPrevision({ meteo, lugar: LUGAR, ajustes: { dron: 'neo', misDrones: ['mini5pro'] }, ahora: AHORA });
   assert.deepEqual(mismo.dias.map((d) => d.ventana), neo.dias.map((d) => d.ventana));
   assert.deepEqual(construirPrevision({ meteo, lugar: LUGAR, ajustes: {}, ahora: AHORA }).ventanasDrones, []);
+});
+
+test('hielo en las hélices: solo con frío; con humedad visible avisa; engelante, no se vuela', () => {
+  const factor = (op, aj = {}) => prev(op, aj).actual.factores.find((f) => f.id === 'hielo');
+  assert.equal(factor({ temp: 22, td: 10 }), undefined, 'con calor ni sale');
+  // 2 °C a 10 m, a 120 m ≈ 1,2 °C; aire seco: sin riesgo.
+  assert.equal(factor({ temp: 2, td: -8 }).estado, 'ok');
+  // Mismo frío con el aire saturado (punto de rocío casi igual): precaución.
+  const sat = factor({ temp: 2, td: 1.5 });
+  assert.equal(sat.estado, 'precaucion');
+  assert.match(sat.detalle, /aire saturado/);
+  assert.equal(sat.valor, '1 °C a 120 m', 'la temperatura a tu altura');
+  // A 4 °C abajo y volando a 180 m (≈ 2,8 °C arriba) ya cuenta.
+  assert.equal(factor({ temp: 4, td: 3.5 }, { altitud: 180, modo: 'profesional' }).estado, 'precaucion');
+  assert.equal(factor({ temp: 4, td: 3.5 }, { altitud: 30 }), undefined, 'a 30 m hace 3,8 °C: no sale');
+  // Llovizna engelante (WMO 56): rojo, y decide la hora.
+  const p = prev({ temp: -1, td: -2, codigo: 56 });
+  assert.equal(p.actual.factores.find((f) => f.id === 'hielo').estado, 'no');
+  assert.equal(p.actual.estado, 'no');
+  // Con −25 °C el agua ya está helada: no se pega.
+  assert.equal(factor({ temp: -25, td: -26 }), undefined);
+});
+
+test('rachas: el rojo es de la previsión principal; si solo otro modelo las ve fuertes, ámbar con su nombre', () => {
+  // Flip: 10,7 m/s. Principal tranquila (rachas 5 a 10 m); ECMWF ve 14 m/s.
+  const consenso = new Map([[Date.parse('2026-06-21T08:00:00Z'), { dispersion: 1, modelos: 2, valores: { ecmwf_ifs025: 3, gfs_seamless: 3 }, rachas: { ecmwf_ifs025: 14, gfs_seamless: 5 } }]]);
+  const r = f(prev({}, { dron: 'flip' }, { consenso }).actual, 'rachas');
+  assert.equal(r.estado, 'precaucion');
+  assert.match(r.detalle, /^ECMWF ve rachas de \d+ km\/h/);
+  // Sin ese modelo, verde.
+  assert.equal(f(prev({}, { dron: 'flip' }).actual, 'rachas').estado, 'ok');
+  // Si la principal ya pasa el límite, rojo (no lo rebaja otro modelo).
+  assert.equal(f(prev({ racha: 15 }, { dron: 'flip' }, { consenso }).actual, 'rachas').estado, 'no');
+});
+
+test('tormenta posible: con aire muy inestable, ámbar aunque el modelo no la pinte; estable, verde', () => {
+  const t = (cape, li, extra = {}) => {
+    const r = respuestaOpenMeteo(extra);
+    r.hourly.cape = r.hourly.time.map(() => cape);
+    r.hourly.lifted_index = r.hourly.time.map(() => li);
+    return f(construirPrevision({ meteo: leerPrevision(r), kp, satelites: sats, lugar: LUGAR, ajustes: {}, ahora: AHORA }).actual, 'tormenta');
+  };
+  assert.equal(t(1500, -4).estado, 'precaucion');
+  assert.match(t(1500, -4).valor, /^CAPE 1500 J\/kg · índice -4\.0$/);
+  assert.equal(t(1500, 1).estado, 'ok', 'mucha energía pero aire estable');
+  assert.equal(t(500, -1, { prob: 40 }).estado, 'precaucion', 'algo inestable y con chubascos');
+  assert.equal(t(500, -1, { prob: 10 }).estado, 'ok');
+  assert.equal(t(50, 3).estado, 'ok');
+  assert.equal(f(prev().actual, 'tormenta'), undefined, 'sin el dato, la fila no sale');
+  // La tormenta prevista sigue en rojo por la lluvia, sin fila duplicada.
+  const r = respuestaOpenMeteo({ codigo: 95 });
+  r.hourly.cape = r.hourly.time.map(() => 2000);
+  const p = construirPrevision({ meteo: leerPrevision(r), kp, satelites: sats, lugar: LUGAR, ajustes: {}, ahora: AHORA });
+  assert.equal(p.actual.estado, 'no');
+  assert.equal(f(p.actual, 'tormenta'), undefined);
+});
+
+test('turbulencia: viento racheado, que gira o que crece mucho con la altura', () => {
+  const tu = (op) => f(prev(op).actual, 'turbulencia');
+  assert.equal(tu({ viento: 3, racha: 5 }).estado, 'ok');
+  // Rachas 2,5 veces el viento medio: va a golpes.
+  const r = tu({ viento: 4, racha: 10 });
+  assert.equal(r.estado, 'precaucion');
+  assert.match(r.detalle, /viento racheado \(rachas 2\.5 veces/);
+  // En la sintética el viento a 120 m es 1,4 veces el de 10 m: con 16 m/s abajo, 6,4 más arriba.
+  assert.match(tu({ viento: 16, racha: 18 }).detalle, /más que en el suelo/);
+  // Giro de 90° entre 10 y 120 m.
+  const g = respuestaOpenMeteo({ viento: 6, racha: 8 });
+  g.hourly.wind_direction_120m = g.hourly.time.map(() => 0);
+  g.hourly.wind_direction_10m = g.hourly.time.map(() => 90);
+  const pg = construirPrevision({ meteo: leerPrevision(g), kp, satelites: sats, lugar: LUGAR, ajustes: {}, ahora: AHORA });
+  assert.match(f(pg.actual, 'turbulencia').detalle, /gira 90°/);
 });

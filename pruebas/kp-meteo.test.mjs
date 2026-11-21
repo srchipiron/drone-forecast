@@ -41,8 +41,15 @@ test('Open-Meteo sin horas es un error, no una previsión vacía', () => {
 
 test('consenso: dispersión entre modelos y modelos que faltan', () => {
   const c = leerConsenso({ hourly: { time: [100, 200], wind_speed_10m_ecmwf_ifs025: [3, null], wind_speed_10m_gfs_seamless: [7, 5], wind_speed_10m_icon_seamless: [4, null] } });
-  assert.deepEqual(c.get(100000), { dispersion: 4, modelos: 3, valores: { ecmwf_ifs025: 3, gfs_seamless: 7, icon_seamless: 4 } });
+  assert.deepEqual(c.get(100000), { dispersion: 4, modelos: 3, valores: { ecmwf_ifs025: 3, gfs_seamless: 7, icon_seamless: 4 }, rachas: {} });
   assert.equal(c.has(200000), false);
+});
+
+test('consenso: las rachas de cada modelo, aunque solo un modelo traiga viento', () => {
+  const c = leerConsenso({ hourly: { time: [100], wind_speed_10m_gfs_seamless: [5], wind_gusts_10m_gfs_seamless: [9], wind_gusts_10m_ecmwf_ifs025: [14], wind_gusts_10m_icon_seamless: [null] } });
+  assert.deepEqual(c.get(100000).rachas, { gfs_seamless: 9, ecmwf_ifs025: 14 });
+  assert.equal(c.get(100000).dispersion, null, 'con un solo viento no hay dispersión');
+  assert.match(urlConsenso(40.4, -3.7), /hourly=wind_speed_10m,wind_gusts_10m&/);
 });
 
 test('URLs piden m/s, hora Unix y zona automática', () => {

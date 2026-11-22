@@ -744,6 +744,12 @@ dialog h3 { font-size: 0.75rem; font-weight: 700; color: var(--suave); text-tran
 
 .capas-hora { margin: 0.3rem 0 0; }
 
+.mapa-nubes .celda-nube.v-ok { fill: #157a3a; }
+
+.mapa-nubes .celda-nube.v-precaucion { fill: #d38a00; }
+
+.mapa-nubes .celda-nube.v-no { fill: #c01c28; }
+
 .mapa-nubes { position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible; }
 
 .nubes-mapa { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0.4rem 0.6rem; align-items: center; margin-top: 0.5rem; }

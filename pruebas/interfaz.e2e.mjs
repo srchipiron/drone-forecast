@@ -75,6 +75,13 @@ try {
     if (u.includes('geopotential_height_')) return r.fulfill({ json: nivelesNubes() });
     // El mapa de nubes: varias coordenadas en una petición → una respuesta por punto.
     const lats = new URL(u).searchParams.get('latitude').split(',');
+    // El mapa de «dónde volar»: el tiempo de cada punto; las celdas impares con viento fuerte.
+    if (lats.length > 1 && new URL(u).searchParams.get('hourly').includes('wind_speed_10m'))
+      return r.fulfill({ json: lats.map((_, i) => {
+        const m = meteo();
+        if (i % 2) for (const k of ['wind_speed_10m', 'wind_speed_80m', 'wind_speed_120m', 'wind_speed_180m', 'wind_gusts_10m']) m.hourly[k] = m.hourly.time.map(() => 25);
+        return m;
+      }) });
     if (lats.length > 1) return r.fulfill({ json: lats.map((_, i) => ({ hourly: { time: meteo().hourly.time, cloud_cover_low: meteo().hourly.time.map(() => (i % 2 ? 90 : 10)), cloud_cover_mid: meteo().hourly.time.map(() => 30), cloud_cover_high: meteo().hourly.time.map(() => 60) } })) });
     return r.fulfill({ json: u.includes('models=') ? { hourly: { time: meteo().hourly.time, wind_speed_10m_gfs_seamless: meteo().hourly.wind_speed_10m, wind_speed_10m_icon_seamless: meteo().hourly.wind_speed_10m } } : meteo() });
   });
@@ -656,18 +663,29 @@ try {
   assert.ok(Math.abs(latM - 40.3057) < 1e-3 && lonM < -3.74, `el centro se fue al oeste: ${lonM}`);
   await page.locator('#mapa [data-zoom="1"]').click();
   assert.ok(teselasPedidas.some((u) => u.includes('/14/')), 'acercar pide teselas de z14');
-  // Mapa de nubes: 49 celdas de la rejilla, con su capa y su hora.
+  // Mapa del tiempo: por defecto «dónde se puede volar», con el semáforo de tu dron en cada celda.
   assert.equal(await page.locator('#mapa-nubes-capa').isDisabled(), true);
   await page.locator('#mapa-nubes').check();
+  await page.locator('#mapa-nubes-texto').filter({ hasText: 'Dónde se puede volar' }).waitFor();
+  assert.equal(await page.locator('#mapa .mapa-nubes rect.celda-nube').count(), 49);
+  // Las de viento fuerte (las impares), siempre en rojo; las tranquilas, según la hora (de noche también rojas por la luz).
+  const clases = await page.locator('#mapa .mapa-nubes rect.celda-nube').evaluateAll((rs) => rs.map((r) => r.getAttribute('class')));
+  assert.ok(clases.filter((_, i) => i % 2).every((c) => c.includes('v-no')), 'las de viento fuerte, en rojo');
+  assert.match(await page.textContent('#mapa-nubes-texto'), /^Dónde se puede volar con tu DJI [^·]+ a 120 m · \w+ \d+ a las \d\d:00: \d+ en verde, \d+ en ámbar, \d+ en rojo \(el rojo, sobre todo por \S/);
+  // Nubes: 49 celdas con su capa y su hora, más oscuro donde más cubre.
+  await page.selectOption('#mapa-nubes-capa', 'bajas');
   await page.locator('#mapa-nubes-texto').filter({ hasText: 'Nubes bajas' }).waitFor();
   assert.equal(await page.locator('#mapa .mapa-nubes rect.celda-nube').count(), 49);
+  assert.equal(await page.locator('#mapa .mapa-nubes rect.celda-nube.v-no').count(), 0, 'ya no es el semáforo');
   assert.match(await page.textContent('#mapa-nubes-texto'), /^Nubes bajas · \w+ \d+ a las \d\d:00 · cubren de media un \d+ %\. Más oscuro, más cubierto\.$/);
   const opacidades = await page.locator('#mapa .mapa-nubes rect.celda-nube').evaluateAll((rs) => [...new Set(rs.map((r) => r.getAttribute('fill-opacity')))].sort());
   assert.deepEqual(opacidades, ['0.08', '0.68'], 'más oscuro donde más cubre (10 % y 90 %, × 0,75)');
   await page.selectOption('#mapa-nubes-capa', 'altas');
   assert.match(await page.textContent('#mapa-nubes-texto'), /^Nubes altas · .* cubren de media un 60 %/);
   await page.locator('#mapa-nubes-hora').fill('12');
-  assert.equal(pedidasMeteo.filter((u) => new URL(u).searchParams.get('latitude').includes(',')).length, 1, 'cambiar capa u hora no vuelve a pedir');
+  await page.selectOption('#mapa-nubes-capa', 'volar');
+  assert.match(await page.textContent('#mapa-nubes-texto'), /^Dónde se puede volar/);
+  assert.equal(pedidasMeteo.filter((u) => new URL(u).searchParams.get('latitude').includes(',')).length, 2, 'una petición por tipo de mapa; cambiar capa u hora no vuelve a pedir');
   await page.locator('#mapa-nubes').uncheck();
   assert.equal(await page.locator('#mapa .mapa-nubes rect.celda-nube').count(), 0);
   // Una capa que falla no deja esa parte por pedida: al moverse se vuelve a intentar.

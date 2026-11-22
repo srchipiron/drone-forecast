@@ -61,12 +61,13 @@ function fTormenta(h) {
   if (!Number.isFinite(h.cape)) return null;
   if (TORMENTA.has(h.codigo)) return null; // ya la pone en rojo fLluvia
   const li = Number.isFinite(h.li) ? h.li : null;
-  const valor = `CAPE ${Math.round(h.cape)} J/kg${li !== null ? ` · índice ${li.toFixed(1)}` : ''}`;
+  // El valor en palabras; las cifras (CAPE, índice) van en el detalle.
+  const datos = `CAPE ${Math.round(h.cape)} J/kg${li !== null ? ` · índice ${li.toFixed(1)}` : ''}`;
   if (h.cape >= 1000 && (li === null || li <= -2))
-    return factor('tormenta', 'Riesgo de tormenta', 'precaucion', valor, 'Aire muy inestable: pueden formarse tormentas de repente. Mira el cielo y ten un plan para aterrizar rápido');
+    return factor('tormenta', 'Tormentas', 'precaucion', 'Posibles', `Aire muy inestable (${datos}): pueden formarse de repente. Mira el cielo y ten un plan para aterrizar rápido`);
   if (h.cape >= 300 && li !== null && li <= 0 && (h.probLluvia ?? 0) >= 30)
-    return factor('tormenta', 'Riesgo de tormenta', 'precaucion', valor, 'Aire inestable y chubascos posibles: puede caer alguno tormentoso');
-  return factor('tormenta', 'Riesgo de tormenta', 'ok', valor, 'Atmósfera estable');
+    return factor('tormenta', 'Tormentas', 'precaucion', 'Algún chubasco', `Aire inestable y chubascos posibles (${datos}): puede caer alguno tormentoso`);
+  return factor('tormenta', 'Tormentas', 'ok', 'Aire estable', datos);
 }
 
 const giro = (a, b) => {
@@ -135,19 +136,19 @@ function fHielo(h, ctx) {
   if (!Number.isFinite(h.temp)) return null;
   const t = h.temp - 0.0065 * ctx.ajustes.altitud;
   if (t > 3 || t < -20) return null;
-  const valor = `${Math.round(t)} °C a ${ctx.ajustes.altitud} m`;
-  if (ENGELANTE.has(h.codigo)) return factor('hielo', 'Hielo en las hélices', 'no', valor, 'Lluvia o llovizna engelante: el hielo se forma seguro');
+  const valor = `${Math.round(t)} °C`;
+  if (ENGELANTE.has(h.codigo)) return factor('hielo', 'Hielo en hélices', 'no', valor, 'Lluvia o llovizna engelante: el hielo se forma seguro');
   const saturado = Number.isFinite(h.td) && h.temp - h.td <= 1;
   const enNube = Number.isFinite(h.techo) && (Number.isFinite(h.nubesBajas) ? h.nubesBajas : (h.nubes ?? 0)) >= 50 && h.techo <= ctx.ajustes.altitud;
   if (HUMEDAD_VISIBLE.has(h.codigo) || saturado || enNube)
     return factor(
       'hielo',
-      'Hielo en las hélices',
+      'Hielo en hélices',
       'precaucion',
       valor,
       `Frío con ${enNube ? 'nubes a tu altura' : saturado ? 'el aire saturado' : 'humedad visible'}: puede formarse hielo en las palas. Mira las hélices antes y después de cada vuelo`,
     );
-  return factor('hielo', 'Hielo en las hélices', 'ok', valor, 'Hace frío pero el aire está seco: sin riesgo de hielo');
+  return factor('hielo', 'Hielo en hélices', 'ok', valor, 'Hace frío pero el aire está seco: sin riesgo de hielo');
 }
 
 // Niebla que se puede formar aunque el modelo no la pinte: la de radiación

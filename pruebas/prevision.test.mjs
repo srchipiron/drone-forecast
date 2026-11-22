@@ -211,7 +211,7 @@ test('hielo en las hélices: solo con frío; con humedad visible avisa; engelant
   const sat = factor({ temp: 2, td: 1.5 });
   assert.equal(sat.estado, 'precaucion');
   assert.match(sat.detalle, /aire saturado/);
-  assert.equal(sat.valor, '1 °C a 120 m', 'la temperatura a tu altura');
+  assert.equal(sat.valor, '1 °C', 'la temperatura a tu altura (2 °C abajo, 120 m más arriba)');
   // A 4 °C abajo y volando a 180 m (≈ 2,8 °C arriba) ya cuenta.
   assert.equal(factor({ temp: 4, td: 3.5 }, { altitud: 180, modo: 'profesional' }).estado, 'precaucion');
   assert.equal(factor({ temp: 4, td: 3.5 }, { altitud: 30 }), undefined, 'a 30 m hace 3,8 °C: no sale');
@@ -243,7 +243,8 @@ test('tormenta posible: con aire muy inestable, ámbar aunque el modelo no la pi
     return f(construirPrevision({ meteo: leerPrevision(r), kp, satelites: sats, lugar: LUGAR, ajustes: {}, ahora: AHORA }).actual, 'tormenta');
   };
   assert.equal(t(1500, -4).estado, 'precaucion');
-  assert.match(t(1500, -4).valor, /^CAPE 1500 J\/kg · índice -4\.0$/);
+  assert.equal(t(1500, -4).valor, 'Posibles', 'en palabras');
+  assert.match(t(1500, -4).detalle, /\(CAPE 1500 J\/kg · índice -4\.0\)/, 'las cifras, en el detalle');
   assert.equal(t(1500, 1).estado, 'ok', 'mucha energía pero aire estable');
   assert.equal(t(500, -1, { prob: 40 }).estado, 'precaucion', 'algo inestable y con chubascos');
   assert.equal(t(500, -1, { prob: 10 }).estado, 'ok');

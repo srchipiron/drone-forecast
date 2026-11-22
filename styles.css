@@ -360,6 +360,20 @@ main { max-width: 720px; margin: 0 auto; padding: 0.75rem 12px calc(5.5rem + env
 
 .zona-cabecera { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; }
 
+/* Cada zona, plegada: el resumen ocupa dos líneas (qué pide y nombre; alturas). */
+.zona > details > summary { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 0.45rem; align-items: start; font-weight: 400; padding: 0.15rem 0; }
+
+.zona > details > summary::before { grid-row: 1 / span 2; margin-top: 0.55rem; }
+
+.zona > details > summary .zona-cabecera, .zona > details > summary .zona-datos { grid-column: 2; }
+
+.zona > details[open] > *:not(summary) { margin: 0.35rem 0 0 1.1rem; }
+
+/* Las condiciones en verde, plegadas debajo de las que importan. */
+.condiciones-verdes { margin-top: 0.2rem; }
+
+.condiciones-verdes > summary { font-size: 0.9rem; color: var(--ok); font-weight: 650; }
+
 .zona-datos { font-size: 0.85rem; color: var(--suave); }
 
 .zona-destacado { font-size: 0.9rem; font-weight: 600; padding-left: 0.6rem; border-left: 3px solid var(--borde); }
@@ -710,16 +724,43 @@ dialog h3 { font-size: 0.75rem; font-weight: 700; color: var(--suave); text-tran
 
 /* Zonas de ENAIRE encima de las teselas: color por restricción; las que no
    te afectan a tu altura, solo el borde a trazos. */
-/* Nubes del día por capas: el mismo tono, más opaco cuanto más cubre. */
-.nubes-dia svg { width: 100%; height: auto; display: block; }
+/* Nubes del día por capas: una fila por capa, una celda por hora, más opaca
+   cuanto más cubre. Texto normal (no negrita) y a tamaño de leer. */
+.nd-rejilla { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 0.6rem; row-gap: 3px; align-items: center; margin: 0.4rem 0; }
 
-.nubes-dia text { font-size: 11px; fill: var(--suave); }
+.nd-capa { font-size: 0.8rem; font-weight: 500; color: var(--suave); }
 
-.nubes-dia text.capa { font-size: 13px; fill: var(--texto); }
+.nd-celdas { display: flex; gap: 1px; height: 1.1rem; }
 
-.nubes-dia rect.nube { fill: var(--sin-dato); }
+.nd-celdas i { flex: 1 1 0; min-width: 0; background: var(--texto); border-radius: 2px; }
 
-.nubes-dia rect.nube.bajas { fill: var(--texto); }
+.nd-celdas i.nd-x { opacity: 0; }
+
+.nd-celdas i.nd-0 { opacity: 0.06; }
+
+.nd-celdas i.nd-1 { opacity: 0.10; }
+
+.nd-celdas i.nd-2 { opacity: 0.20; }
+
+.nd-celdas i.nd-3 { opacity: 0.30; }
+
+.nd-celdas i.nd-4 { opacity: 0.40; }
+
+.nd-celdas i.nd-5 { opacity: 0.50; }
+
+.nd-celdas i.nd-6 { opacity: 0.60; }
+
+.nd-celdas i.nd-7 { opacity: 0.70; }
+
+.nd-celdas i.nd-8 { opacity: 0.80; }
+
+.nd-celdas i.nd-9 { opacity: 0.90; }
+
+.nd-celdas i.nd-10 { opacity: 1.00; }
+
+.nd-horas { display: flex; font-size: 0.72rem; font-weight: 400; color: var(--suave); }
+
+.nd-horas span { flex: 1 1 0; min-width: 0; overflow: visible; white-space: nowrap; }
 
 .nubes-dia figcaption a { color: var(--acento); font-weight: 650; }
 
@@ -738,7 +779,7 @@ dialog h3 { font-size: 0.75rem; font-weight: 700; color: var(--suave); text-tran
 
 .mas-altura line.vuelo { stroke: var(--no); stroke-width: 2; stroke-dasharray: 5 3; }
 
-.mas-altura text { font-size: 10px; fill: var(--suave); }
+.mas-altura text { font-size: 10px; font-weight: 400; fill: var(--suave); }
 
 .ley.vuelo { display: inline-block; width: 1.2rem; border-top: 2px dashed var(--no); vertical-align: middle; }
 

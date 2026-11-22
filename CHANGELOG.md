@@ -3,6 +3,27 @@
 Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
 `0.0.X` para correcciones. La versión sale en el pie de la app.
 
+## 0.37.0
+
+Una pantalla principal más clara y más corta (de casi 4 pantallas de móvil
+a menos de 3):
+
+- **Lo que más usas, antes.** Debajo del cartel van ahora los días y la
+  tabla hora a hora; las zonas de ENAIRE pasan después.
+- **El cartel va al grano.** Arriba solo lo que no está en verde, lo peor
+  primero; las condiciones en verde (o sin dato) quedan plegadas debajo
+  («8 condiciones más, en verde»), por si las quieres ver.
+- **Las zonas de ENAIRE, plegadas.** De cada una se ve qué pide, cómo se
+  llama y de qué altura a qué altura; al tocarla, lo que dice ENAIRE y a
+  quién llamar.
+- **«Nubes del día» se lee bien.** Texto normal y nítido, no en negrita
+  diminuta, y las franjas de nubes ocupan todo el ancho.
+- Las condiciones nuevas tienen su icono (turbulencia, tormentas, hielo) y
+  dicen las cosas en palabras («Tormentas: aire estable», «Hielo en
+  hélices: −2 °C»); las cifras técnicas pasan al detalle.
+- La línea de las nubes ya no sale en el cartel (se leía mal sobre el
+  color); sigue en el detalle de cada hora.
+
 ## 0.36.0
 
 - **Flechas de viento en el mapa.** En el «Mapa del tiempo», elige **Viento

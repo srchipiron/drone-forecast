@@ -164,6 +164,23 @@ try {
   assert.match(zonasTexto, /Desde 60 m hasta 305 m sobre el suelo/);
   assert.match(zonasTexto, /NO permitido el vuelo a drones excepto coordinación con el Aeródromo\./);
   assert.equal(await page.locator('#zonas .zona-destacado').filter({ hasText: 'altura máxima de 60m' }).count(), 1, 'la frase que repiten el CTR y la ATZ, una vez');
+  // Las zonas, plegadas: a la vista lo que piden y su altura; al tocar una, lo que dice ENAIRE.
+  assert.equal(await page.locator('#zonas .zona details[open]').count(), 0, 'todas plegadas al empezar');
+  const destacadoZona = page.locator('#zonas .zona-destacado').first();
+  assert.equal(await destacadoZona.isVisible(), false);
+  await page.locator('#zonas .zona summary').first().click();
+  assert.equal(await destacadoZona.isVisible(), true, 'al tocarla se ve lo que dice ENAIRE');
+  await page.locator('#zonas .zona summary').first().click();
+  // Lo de más uso primero: los días y la tabla de horas, antes que las zonas.
+  assert.ok(await page.evaluate(() => document.querySelector('#horas').compareDocumentPosition(document.querySelector('#zonas')) & Node.DOCUMENT_POSITION_FOLLOWING), 'las zonas, después de la tabla de horas');
+  // En el cartel, lo que no está en verde primero; lo verde, plegado con su cuenta.
+  const estados = await page.locator('#ahora > ul.condiciones > li.condicion, #ahora ul.condiciones:not(details ul) > li.condicion').evaluateAll((ls) => ls.map((l) => l.classList[1]));
+  assert.ok(estados.length > 0 && estados.every((e) => e === 'no' || e === 'precaucion'), `fuera del pliegue solo rojo y ámbar: ${estados}`);
+  const pliegue = page.locator('#ahora details.condiciones-verdes');
+  if (await pliegue.count()) {
+    assert.equal(await pliegue.getAttribute('open'), null, 'plegado al empezar');
+    assert.match(await pliegue.locator('summary').textContent(), /^(\d+ condiciones más, en verde( o sin dato)?|Todas en verde( o sin dato)? \(\d+\))$/);
+  }
   assert.equal(await page.locator('#zonas a[href="mailto:seguridad_operacional_MCV@aena.es"]').count(), 1);
   assert.equal(await page.locator('#zonas a[href="tel:+34913210900"]').count(), 1);
   assert.equal(await page.locator('#zonas a[href="https://planea.enaire.es/nsf/login"]').first().getAttribute('rel'), 'noopener noreferrer');
@@ -223,7 +240,7 @@ try {
   assert.match(informe, /Condiciones de vuelo[^]*Termografía fotovoltaica[^]*DJI Mini 5 Pro[^]*CTR MADRID: requiere autorización, desde 60 m hasta 305 m sobre el suelo/);
   assert.match(informe, /Irradiancia/);
   assert.equal(await page.locator('#informe').isVisible(), false, 'en pantalla no se ve');
-  await page.locator('#ahora .condicion').filter({ hasText: 'Irradiancia' }).waitFor();
+  await page.locator('#ahora .condicion').filter({ hasText: 'Irradiancia' }).waitFor({ state: 'attached' });
   await page.locator('[data-check="0"]').check();
   await page.reload();
   assert.ok(await page.locator('[data-check="0"]').isChecked(), 'la checklist se guarda');
@@ -418,9 +435,14 @@ try {
   await page.locator('#horas [data-dia-paso="-1"]').click();
   assert.equal(pedidasMeteo.filter((u) => u.includes('geopotential_height_')).length, 1, 'abierta sigue abierta y no se vuelve a pedir');
   // Nubes del día por capas (como el mapa de Windy) y el enlace a Windy en el punto.
-  const filasNubes = await page.locator('#horas .nubes-dia rect.nube').count();
-  assert.equal(filasNubes % 3, 0);
-  assert.ok(filasNubes >= 3, 'tres capas por hora');
+  const filasNubes = await page.locator('#horas .nubes-dia .nd-celdas').count();
+  assert.equal(filasNubes, 3, 'tres capas');
+  const celdasNubes = await page.locator('#horas .nubes-dia .nd-celdas').first().locator('i').count();
+  assert.ok(celdasNubes >= 1 && celdasNubes <= 25, 'una celda por hora');
+  // Altas al 70 % → nd-7; bajas al 80 % por la mañana y 5 % por la tarde (nd-8 y nd-1, el 5 % redondea a 1).
+  assert.deepEqual([...new Set(await page.locator('#horas .nubes-dia .nd-celdas').first().locator('i').evaluateAll((is) => is.map((i) => i.className)))], ['nd-7']);
+  assert.equal(await page.locator('#horas .nubes-dia .nd-capa').first().evaluate((e) => getComputedStyle(e).fontWeight), '500', 'texto normal, no negrita');
+  assert.match(await page.locator('#horas .nubes-dia .nd-rejilla').getAttribute('aria-label'), /^Nubes a lo largo del día: altas hasta 70 %, medias hasta 20 %, bajas hasta \d+ %$/);
   assert.match(await page.locator('#horas .nubes-dia a').getAttribute('href'), /^https:\/\/www\.windy\.com\/\?clouds,40\.306,-3\.733,9$/);
   assert.equal(await page.locator('#horas .nubes-dia a').getAttribute('rel'), 'noopener noreferrer');
   if (process.env.CAPTURA_NUBES) await page.locator('#horas .nubes-dia').screenshot({ path: process.env.CAPTURA_NUBES });

@@ -672,11 +672,22 @@ try {
   const clases = await page.locator('#mapa .mapa-nubes rect.celda-nube').evaluateAll((rs) => rs.map((r) => r.getAttribute('class')));
   assert.ok(clases.filter((_, i) => i % 2).every((c) => c.includes('v-no')), 'las de viento fuerte, en rojo');
   assert.match(await page.textContent('#mapa-nubes-texto'), /^Dónde se puede volar con tu DJI [^·]+ a 120 m · \w+ \d+ a las \d\d:00: \d+ en verde, \d+ en ámbar, \d+ en rojo \(el rojo, sobre todo por \S/);
+  // Viento a tu altura: una flecha por celda, del mismo tiempo (sin pedir otra vez), con el color del semáforo.
+  await page.selectOption('#mapa-nubes-capa', 'viento');
+  await page.locator('#mapa-nubes-texto').filter({ hasText: 'Viento a 120 m' }).waitFor();
+  assert.equal(await page.locator('#mapa .mapa-flechas .flecha').count(), 49);
+  assert.equal(await page.locator('#mapa .mapa-nubes rect.celda-nube').count(), 0, 'sin celdas: solo flechas');
+  const fl = await page.locator('#mapa .mapa-flechas .flecha').evaluateAll((gs) => gs.map((g) => g.getAttribute('class')));
+  assert.ok(fl.filter((_, i) => i % 2).every((c) => c.includes('f-no')), 'las de viento fuerte, en rojo');
+  assert.ok(fl.filter((_, i) => !(i % 2)).every((c) => !c.includes('f-no')), 'las tranquilas, no');
+  assert.match(await page.textContent('#mapa-nubes-texto'), /^Viento a 120 m · .*: de \d+ km\/h a \d+ km\/h, rachas hasta \d+ km\/h\. Las flechas apuntan hacia donde va el viento/);
+  assert.match(await page.locator('#mapa .mapa-flechas .flecha g').first().getAttribute('transform'), /rotate\(275\)$/, 'viento de 95° → va hacia 275°');
   // Nubes: 49 celdas con su capa y su hora, más oscuro donde más cubre.
   await page.selectOption('#mapa-nubes-capa', 'bajas');
   await page.locator('#mapa-nubes-texto').filter({ hasText: 'Nubes bajas' }).waitFor();
   assert.equal(await page.locator('#mapa .mapa-nubes rect.celda-nube').count(), 49);
   assert.equal(await page.locator('#mapa .mapa-nubes rect.celda-nube.v-no').count(), 0, 'ya no es el semáforo');
+  assert.equal(await page.locator('#mapa .mapa-flechas .flecha').count(), 0, 'ni las flechas');
   assert.match(await page.textContent('#mapa-nubes-texto'), /^Nubes bajas · \w+ \d+ a las \d\d:00 · cubren de media un \d+ %\. Más oscuro, más cubierto\.$/);
   const opacidades = await page.locator('#mapa .mapa-nubes rect.celda-nube').evaluateAll((rs) => [...new Set(rs.map((r) => r.getAttribute('fill-opacity')))].sort());
   assert.deepEqual(opacidades, ['0.08', '0.68'], 'más oscuro donde más cubre (10 % y 90 %, × 0,75)');
@@ -685,7 +696,8 @@ try {
   await page.locator('#mapa-nubes-hora').fill('12');
   await page.selectOption('#mapa-nubes-capa', 'volar');
   assert.match(await page.textContent('#mapa-nubes-texto'), /^Dónde se puede volar/);
-  assert.equal(pedidasMeteo.filter((u) => new URL(u).searchParams.get('latitude').includes(',')).length, 2, 'una petición por tipo de mapa; cambiar capa u hora no vuelve a pedir');
+  const multi = pedidasMeteo.filter((u) => new URL(u).searchParams.get('latitude').includes(','));
+  assert.equal(multi.length, 2, `una petición por tipo de mapa; cambiar capa u hora no vuelve a pedir: ${multi.map((u) => `${new URL(u).searchParams.get('hourly').slice(0, 20)} lat0=${new URL(u).searchParams.get('latitude').split(',')[0]}`).join(' | ')}`);
   await page.locator('#mapa-nubes').uncheck();
   assert.equal(await page.locator('#mapa .mapa-nubes rect.celda-nube').count(), 0);
   // Una capa que falla no deja esa parte por pedida: al moverse se vuelve a intentar.

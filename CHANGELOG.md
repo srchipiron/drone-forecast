@@ -3,6 +3,23 @@
 Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
 `0.0.X` para correcciones. La versión sale en el pie de la app.
 
+## 0.33.0
+
+- **Las nubes por capas, como en Windy.** En la vista de horas sale «Nubes
+  del día: bajas, medias y altas», una franja por capa y por hora (más
+  oscuro, más cubierto). Así sabes qué nubes vienen: las bajas tapan y dan
+  luz plana; las altas (cirros) dejan pasar el sol y al atardecer suelen
+  dar color. Debajo, **Mapa de nubes en Windy** abre Windy en tu punto con
+  la capa de nubes, para ver lo que viene de alrededor.
+- Al tocar una hora, el detalle dice cuánto cubre cada capa y qué luz vas a
+  tener para las fotos (sol directo, tamizado, plana, o nubes a ratos con
+  sombras que se mueven).
+- **La base de nubes mira las nubes bajas**: un cielo cubierto de nubes
+  altas ya no te pone en ámbar o rojo, porque no tapan el dron.
+- **Aviso de niebla que se puede formar**: con el aire saturado, sin viento
+  y sin sol (de noche y al amanecer), ámbar aunque la previsión no pinte
+  niebla.
+
 ## 0.32.0
 
 Una previsión más fina a la altura de vuelo, mirando lo que miran las

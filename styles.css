@@ -710,6 +710,21 @@ dialog h3 { font-size: 0.75rem; font-weight: 700; color: var(--suave); text-tran
 
 /* Zonas de ENAIRE encima de las teselas: color por restricción; las que no
    te afectan a tu altura, solo el borde a trazos. */
+/* Nubes del día por capas: el mismo tono, más opaco cuanto más cubre. */
+.nubes-dia svg { width: 100%; height: auto; display: block; }
+
+.nubes-dia text { font-size: 11px; fill: var(--suave); }
+
+.nubes-dia text.capa { font-size: 13px; fill: var(--texto); }
+
+.nubes-dia rect.nube { fill: var(--sin-dato); }
+
+.nubes-dia rect.nube.bajas { fill: var(--texto); }
+
+.nubes-dia figcaption a { color: var(--acento); font-weight: 650; }
+
+.luz-nubes { margin: 0.2rem 0 0.4rem; }
+
 .mapa-zonas { position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible; }
 
 /* Poco relleno: varias zonas una encima de otra (lo normal cerca de un

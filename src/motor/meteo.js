@@ -22,6 +22,11 @@ export const VARIABLES = [
   // disponible para la convección y estabilidad del aire.
   'cape',
   'lifted_index',
+  // Nubes bajas (por debajo de unos 2 km): las que pueden tapar el dron. Las
+  // altas (cirros) dan igual para volar.
+  'cloud_cover_low',
+  'cloud_cover_mid',
+  'cloud_cover_high',
 ];
 
 // Modelos para medir el acuerdo: si discrepan, la previsión vale menos.
@@ -82,6 +87,9 @@ export function leerPrevision(json) {
     radiacion: num(col('shortwave_radiation')[k]),
     cape: num(col('cape')[k]),
     li: num(col('lifted_index')[k]),
+    nubesBajas: num(col('cloud_cover_low')[k]),
+    nubesMedias: num(col('cloud_cover_mid')[k]),
+    nubesAltas: num(col('cloud_cover_high')[k]),
   }));
   return {
     horas,

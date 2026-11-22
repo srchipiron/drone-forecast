@@ -273,3 +273,31 @@ test('turbulencia: viento racheado, que gira o que crece mucho con la altura', (
   const pg = construirPrevision({ meteo: leerPrevision(g), kp, satelites: sats, lugar: LUGAR, ajustes: {}, ahora: AHORA });
   assert.match(f(pg.actual, 'turbulencia').detalle, /gira 90°/);
 });
+
+test('base de nubes: con el dato de nubes bajas, los cirros no cuentan; las bajas sí', () => {
+  // Rocío casi igual que la temperatura: base estimada muy baja (≈ 60 m).
+  const con = (bajas, total) => {
+    const r = respuestaOpenMeteo({ temp: 10, td: 9.5, nubes: total });
+    if (bajas !== null) r.hourly.cloud_cover_low = r.hourly.time.map(() => bajas);
+    return f(construirPrevision({ meteo: leerPrevision(r), kp, satelites: sats, lugar: LUGAR, ajustes: {}, ahora: AHORA }).actual, 'techo');
+  };
+  assert.equal(con(null, 90).estado, 'no', 'sin el dato, la nubosidad total manda (prudente)');
+  assert.equal(con(10, 90).estado, 'ok', 'cielo cubierto de nubes altas: no tapan');
+  assert.match(con(10, 90).detalle, /^Nubes bajas: 10 %$/);
+  assert.equal(con(80, 90).estado, 'no', 'nubes bajas por debajo de tu altura');
+});
+
+test('niebla posible: aire saturado, sin viento y de noche, ámbar aunque el modelo no la pinte', () => {
+  const madrugada = Date.parse('2026-06-21T02:00:00Z'); // 04:00 en Madrid, de noche
+  const vis = (op) => {
+    const p = construirPrevision({ meteo: leerPrevision(respuestaOpenMeteo(op)), kp, satelites: sats, lugar: LUGAR, ajustes: { permitirNoche: true }, ahora: AHORA });
+    return f(p.horas.find((h) => h.ms === madrugada), 'visibilidad');
+  };
+  const v = vis({ temp: 8, td: 7.5, viento: 1 });
+  assert.equal(v.estado, 'precaucion');
+  assert.match(v.detalle, /puede formarse niebla/);
+  assert.equal(vis({ temp: 8, td: 7.5, viento: 4 }).estado, 'ok', 'con viento no se forma');
+  assert.equal(vis({ temp: 8, td: 2, viento: 1 }).estado, 'ok', 'aire seco');
+  // De día, con sol, tampoco.
+  assert.equal(f(prev({ temp: 8, td: 7.5, viento: 1 }).actual, 'visibilidad').estado, 'ok');
+});

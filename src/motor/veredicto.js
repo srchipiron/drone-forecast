@@ -138,7 +138,7 @@ function fHielo(h, ctx) {
   const valor = `${Math.round(t)} °C a ${ctx.ajustes.altitud} m`;
   if (ENGELANTE.has(h.codigo)) return factor('hielo', 'Hielo en las hélices', 'no', valor, 'Lluvia o llovizna engelante: el hielo se forma seguro');
   const saturado = Number.isFinite(h.td) && h.temp - h.td <= 1;
-  const enNube = Number.isFinite(h.techo) && (h.nubes ?? 0) >= 50 && h.techo <= ctx.ajustes.altitud;
+  const enNube = Number.isFinite(h.techo) && (Number.isFinite(h.nubesBajas) ? h.nubesBajas : (h.nubes ?? 0)) >= 50 && h.techo <= ctx.ajustes.altitud;
   if (HUMEDAD_VISIBLE.has(h.codigo) || saturado || enNube)
     return factor(
       'hielo',
@@ -150,22 +150,32 @@ function fHielo(h, ctx) {
   return factor('hielo', 'Hielo en las hélices', 'ok', valor, 'Hace frío pero el aire está seco: sin riesgo de hielo');
 }
 
+// Niebla que se puede formar aunque el modelo no la pinte: la de radiación
+// nace con el aire casi saturado (rocío a 1 °C o menos), viento flojo (hasta
+// 2 m/s) y sin sol (noche, amanecer). Ámbar: avisa, no la da por hecha.
+function nieblaPosible(h) {
+  return Number.isFinite(h.temp) && Number.isFinite(h.td) && h.temp - h.td <= 1 && Number.isFinite(h.niveles?.[10]) && h.niveles[10] <= 2 && Number.isFinite(h.solElev) && h.solElev < 5;
+}
+
 function fVisibilidad(h) {
   if (NIEBLA.has(h.codigo)) return factor('visibilidad', 'Visibilidad', 'no', 'Niebla', 'Sin contacto visual no se vuela');
   const km = Number.isFinite(h.visibilidad) ? h.visibilidad / 1000 : null;
-  return factor(
-    'visibilidad',
-    'Visibilidad',
-    escalonMin(km, 5, 1.5),
-    km === null ? '—' : km >= 10 ? '> 10 km' : `${km.toFixed(1)} km`,
-    'Hace falta ver el dron (vuelo en VLOS)',
-  );
+  let estado = escalonMin(km, 5, 1.5);
+  let detalle = 'Hace falta ver el dron (vuelo en VLOS)';
+  if (nieblaPosible(h) && (estado === 'ok' || estado === 'sin-dato')) {
+    estado = 'precaucion';
+    detalle = 'Aire saturado, sin viento y sin sol: puede formarse niebla de repente';
+  }
+  return factor('visibilidad', 'Visibilidad', estado, km === null ? '—' : km >= 10 ? '> 10 km' : `${km.toFixed(1)} km`, detalle);
 }
 
+// Con el dato de nubes BAJAS se juzga con ellas: un cielo cubierto de cirros
+// no tapa el dron. Sin él, con la nubosidad total (más prudente).
 function fTecho(h, ctx) {
-  if (!Number.isFinite(h.techo) || !Number.isFinite(h.nubes))
+  const cob = Number.isFinite(h.nubesBajas) ? h.nubesBajas : h.nubes;
+  if (!Number.isFinite(h.techo) || !Number.isFinite(cob))
     return factor('techo', 'Base de nubes', 'sin-dato', '—');
-  if (h.nubes < 30) return factor('techo', 'Base de nubes', 'ok', 'Sin techo bajo', 'Pocas nubes');
+  if (cob < 30) return factor('techo', 'Base de nubes', 'ok', 'Sin techo bajo', Number.isFinite(h.nubesBajas) ? `Nubes bajas: ${Math.round(h.nubesBajas)} %` : 'Pocas nubes');
   const margen = h.techo - ctx.ajustes.altitud;
   return factor(
     'techo',

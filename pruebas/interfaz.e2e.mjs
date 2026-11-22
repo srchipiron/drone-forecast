@@ -29,7 +29,7 @@ const inicio = Math.floor(ahora / 3600000) * 3600000 - 24 * 3600000;
 function meteo() {
   const t = Array.from({ length: 168 }, (_, k) => inicio / 1000 + k * 3600);
   const f = (v) => t.map(() => v);
-  return { elevation: 650, timezone: 'Europe/Madrid', hourly: { time: t, temperature_2m: f(18), dew_point_2m: f(8), precipitation_probability: f(5), precipitation: f(0), weather_code: f(1), cloud_cover: f(10), visibility: f(30000), wind_speed_10m: t.map((_, k) => (k % 24 < 12 ? 2 : 9)), wind_speed_80m: f(3), wind_speed_120m: t.map((_, k) => (k % 24 < 12 ? 3.5 : 12)), wind_speed_180m: f(4), wind_direction_10m: f(90), wind_direction_120m: f(95), wind_gusts_10m: f(4), shortwave_radiation: f(650) } };
+  return { elevation: 650, timezone: 'Europe/Madrid', hourly: { time: t, temperature_2m: f(18), dew_point_2m: f(8), precipitation_probability: f(5), precipitation: f(0), weather_code: f(1), cloud_cover: f(10), visibility: f(30000), wind_speed_10m: t.map((_, k) => (k % 24 < 12 ? 2 : 9)), wind_speed_80m: f(3), wind_speed_120m: t.map((_, k) => (k % 24 < 12 ? 3.5 : 12)), wind_speed_180m: f(4), wind_direction_10m: f(90), wind_direction_120m: f(95), wind_gusts_10m: f(4), shortwave_radiation: f(650), cloud_cover_low: t.map((_, k) => (k % 24 < 12 ? 80 : 5)), cloud_cover_mid: f(20), cloud_cover_high: f(70) } };
 }
 const gnss = { actualizado: new Date(ahora).toISOString(), satelites: Array.from({ length: 24 }, (_, k) => ({ nombre: `GPS-${k}`, constelacion: 'GPS', epoca: ahora, n: 2.00563, e: 0.005, i: 55, raan: (k % 6) * 60, argp: 0, M: Math.floor(k / 6) * 90 + (k % 6) * 15 })) };
 
@@ -208,6 +208,7 @@ try {
   await page.locator('#horas tr.hora').first().locator('td').nth(2).click();
   assert.ok((await page.locator('#horas .fila-detalle .condicion').count()) >= 10);
   assert.match(await page.textContent('#horas .fila-detalle .cielo'), /Poco nuboso · 18 °C/, 'el detalle dice el cielo');
+  assert.match(await page.textContent('#horas .fila-detalle .luz-nubes'), /^Nubes: bajas \d+ % · medias 20 % · altas 70 %\. (Encapotado|Solo nubes altas)/, 'y qué nubes y qué luz');
   // La columna del cielo: un icono por hora con su nombre para el lector de pantalla.
   assert.match(await page.locator('#horas tr.hora').first().locator('[role="img"]').getAttribute('aria-label'), /^Poco nuboso$/);
   assert.equal(await page.locator('#horas tr.hora').first().locator('button').getAttribute('aria-expanded'), 'true');
@@ -377,6 +378,13 @@ try {
   await page.locator('#horas [data-dia-paso="1"]').click();
   assert.equal(await diaActivo(), 1);
 
+  // Nubes del día por capas (como el mapa de Windy) y el enlace a Windy en el punto.
+  const filasNubes = await page.locator('#horas .nubes-dia rect.nube').count();
+  assert.equal(filasNubes % 3, 0);
+  assert.ok(filasNubes >= 3, 'tres capas por hora');
+  assert.match(await page.locator('#horas .nubes-dia a').getAttribute('href'), /^https:\/\/www\.windy\.com\/\?clouds,40\.306,-3\.733,9$/);
+  assert.equal(await page.locator('#horas .nubes-dia a').getAttribute('rel'), 'noopener noreferrer');
+  if (process.env.CAPTURA_NUBES) await page.locator('#horas .nubes-dia').screenshot({ path: process.env.CAPTURA_NUBES });
   // Gráfica del día, plegada debajo de la tabla.
   assert.equal(await page.locator('#horas .grafica svg path.viento').count(), 1);
   assert.match(await page.locator('#horas .grafica path.viento').getAttribute('d'), /^M[\d.]+,[\d.]+ L/);

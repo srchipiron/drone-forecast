@@ -57,7 +57,27 @@ try {
   const page = await ctx.newPage();
   page.on('pageerror', (e) => errores.push(e.message));
   page.on('console', (m) => m.type() === 'error' && !/Failed to load resource/.test(m.text()) && errores.push(m.text()));
-  await page.route('https://api.open-meteo.com/**', (r) => r.fulfill({ json: r.request().url().includes('models=') ? { hourly: { time: meteo().hourly.time, wind_speed_10m_gfs_seamless: meteo().hourly.wind_speed_10m, wind_speed_10m_icon_seamless: meteo().hourly.wind_speed_10m } } : meteo() }));
+  // Nubes por niveles (terreno a 650 m): una capa densa entre 850 y 800 hPa.
+  const nivelesNubes = () => {
+    const t = meteo().hourly.time;
+    const alturas = { 1000: 110, 975: 320, 950: 540, 925: 760, 900: 990, 850: 1460, 800: 1950, 700: 3010, 600: 4200, 500: 5570, 400: 7180, 300: 9160 };
+    const hourly = { time: t };
+    for (const [p, a] of Object.entries(alturas)) {
+      hourly[`geopotential_height_${p}hPa`] = t.map(() => a);
+      hourly[`cloud_cover_${p}hPa`] = t.map(() => (p === '850' || p === '800' ? 90 : p === '300' ? 40 : 0));
+    }
+    return { elevation: 650, hourly };
+  };
+  const pedidasMeteo = [];
+  await page.route('https://api.open-meteo.com/**', (r) => {
+    const u = r.request().url();
+    pedidasMeteo.push(u);
+    if (u.includes('geopotential_height_')) return r.fulfill({ json: nivelesNubes() });
+    // El mapa de nubes: varias coordenadas en una petición → una respuesta por punto.
+    const lats = new URL(u).searchParams.get('latitude').split(',');
+    if (lats.length > 1) return r.fulfill({ json: lats.map((_, i) => ({ hourly: { time: meteo().hourly.time, cloud_cover_low: meteo().hourly.time.map(() => (i % 2 ? 90 : 10)), cloud_cover_mid: meteo().hourly.time.map(() => 30), cloud_cover_high: meteo().hourly.time.map(() => 60) } })) });
+    return r.fulfill({ json: u.includes('models=') ? { hourly: { time: meteo().hourly.time, wind_speed_10m_gfs_seamless: meteo().hourly.wind_speed_10m, wind_speed_10m_icon_seamless: meteo().hourly.wind_speed_10m } } : meteo() });
+  });
   // ENAIRE: la respuesta real de Getafe (capa aeronáutica), con un <script> metido en un nombre.
   const zonaAero = JSON.parse(await readFile(join(raiz, 'pruebas/fixtures/enaire-getafe-aero.json'), 'utf8'));
   zonaAero.features[0].attributes.name = 'MADRID/Getafe<script>';
@@ -378,6 +398,18 @@ try {
   await page.locator('#horas [data-dia-paso="1"]').click();
   assert.equal(await diaActivo(), 1);
 
+  // Nubes por altura: se piden al abrir la sección, una sola vez, y dicen las capas y si tu altura cae dentro.
+  assert.equal(pedidasMeteo.filter((u) => u.includes('geopotential_height_')).length, 0, 'no se piden hasta abrirlo');
+  await page.locator('#horas details.mas-altura summary').click();
+  await page.locator('#horas .mas-altura rect.nube-altura').first().waitFor();
+  assert.ok((await page.locator('#horas .mas-altura rect.nube-altura').count()) > 10);
+  assert.equal(await page.locator('#horas .mas-altura line.vuelo').count(), 1, 'tu altura marcada');
+  if (process.env.CAPTURA_ALTURA) await page.locator('#horas .mas-altura').screenshot({ path: process.env.CAPTURA_ALTURA });
+  assert.match(await page.textContent('#horas .capas-hora'), /^\d\d:00: Capa densa de \d+ m a [\d,]+ km · capa dispersa de/);
+  await page.locator('#horas [data-dia-paso="1"]').click();
+  await page.locator('#horas .mas-altura rect.nube-altura').first().waitFor();
+  await page.locator('#horas [data-dia-paso="-1"]').click();
+  assert.equal(pedidasMeteo.filter((u) => u.includes('geopotential_height_')).length, 1, 'abierta sigue abierta y no se vuelve a pedir');
   // Nubes del día por capas (como el mapa de Windy) y el enlace a Windy en el punto.
   const filasNubes = await page.locator('#horas .nubes-dia rect.nube').count();
   assert.equal(filasNubes % 3, 0);
@@ -624,6 +656,20 @@ try {
   assert.ok(Math.abs(latM - 40.3057) < 1e-3 && lonM < -3.74, `el centro se fue al oeste: ${lonM}`);
   await page.locator('#mapa [data-zoom="1"]').click();
   assert.ok(teselasPedidas.some((u) => u.includes('/14/')), 'acercar pide teselas de z14');
+  // Mapa de nubes: 49 celdas de la rejilla, con su capa y su hora.
+  assert.equal(await page.locator('#mapa-nubes-capa').isDisabled(), true);
+  await page.locator('#mapa-nubes').check();
+  await page.locator('#mapa-nubes-texto').filter({ hasText: 'Nubes bajas' }).waitFor();
+  assert.equal(await page.locator('#mapa .mapa-nubes rect.celda-nube').count(), 49);
+  assert.match(await page.textContent('#mapa-nubes-texto'), /^Nubes bajas · \w+ \d+ a las \d\d:00 · cubren de media un \d+ %\. Más oscuro, más cubierto\.$/);
+  const opacidades = await page.locator('#mapa .mapa-nubes rect.celda-nube').evaluateAll((rs) => [...new Set(rs.map((r) => r.getAttribute('fill-opacity')))].sort());
+  assert.deepEqual(opacidades, ['0.08', '0.68'], 'más oscuro donde más cubre (10 % y 90 %, × 0,75)');
+  await page.selectOption('#mapa-nubes-capa', 'altas');
+  assert.match(await page.textContent('#mapa-nubes-texto'), /^Nubes altas · .* cubren de media un 60 %/);
+  await page.locator('#mapa-nubes-hora').fill('12');
+  assert.equal(pedidasMeteo.filter((u) => new URL(u).searchParams.get('latitude').includes(',')).length, 1, 'cambiar capa u hora no vuelve a pedir');
+  await page.locator('#mapa-nubes').uncheck();
+  assert.equal(await page.locator('#mapa .mapa-nubes rect.celda-nube').count(), 0);
   // Una capa que falla no deja esa parte por pedida: al moverse se vuelve a intentar.
   enaireMapa.urbanaCaida = true;
   await page.locator('#mapa [data-zoom="1"]').click(); // z15: dos más que lo pedido, se pide otra vez
@@ -646,6 +692,12 @@ try {
   assert.equal(await page.locator('#mapa .mapa-zonas path').count(), 0, 'nada pintado en z8');
   enaireMapa.lento = false;
   if (process.env.CAPTURA_MAPA) await page.locator('#panel-mapa').screenshot({ path: process.env.CAPTURA_MAPA });
+  if (process.env.CAPTURA_MAPA_NUBES) {
+    await page.locator('#mapa-nubes').check();
+    await page.locator('#mapa .mapa-nubes rect.celda-nube').first().waitFor();
+    await page.locator('#panel-mapa').screenshot({ path: process.env.CAPTURA_MAPA_NUBES });
+    await page.locator('#mapa-nubes').uncheck();
+  }
   await page.locator('#btn-usar-punto').click();
   await page.locator('#nombre-lugar').filter({ hasText: 'Punto del mapa' }).waitFor();
   assert.equal(await page.locator('#dlg-lugar').isVisible(), false);

@@ -3,6 +3,7 @@
 
 import { CAPAS, leerFormas, leerZonas, resumenZonas, urlConsultaEnaire, urlFormasEnaire } from '../motor/enaire.js';
 import { URL_KP, leerKp } from '../motor/kp.js';
+import { leerNubesAltura, leerNubesRejilla, rejillaNubes, urlNubesAltura, urlNubesRejilla } from '../motor/nubes.js';
 import { leerBusqueda, leerConsenso, leerPrevision, urlBusqueda, urlConsenso, urlPrevision } from '../motor/meteo.js';
 import { antiguedadDias, desdeOMM, satValido } from '../motor/satelites.js';
 import { almacen } from './almacen.js';
@@ -127,4 +128,15 @@ export async function cargarFormasEnaire(caja, simplificar, signal = null) {
   const fallidas = resultados.filter((r) => !r.ok).map((r) => r.capa);
   const cortadas = resultados.filter((r) => r.ok && r.cortada).map((r) => r.capa);
   return { zonas: resultados.filter((r) => r.ok).flatMap((r) => r.zonas), fallidas, cortadas, error: fallidas.length === CAPAS.length };
+}
+
+// Nubes por altura del punto (se pide al abrir esa sección).
+export async function cargarNubesAltura(lat, lon) {
+  return leerNubesAltura(await pedir(urlNubesAltura(lat, lon), 20000));
+}
+
+// La rejilla de nubes para el mapa: una petición para los 49 puntos.
+export async function cargarNubesRejilla(caja, signal = null) {
+  const puntos = rejillaNubes(caja, 7);
+  return leerNubesRejilla(await pedir(urlNubesRejilla(puntos), 20000, signal), puntos);
 }

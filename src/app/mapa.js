@@ -17,12 +17,15 @@ export const URL_TESELAS = 'https://tile.openstreetmap.org';
  *   acercar), con el rectángulo que se ve: quien lo usa decide qué pedir.
  */
 export function crearMapa(caja, { lat, lon, z = 12, alMarcar, alVer = () => {} }) {
-  caja.innerHTML = `<div class="mapa-teselas"></div><svg class="mapa-zonas" aria-hidden="true"></svg><div class="mapa-marca" hidden></div>
+  caja.innerHTML = `<div class="mapa-teselas"></div><svg class="mapa-nubes" aria-hidden="true"></svg><svg class="mapa-zonas" aria-hidden="true"></svg><div class="mapa-marca" hidden></div>
     <div class="mapa-zoom"><button type="button" data-zoom="1" aria-label="Acercar">+</button><button type="button" data-zoom="-1" aria-label="Alejar">−</button></div>
     <p class="mapa-credito">© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a></p>`;
   const capa = caja.querySelector('.mapa-teselas');
   const marca = caja.querySelector('.mapa-marca');
   const svg = caja.querySelector('.mapa-zonas');
+  const svgNubes = caja.querySelector('.mapa-nubes');
+  /** @type {{oeste: number, este: number, sur: number, norte: number, opacidad: number}[]} */
+  let celdas = [];
   const imgs = new Map();
   /** @type {{anillos: number[][][], clase: string}[]} */
   let formas = [];
@@ -51,6 +54,7 @@ export function crearMapa(caja, { lat, lon, z = 12, alMarcar, alVer = () => {} }
     }
     for (const [clave, img] of imgs) if (!vistas.has(clave)) (img.remove(), imgs.delete(clave));
     pintarFormas(ancho, alto);
+    pintarCeldas(ancho, alto);
     marca.hidden = !marcado;
     if (marcado) {
       const m = aTesela(marcado.lat, marcado.lon, zoom);
@@ -75,6 +79,31 @@ export function crearMapa(caja, { lat, lon, z = 12, alMarcar, alVer = () => {} }
       r.setAttribute('d', rutaAnillos(f.anillos, c.x, c.y, zoom, ancho, alto));
     });
     while (rutas.length > formas.length) rutas[rutas.length - 1].remove();
+  }
+
+  // Las nubes: un rectángulo por celda de la rejilla, debajo de las zonas.
+  function pintarCeldas(ancho, alto) {
+    svgNubes.setAttribute('width', String(Math.round(ancho)));
+    svgNubes.setAttribute('height', String(Math.round(alto)));
+    const rects = svgNubes.children;
+    celdas.forEach((k, i) => {
+      let r = rects[i];
+      if (!r) {
+        r = document.createElementNS(SVG, 'rect');
+        r.setAttribute('class', 'celda-nube');
+        svgNubes.append(r);
+      }
+      const a = aTesela(k.norte, k.oeste, zoom);
+      const b = aTesela(k.sur, k.este, zoom);
+      const x = (a.x - c.x) * TAM + ancho / 2;
+      const y = (a.y - c.y) * TAM + alto / 2;
+      r.setAttribute('x', x.toFixed(1));
+      r.setAttribute('y', y.toFixed(1));
+      r.setAttribute('width', ((b.x - a.x) * TAM).toFixed(1));
+      r.setAttribute('height', ((b.y - a.y) * TAM).toFixed(1));
+      r.setAttribute('fill-opacity', k.opacidad.toFixed(2));
+    });
+    while (rects.length > celdas.length) rects[rects.length - 1].remove();
   }
 
   function avisarVista() {
@@ -143,6 +172,11 @@ export function crearMapa(caja, { lat, lon, z = 12, alMarcar, alVer = () => {} }
     /** Pinta estas zonas (sustituye a las anteriores). */
     ponerFormas(nuevas) {
       formas = nuevas;
+      pintar();
+    },
+    /** Pinta las celdas de nubes (sustituye a las anteriores). */
+    ponerCeldas(nuevas) {
+      celdas = nuevas;
       pintar();
     },
   };

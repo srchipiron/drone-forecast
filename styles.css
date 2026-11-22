@@ -725,6 +725,31 @@ dialog h3 { font-size: 0.75rem; font-weight: 700; color: var(--suave); text-tran
 
 .luz-nubes { margin: 0.2rem 0 0.4rem; }
 
+/* Nubes por altura y mapa de nubes: gris pizarra (se ve sobre el mapa claro). */
+.mas-altura svg { width: 100%; height: auto; display: block; margin-top: 0.4rem; }
+
+.mas-altura rect.nube-altura, .mapa-nubes .celda-nube { fill: #3d4a63; }
+
+:root[data-theme="dark"] .mas-altura rect.nube-altura { fill: #c9d3e6; }
+
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]):not([data-theme="sol"]) .mas-altura rect.nube-altura { fill: #c9d3e6; } }
+
+.mas-altura line.rejilla { stroke: var(--separador); stroke-width: 1; }
+
+.mas-altura line.vuelo { stroke: var(--no); stroke-width: 2; stroke-dasharray: 5 3; }
+
+.mas-altura text { font-size: 10px; fill: var(--suave); }
+
+.ley.vuelo { display: inline-block; width: 1.2rem; border-top: 2px dashed var(--no); vertical-align: middle; }
+
+.capas-hora { margin: 0.3rem 0 0; }
+
+.mapa-nubes { position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible; }
+
+.nubes-mapa { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0.4rem 0.6rem; align-items: center; margin-top: 0.5rem; }
+
+.nubes-mapa input[type="range"], .nubes-mapa .nota { grid-column: 1 / -1; width: 100%; }
+
 .mapa-zonas { position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible; }
 
 /* Poco relleno: varias zonas una encima de otra (lo normal cerca de un

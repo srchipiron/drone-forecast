@@ -3,6 +3,22 @@
 Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
 `0.0.X` para correcciones. La versión sale en el pie de la app.
 
+## 0.34.0
+
+- **Nubes por altura, como el «airgram» de Windy.** En la vista de horas,
+  abre **Nubes por altura**: un gráfico con las horas a lo ancho y la altura
+  sobre el suelo a lo alto (de 100 m a 9 km). Cada nivel sale más oscuro
+  cuanto más densa es la nube, y tu altura de vuelo va marcada con una raya
+  roja. Debajo te lo dice en palabras para la hora que tengas abierta: «Capa
+  densa de 600 m a 1,8 km · capa dispersa de 7,5 a 9 km», y avisa si tu
+  altura queda DENTRO de una capa.
+- **Mapa de nubes.** En el mapa de elegir punto, marca **Mapa de nubes** y
+  verás la zona cubierta o despejada: elige nubes bajas, medias o altas y
+  mueve la barra para ver las próximas 48 horas. Más oscuro, más cubierto;
+  abajo dice cuánto cubren de media.
+- Los datos son de los modelos (la misma fuente de siempre, Open-Meteo):
+  se piden solo al abrir cada cosa, para no gastar datos.
+
 ## 0.33.0
 
 - **Las nubes por capas, como en Windy.** En la vista de horas sale «Nubes

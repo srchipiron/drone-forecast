@@ -4,6 +4,7 @@
 import { CAPAS, leerFormas, leerZonas, resumenZonas, urlConsultaEnaire, urlFormasEnaire } from '../motor/enaire.js';
 import { URL_KP, leerKp } from '../motor/kp.js';
 import { leerNubesAltura, leerNubesRejilla, rejillaNubes, urlNubesAltura, urlNubesRejilla } from '../motor/nubes.js';
+import { urlRejillaTiempo, veredictosRejilla } from '../motor/rejilla.js';
 import { leerBusqueda, leerConsenso, leerPrevision, urlBusqueda, urlConsenso, urlPrevision } from '../motor/meteo.js';
 import { antiguedadDias, desdeOMM, satValido } from '../motor/satelites.js';
 import { almacen } from './almacen.js';
@@ -139,4 +140,11 @@ export async function cargarNubesAltura(lat, lon) {
 export async function cargarNubesRejilla(caja, signal = null) {
   const puntos = rejillaNubes(caja, 7);
   return leerNubesRejilla(await pedir(urlNubesRejilla(puntos), 20000, signal), puntos);
+}
+
+// El mapa de «dónde se puede volar»: el tiempo de los 49 puntos, juzgado con
+// tus ajustes (una petición).
+export async function cargarRejillaVuelo(caja, { ajustes, kp }) {
+  const puntos = rejillaNubes(caja, 7);
+  return veredictosRejilla(await pedir(urlRejillaTiempo(puntos), 25000), puntos, { ajustes, kp });
 }

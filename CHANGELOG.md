@@ -3,6 +3,19 @@
 Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
 `0.0.X` para correcciones. La versión sale en el pie de la app.
 
+## 0.35.0
+
+- **Mapa de «dónde se puede volar».** En el mapa de elegir punto, marca
+  **Mapa del tiempo**: ahora lo primero que enseña es el semáforo de toda
+  la zona, celda a celda, **con tu dron, tu altura y tus límites**, a la
+  hora que elijas con la barra (próximas 48 horas). Si tu punto sale en
+  rojo, ves si a unos kilómetros hay un sitio en verde. Abajo te dice
+  cuántas celdas hay de cada color y por qué está el rojo (viento, rachas,
+  lluvia…).
+- Es el mismo juicio que el cartel de la pantalla principal, por el tiempo.
+  Las zonas de ENAIRE se siguen viendo encima, aparte.
+- Las nubes bajas, medias y altas siguen en el mismo menú del mapa.
+
 ## 0.34.0
 
 - **Nubes por altura, como el «airgram» de Windy.** En la vista de horas,

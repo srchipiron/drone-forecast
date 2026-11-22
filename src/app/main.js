@@ -2,6 +2,7 @@
 
 import { cielo } from '../motor/cielo.js';
 import { capasNubes, celdasEnHora, luzNubes, textoCapas, urlWindyNubes } from '../motor/nubes.js';
+import { celdasVeredicto, resumenVeredictos } from '../motor/rejilla.js';
 import { sentidoDeslizar } from '../motor/gestos.js';
 import { textoCompartir } from '../motor/compartir.js';
 import { informeDiagnostico } from '../motor/diagnostico.js';
@@ -20,7 +21,7 @@ import { almacen } from './almacen.js';
 import { ETIQUETA, INTERVALO, comprobarAvisos } from './aviso.js';
 import { crearMapa } from './mapa.js';
 import { ampliarCaja, cajaDentro } from '../motor/mapa.js';
-import { buscarLugar, cargarKp, cargarPrevision, cargarSatelites, cargarFormasEnaire, cargarNubesAltura, cargarNubesRejilla, cargarSoloPrevision, consultarEnaire, leerDescarga } from './datos.js';
+import { buscarLugar, cargarKp, cargarPrevision, cargarSatelites, cargarFormasEnaire, cargarNubesAltura, cargarNubesRejilla, cargarRejillaVuelo, cargarSoloPrevision, consultarEnaire, leerDescarga } from './datos.js';
 import { mensajeUbicacion, pedirUbicacion } from './ubicacion.js';
 
 const $ = (s) => document.querySelector(s);
@@ -1677,28 +1678,44 @@ async function verZonasMapa({ caja, zoom }) {
   pintarFormasMapa();
 }
 
-// El mapa de nubes: una rejilla de 7 × 7 puntos sobre lo que se ve, con la
-// capa y la hora elegidas. Más oscuro, más cubierto.
-const nubesMapa = { celdas: null, caja: null, pidiendo: 0, vista: null };
+// El mapa del tiempo: una rejilla de 7 × 7 puntos sobre lo que se ve. O el
+// semáforo de cada celda con tu dron («dónde se puede volar»), o las nubes
+// de una capa (más oscuro, más cubierto), a la hora de la barra.
+const nubesMapa = { celdas: null, caja: null, volar: null, cajaVolar: null, claveVolar: '', pidiendo: 0, vista: null };
 const NOMBRE_CAPA = { bajas: 'Nubes bajas', medias: 'Nubes medias', altas: 'Nubes altas' };
+
+function cuandoMapa(ms) {
+  const zona = prevision()?.zona;
+  return `${new Intl.DateTimeFormat('es-ES', { weekday: 'short', day: 'numeric', timeZone: zona }).format(new Date(ms))} a las ${hora(ms, zona)}`;
+}
 
 function pintarNubesMapa() {
   if (!mapa) return;
   const activo = $('#mapa-nubes').checked;
   $('#mapa-nubes-capa').disabled = !activo;
   $('#mapa-nubes-hora').disabled = !activo;
-  if (!activo || !nubesMapa.celdas) {
+  const capa = $('#mapa-nubes-capa').value;
+  const datos = capa === 'volar' ? nubesMapa.volar : nubesMapa.celdas;
+  if (!activo || !datos) {
     mapa.ponerCeldas([]);
     if (!activo) $('#mapa-nubes-texto').textContent = '';
     return;
   }
-  const capa = $('#mapa-nubes-capa').value;
   const ms = Math.floor(Date.now() / 3600000) * 3600000 + Number($('#mapa-nubes-hora').value) * 3600000;
-  const celdas = celdasEnHora(nubesMapa.celdas, capa, ms).filter((c) => c.cobertura !== null);
+  if (capa === 'volar') {
+    const celdas = celdasVeredicto(datos, ms).filter((c) => c.estado);
+    mapa.ponerCeldas(celdas.map((c) => ({ ...c, opacidad: 0.45, clase: `v-${c.estado}` })));
+    const r = resumenVeredictos(celdas);
+    const p = prevision();
+    $('#mapa-nubes-texto').textContent = celdas.length
+      ? `Dónde se puede volar${p ? ` con tu ${p.dron.nombre} a ${p.ajustes.altitud} m` : ''} · ${cuandoMapa(ms)}: ${r.ok} en verde, ${r.precaucion} en ámbar, ${r.no} en rojo${r.masRojo ? ` (el rojo, sobre todo por ${r.masRojo.toLowerCase()})` : ''}. Por el tiempo; las zonas de ENAIRE van aparte.`
+      : `Sin previsión para ${cuandoMapa(ms)}.`;
+    return;
+  }
+  const celdas = celdasEnHora(datos, capa, ms).filter((c) => c.cobertura !== null);
   mapa.ponerCeldas(celdas.map((c) => ({ ...c, opacidad: (c.cobertura / 100) * 0.75 })));
-  const zona = prevision()?.zona;
   const media = celdas.length ? Math.round(celdas.reduce((s, c) => s + c.cobertura, 0) / celdas.length) : null;
-  $('#mapa-nubes-texto').textContent = `${NOMBRE_CAPA[capa]} · ${new Intl.DateTimeFormat('es-ES', { weekday: 'short', day: 'numeric', timeZone: zona }).format(new Date(ms))} a las ${hora(ms, zona)}${media !== null ? ` · cubren de media un ${media} %` : ''}. Más oscuro, más cubierto.`;
+  $('#mapa-nubes-texto').textContent = `${NOMBRE_CAPA[capa]} · ${cuandoMapa(ms)}${media !== null ? ` · cubren de media un ${media} %` : ''}. Más oscuro, más cubierto.`;
 }
 
 async function verNubesMapa(v = nubesMapa.vista) {
@@ -1706,23 +1723,33 @@ async function verNubesMapa(v = nubesMapa.vista) {
   if (!$('#mapa-nubes').checked || !nubesMapa.vista) return pintarNubesMapa();
   const { caja, zoom } = nubesMapa.vista;
   if (zoom < 7) {
-    nubesMapa.celdas = null;
+    Object.assign(nubesMapa, { celdas: null, volar: null });
     pintarNubesMapa();
-    $('#mapa-nubes-texto').textContent = 'Acerca un poco el mapa para ver las nubes.';
+    $('#mapa-nubes-texto').textContent = 'Acerca un poco el mapa para verlo.';
     return;
   }
-  if (nubesMapa.celdas && cajaDentro(caja, nubesMapa.caja)) return pintarNubesMapa();
+  const volar = $('#mapa-nubes-capa').value === 'volar';
+  // El semáforo depende de tu dron y tus ajustes: si cambian, se vuelve a pedir.
+  const clave = JSON.stringify(estado.ajustes);
+  const vale = volar ? nubesMapa.volar && nubesMapa.claveVolar === clave && cajaDentro(caja, nubesMapa.cajaVolar) : nubesMapa.celdas && cajaDentro(caja, nubesMapa.caja);
+  if (vale) return pintarNubesMapa();
   const pedida = ampliarCaja(caja, 0.25);
   const turno = ++nubesMapa.pidiendo;
-  $('#mapa-nubes-texto').textContent = 'Cargando el mapa de nubes…';
+  $('#mapa-nubes-texto').textContent = volar ? 'Mirando el tiempo de toda la zona…' : 'Cargando el mapa de nubes…';
   try {
-    const celdas = await cargarNubesRejilla(pedida);
-    if (turno !== nubesMapa.pidiendo) return;
-    Object.assign(nubesMapa, { celdas, caja: pedida });
+    if (volar) {
+      const celdas = await cargarRejillaVuelo(pedida, { ajustes: estado.ajustes, kp: estado.kp });
+      if (turno !== nubesMapa.pidiendo) return;
+      Object.assign(nubesMapa, { volar: celdas, cajaVolar: pedida, claveVolar: clave });
+    } else {
+      const celdas = await cargarNubesRejilla(pedida);
+      if (turno !== nubesMapa.pidiendo) return;
+      Object.assign(nubesMapa, { celdas, caja: pedida });
+    }
   } catch {
     if (turno !== nubesMapa.pidiendo) return;
-    Object.assign(nubesMapa, { celdas: null, caja: null });
-    $('#mapa-nubes-texto').textContent = 'No se pudo descargar el mapa de nubes.';
+    mapa.ponerCeldas([]);
+    $('#mapa-nubes-texto').textContent = 'No se pudo descargar el mapa del tiempo.';
     return;
   }
   pintarNubesMapa();
@@ -1890,7 +1917,7 @@ function enlazar() {
   $('#form-vuelo').addEventListener('submit', guardarVuelo);
   $('#form-plan').addEventListener('submit', guardarPlan);
   $('#mapa-nubes').addEventListener('change', () => verNubesMapa());
-  $('#mapa-nubes-capa').addEventListener('change', pintarNubesMapa);
+  $('#mapa-nubes-capa').addEventListener('change', () => verNubesMapa());
   $('#mapa-nubes-hora').addEventListener('input', pintarNubesMapa);
   // <details> no avisa con «click» fiable ni burbujea «toggle»: se escucha en captura.
   document.addEventListener(

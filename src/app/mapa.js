@@ -90,9 +90,9 @@ export function crearMapa(caja, { lat, lon, z = 12, alMarcar, alVer = () => {} }
       let r = rects[i];
       if (!r) {
         r = document.createElementNS(SVG, 'rect');
-        r.setAttribute('class', 'celda-nube');
         svgNubes.append(r);
       }
+      r.setAttribute('class', `celda-nube${k.clase ? ` ${k.clase}` : ''}`);
       const a = aTesela(k.norte, k.oeste, zoom);
       const b = aTesela(k.sur, k.este, zoom);
       const x = (a.x - c.x) * TAM + ancho / 2;

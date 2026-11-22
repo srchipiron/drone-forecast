@@ -1,6 +1,7 @@
 // La interfaz. Pinta lo que devuelve construirPrevision(); no decide nada.
 
 import { cielo } from '../motor/cielo.js';
+import { capasNubes, luzNubes, urlWindyNubes } from '../motor/nubes.js';
 import { sentidoDeslizar } from '../motor/gestos.js';
 import { textoCompartir } from '../motor/compartir.js';
 import { informeDiagnostico } from '../motor/diagnostico.js';
@@ -284,7 +285,9 @@ function lineaCielo(h) {
   const c = cielo(h.codigo, h.solElev >= -0.833);
   const t = Number.isFinite(h.temp) ? `${Math.round(h.temp)} °C` : '';
   if (!c && !t) return '';
-  return `<p class="cielo">${c ? `<span aria-hidden="true">${c.icono}</span> ${esc(c.texto)}` : ''}${c && t ? ' · ' : ''}${esc(t)}</p>`;
+  const luz = luzNubes(h);
+  const capas = luz ? `<p class="nota luz-nubes">Nubes: bajas ${h.nubesBajas ?? '—'} % · medias ${h.nubesMedias ?? '—'} % · altas ${h.nubesAltas ?? '—'} %. ${esc(luz.texto)}.</p>` : '';
+  return `<p class="cielo">${c ? `<span aria-hidden="true">${c.icono}</span> ${esc(c.texto)}` : ''}${c && t ? ' · ' : ''}${esc(t)}</p>${capas}`;
 }
 
 // «Próxima ventana»: la de hoy si queda; si no, el primer día con verde, y
@@ -536,6 +539,37 @@ function svgGrafica(dia, p) {
   </figure>`;
 }
 
+// Las nubes del día por capas, como el mapa de nubes de Windy: una fila por
+// capa (altas arriba, bajas abajo) y una celda por hora, más opaca cuanto
+// más cubre. Con el enlace al mapa de Windy en ese punto.
+function svgNubes(dia, p) {
+  const c = capasNubes(dia.horas);
+  if (!c.hay) return '';
+  const ancho = 340;
+  const izq = 54;
+  const fila = 20;
+  const paso = (ancho - izq) / Math.max(1, c.horas.length);
+  const r = (n) => Math.round(n * 10) / 10;
+  const capas = [['altas', 'Altas'], ['medias', 'Medias'], ['bajas', 'Bajas']];
+  const etiquetas = c.horas.filter((_, i) => i % 6 === 0).map((h) => ({ ms: h.ms, x: r(izq + c.horas.indexOf(h) * paso) }));
+  const alto = capas.length * fila + 18;
+  return `<figure class="nubes-dia">
+    <svg viewBox="0 0 ${ancho} ${alto}" role="img" aria-label="Nubes bajas, medias y altas a lo largo del día">
+      ${capas
+        .map(
+          ([k, t], j) =>
+            `<text class="capa" x="0" y="${j * fila + 14}">${t}</text>${c.horas
+              .map((h, i) => `<rect class="nube ${k}" x="${r(izq + i * paso)}" y="${j * fila + 1}" width="${r(paso - 0.5)}" height="${fila - 2}" fill-opacity="${h[k] === null ? 0 : Math.max(0.05, h[k] / 100).toFixed(2)}"></rect>`)
+              .join('')}`,
+        )
+        .join('')}
+      ${etiquetas.map((e) => `<text x="${e.x}" y="${alto - 2}">${esc(hora(e.ms, p.zona))}</text>`).join('')}
+    </svg>
+    <figcaption class="nota">Más oscuro, más cubierto. Bajas: tapan y dan luz plana. Altas (cirros): dejan pasar el sol.
+      <a href="${esc(urlWindyNubes(estado.lugar.lat, estado.lugar.lon))}" target="_blank" rel="noopener noreferrer">Mapa de nubes en Windy</a></figcaption>
+  </figure>`;
+}
+
 // La tabla hora a hora, como la de UAV Forecast: una fila por hora y cada
 // dato en su columna, con el color de su factor. Tocar una fila la abre.
 const TORMENTA = new Set([95, 96, 99]);
@@ -601,6 +635,7 @@ function pintarHoras(p) {
       </table>
     </div>
     <p class="nota pista-horas">Toca una hora para ver el detalle. En gris, las horas sin luz${dia.ventana ? '; con raya a la izquierda, la mejor ventana' : ''}.</p>
+    ${svgNubes(dia, p) ? `<details class="mas-nubes" open><summary>Nubes del día: bajas, medias y altas</summary>${svgNubes(dia, p)}</details>` : ''}
     <details class="mas-grafica"><summary>Gráfica del viento del día</summary>${svgGrafica(dia, p)}</details>`;
 }
 

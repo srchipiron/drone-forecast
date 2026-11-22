@@ -1,7 +1,7 @@
 // La interfaz. Pinta lo que devuelve construirPrevision(); no decide nada.
 
 import { cielo } from '../motor/cielo.js';
-import { capasNubes, luzNubes, urlWindyNubes } from '../motor/nubes.js';
+import { capasNubes, celdasEnHora, luzNubes, textoCapas, urlWindyNubes } from '../motor/nubes.js';
 import { sentidoDeslizar } from '../motor/gestos.js';
 import { textoCompartir } from '../motor/compartir.js';
 import { informeDiagnostico } from '../motor/diagnostico.js';
@@ -20,7 +20,7 @@ import { almacen } from './almacen.js';
 import { ETIQUETA, INTERVALO, comprobarAvisos } from './aviso.js';
 import { crearMapa } from './mapa.js';
 import { ampliarCaja, cajaDentro } from '../motor/mapa.js';
-import { buscarLugar, cargarKp, cargarPrevision, cargarSatelites, cargarFormasEnaire, cargarSoloPrevision, consultarEnaire, leerDescarga } from './datos.js';
+import { buscarLugar, cargarKp, cargarPrevision, cargarSatelites, cargarFormasEnaire, cargarNubesAltura, cargarNubesRejilla, cargarSoloPrevision, consultarEnaire, leerDescarga } from './datos.js';
 import { mensajeUbicacion, pedirUbicacion } from './ubicacion.js';
 
 const $ = (s) => document.querySelector(s);
@@ -570,6 +570,76 @@ function svgNubes(dia, p) {
   </figure>`;
 }
 
+// Nubes por altura (como el «airgram» de Windy): horas a lo ancho, altura
+// sobre el suelo a lo alto, cada nivel más opaco cuanto más cubre, y tu
+// altura de vuelo marcada. La escala de alturas es de raíz cuadrada: lo de
+// abajo, que es lo que afecta al dron, se ve más grande.
+const nubesAltura = { clave: '', horas: null, estado: 'nada', abierta: false };
+const H_MAX = 9000;
+
+function svgAltura(horas, p) {
+  const ancho = 340;
+  const izq = 44;
+  const alto = 150;
+  const y = (m) => Math.round((1 - Math.sqrt(Math.min(Math.max(m, 0), H_MAX) / H_MAX)) * alto * 10) / 10;
+  const paso = (ancho - izq) / Math.max(1, horas.length);
+  const porMs = new Map(nubesAltura.horas.map((h) => [h.ms, h.capas]));
+  const celdas = horas
+    .map((h, i) => {
+      const capas = porMs.get(h.ms) ?? [];
+      return capas
+        .map((c, j) => {
+          if (c.cobertura < 5) return '';
+          const abajo = j === 0 ? 0 : (capas[j - 1].altura + c.altura) / 2;
+          const arriba = j === capas.length - 1 ? c.altura + 500 : (c.altura + capas[j + 1].altura) / 2;
+          return `<rect class="nube-altura" x="${(izq + i * paso).toFixed(1)}" y="${y(arriba)}" width="${(paso - 0.4).toFixed(1)}" height="${Math.max(0.5, y(abajo) - y(arriba)).toFixed(1)}" fill-opacity="${(c.cobertura / 100).toFixed(2)}"></rect>`;
+        })
+        .join('');
+    })
+    .join('');
+  const marcas = [100, 1000, 2000, 5000]
+    .map((m) => `<line class="rejilla" x1="${izq}" x2="${ancho}" y1="${y(m)}" y2="${y(m)}"></line><text x="0" y="${y(m) + 3}">${m >= 1000 ? `${m / 1000} km` : `${m} m`}</text>`)
+    .join('');
+  const alt = p.ajustes.altitud;
+  const etiquetas = horas.map((h, i) => ({ h, i })).filter(({ i }) => i % 6 === 0);
+  return `<svg viewBox="0 0 ${ancho} ${alto + 16}" role="img" aria-label="Nubes por altura a lo largo del día">
+      ${marcas}${celdas}
+      <line class="vuelo" x1="${izq}" x2="${ancho}" y1="${y(alt)}" y2="${y(alt)}"></line>
+      ${etiquetas.map(({ h, i }) => `<text x="${(izq + i * paso).toFixed(1)}" y="${alto + 13}">${esc(hora(h.ms, p.zona))}</text>`).join('')}
+    </svg>`;
+}
+
+function bloqueAltura(horas, p, abierta) {
+  const clave = `${estado.lugar.lat},${estado.lugar.lon}`;
+  let cuerpo = '';
+  if (nubesAltura.clave !== clave || nubesAltura.estado === 'nada') cuerpo = '<p class="nota">Ábrelo para cargar las nubes por altura.</p>';
+  else if (nubesAltura.estado === 'cargando') cuerpo = '<p class="nota">Cargando las nubes por altura…</p>';
+  else if (nubesAltura.estado === 'error') cuerpo = '<p class="nota">No se pudieron descargar las nubes por altura.</p>';
+  else {
+    const h = abierta ?? horas[0];
+    const capas = nubesAltura.horas.find((x) => x.ms === h?.ms)?.capas ?? [];
+    cuerpo = `${svgAltura(horas, p)}
+      <p class="nota"><span class="ley vuelo"></span> tu altura (${esc(p.ajustes.altitud)} m) · más oscuro, nube más densa.</p>
+      <p class="capas-hora"><strong>${esc(hora(h.ms, p.zona))}:</strong> ${esc(textoCapas(capas, p.ajustes.altitud))}.</p>`;
+  }
+  return `<details class="mas-altura"${nubesAltura.abierta ? ' open' : ''}><summary>Nubes por altura (a qué altura y lo densas que son)</summary>${cuerpo}</details>`;
+}
+
+async function cargarAltura() {
+  const clave = `${estado.lugar.lat},${estado.lugar.lon}`;
+  if (nubesAltura.clave === clave && (nubesAltura.estado === 'listo' || nubesAltura.estado === 'cargando')) return;
+  Object.assign(nubesAltura, { clave, estado: 'cargando', horas: null });
+  pintarHoras(prevision());
+  try {
+    const horas = await cargarNubesAltura(estado.lugar.lat, estado.lugar.lon);
+    if (nubesAltura.clave !== clave) return;
+    Object.assign(nubesAltura, { horas, estado: 'listo' });
+  } catch {
+    if (nubesAltura.clave === clave) nubesAltura.estado = 'error';
+  }
+  pintarHoras(prevision());
+}
+
 // La tabla hora a hora, como la de UAV Forecast: una fila por hora y cada
 // dato en su columna, con el color de su factor. Tocar una fila la abre.
 const TORMENTA = new Set([95, 96, 99]);
@@ -635,6 +705,7 @@ function pintarHoras(p) {
       </table>
     </div>
     <p class="nota pista-horas">Toca una hora para ver el detalle. En gris, las horas sin luz${dia.ventana ? '; con raya a la izquierda, la mejor ventana' : ''}.</p>
+    ${bloqueAltura(horas, p, abierta)}
     ${svgNubes(dia, p) ? `<details class="mas-nubes" open><summary>Nubes del día: bajas, medias y altas</summary>${svgNubes(dia, p)}</details>` : ''}
     <details class="mas-grafica"><summary>Gráfica del viento del día</summary>${svgGrafica(dia, p)}</details>`;
 }
@@ -1606,6 +1677,57 @@ async function verZonasMapa({ caja, zoom }) {
   pintarFormasMapa();
 }
 
+// El mapa de nubes: una rejilla de 7 × 7 puntos sobre lo que se ve, con la
+// capa y la hora elegidas. Más oscuro, más cubierto.
+const nubesMapa = { celdas: null, caja: null, pidiendo: 0, vista: null };
+const NOMBRE_CAPA = { bajas: 'Nubes bajas', medias: 'Nubes medias', altas: 'Nubes altas' };
+
+function pintarNubesMapa() {
+  if (!mapa) return;
+  const activo = $('#mapa-nubes').checked;
+  $('#mapa-nubes-capa').disabled = !activo;
+  $('#mapa-nubes-hora').disabled = !activo;
+  if (!activo || !nubesMapa.celdas) {
+    mapa.ponerCeldas([]);
+    if (!activo) $('#mapa-nubes-texto').textContent = '';
+    return;
+  }
+  const capa = $('#mapa-nubes-capa').value;
+  const ms = Math.floor(Date.now() / 3600000) * 3600000 + Number($('#mapa-nubes-hora').value) * 3600000;
+  const celdas = celdasEnHora(nubesMapa.celdas, capa, ms).filter((c) => c.cobertura !== null);
+  mapa.ponerCeldas(celdas.map((c) => ({ ...c, opacidad: (c.cobertura / 100) * 0.75 })));
+  const zona = prevision()?.zona;
+  const media = celdas.length ? Math.round(celdas.reduce((s, c) => s + c.cobertura, 0) / celdas.length) : null;
+  $('#mapa-nubes-texto').textContent = `${NOMBRE_CAPA[capa]} · ${new Intl.DateTimeFormat('es-ES', { weekday: 'short', day: 'numeric', timeZone: zona }).format(new Date(ms))} a las ${hora(ms, zona)}${media !== null ? ` · cubren de media un ${media} %` : ''}. Más oscuro, más cubierto.`;
+}
+
+async function verNubesMapa(v = nubesMapa.vista) {
+  if (v) nubesMapa.vista = v;
+  if (!$('#mapa-nubes').checked || !nubesMapa.vista) return pintarNubesMapa();
+  const { caja, zoom } = nubesMapa.vista;
+  if (zoom < 7) {
+    nubesMapa.celdas = null;
+    pintarNubesMapa();
+    $('#mapa-nubes-texto').textContent = 'Acerca un poco el mapa para ver las nubes.';
+    return;
+  }
+  if (nubesMapa.celdas && cajaDentro(caja, nubesMapa.caja)) return pintarNubesMapa();
+  const pedida = ampliarCaja(caja, 0.25);
+  const turno = ++nubesMapa.pidiendo;
+  $('#mapa-nubes-texto').textContent = 'Cargando el mapa de nubes…';
+  try {
+    const celdas = await cargarNubesRejilla(pedida);
+    if (turno !== nubesMapa.pidiendo) return;
+    Object.assign(nubesMapa, { celdas, caja: pedida });
+  } catch {
+    if (turno !== nubesMapa.pidiendo) return;
+    Object.assign(nubesMapa, { celdas: null, caja: null });
+    $('#mapa-nubes-texto').textContent = 'No se pudo descargar el mapa de nubes.';
+    return;
+  }
+  pintarNubesMapa();
+}
+
 function abrirMapa() {
   const panel = $('#panel-mapa');
   panel.hidden = !panel.hidden;
@@ -1623,7 +1745,10 @@ function abrirMapa() {
       $('#btn-usar-punto').disabled = false;
       consultarPunto(p);
     },
-    alVer: verZonasMapa,
+    alVer: (v) => {
+      verZonasMapa(v);
+      verNubesMapa(v);
+    },
   });
 }
 
@@ -1764,6 +1889,19 @@ function enlazar() {
   });
   $('#form-vuelo').addEventListener('submit', guardarVuelo);
   $('#form-plan').addEventListener('submit', guardarPlan);
+  $('#mapa-nubes').addEventListener('change', () => verNubesMapa());
+  $('#mapa-nubes-capa').addEventListener('change', pintarNubesMapa);
+  $('#mapa-nubes-hora').addEventListener('input', pintarNubesMapa);
+  // <details> no avisa con «click» fiable ni burbujea «toggle»: se escucha en captura.
+  document.addEventListener(
+    'toggle',
+    (e) => {
+      if (!e.target.matches?.('details.mas-altura')) return;
+      nubesAltura.abierta = e.target.open;
+      if (e.target.open) cargarAltura();
+    },
+    true,
+  );
   $('#plan-dia').addEventListener('change', () => horasPlan());
   $('#plan-hora').addEventListener('change', () => previaPlan());
   $('#plan-horas').addEventListener('change', () => previaPlan());

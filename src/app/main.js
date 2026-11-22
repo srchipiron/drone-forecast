@@ -2,7 +2,7 @@
 
 import { cielo } from '../motor/cielo.js';
 import { capasNubes, celdasEnHora, luzNubes, textoCapas, urlWindyNubes } from '../motor/nubes.js';
-import { celdasVeredicto, resumenVeredictos } from '../motor/rejilla.js';
+import { celdasVeredicto, flechasViento, resumenVeredictos } from '../motor/rejilla.js';
 import { sentidoDeslizar } from '../motor/gestos.js';
 import { textoCompartir } from '../motor/compartir.js';
 import { informeDiagnostico } from '../motor/diagnostico.js';
@@ -1681,7 +1681,7 @@ async function verZonasMapa({ caja, zoom }) {
 // El mapa del tiempo: una rejilla de 7 × 7 puntos sobre lo que se ve. O el
 // semáforo de cada celda con tu dron («dónde se puede volar»), o las nubes
 // de una capa (más oscuro, más cubierto), a la hora de la barra.
-const nubesMapa = { celdas: null, caja: null, volar: null, cajaVolar: null, claveVolar: '', pidiendo: 0, vista: null };
+const nubesMapa = { celdas: null, caja: null, volar: null, cajaVolar: null, claveVolar: '', pidiendo: 0, vista: null, enCurso: null };
 const NOMBRE_CAPA = { bajas: 'Nubes bajas', medias: 'Nubes medias', altas: 'Nubes altas' };
 
 function cuandoMapa(ms) {
@@ -1695,13 +1695,27 @@ function pintarNubesMapa() {
   $('#mapa-nubes-capa').disabled = !activo;
   $('#mapa-nubes-hora').disabled = !activo;
   const capa = $('#mapa-nubes-capa').value;
-  const datos = capa === 'volar' ? nubesMapa.volar : nubesMapa.celdas;
+  const deVuelo = capa === 'volar' || capa === 'viento';
+  const datos = deVuelo ? nubesMapa.volar : nubesMapa.celdas;
+  mapa.ponerFlechas([]);
   if (!activo || !datos) {
     mapa.ponerCeldas([]);
     if (!activo) $('#mapa-nubes-texto').textContent = '';
     return;
   }
   const ms = Math.floor(Date.now() / 3600000) * 3600000 + Number($('#mapa-nubes-hora').value) * 3600000;
+  if (capa === 'viento') {
+    const u = estado.ajustes.unidades;
+    const fl = flechasViento(datos, ms);
+    mapa.ponerCeldas([]);
+    mapa.ponerFlechas(fl.map((f) => ({ ...f, texto: partesViento(f.viento, u)[0], clase: `f-${f.estado}` })));
+    const vs = fl.map((f) => f.viento);
+    const rs = fl.map((f) => f.racha).filter(Number.isFinite);
+    $('#mapa-nubes-texto').textContent = fl.length
+      ? `Viento a ${estado.ajustes.altitud} m · ${cuandoMapa(ms)}: de ${fmtViento(Math.min(...vs), u)} a ${fmtViento(Math.max(...vs), u)}${rs.length ? `, rachas hasta ${fmtViento(Math.max(...rs), u)}` : ''}. Las flechas apuntan hacia donde va el viento; el color, como el semáforo con tu dron.`
+      : `Sin previsión de viento para ${cuandoMapa(ms)}.`;
+    return;
+  }
   if (capa === 'volar') {
     const celdas = celdasVeredicto(datos, ms).filter((c) => c.estado);
     mapa.ponerCeldas(celdas.map((c) => ({ ...c, opacidad: 0.45, clase: `v-${c.estado}` })));
@@ -1728,13 +1742,17 @@ async function verNubesMapa(v = nubesMapa.vista) {
     $('#mapa-nubes-texto').textContent = 'Acerca un poco el mapa para verlo.';
     return;
   }
-  const volar = $('#mapa-nubes-capa').value === 'volar';
+  const volar = ['volar', 'viento'].includes($('#mapa-nubes-capa').value);
   // El semáforo depende de tu dron y tus ajustes: si cambian, se vuelve a pedir.
   const clave = JSON.stringify(estado.ajustes);
   const vale = volar ? nubesMapa.volar && nubesMapa.claveVolar === clave && cajaDentro(caja, nubesMapa.cajaVolar) : nubesMapa.celdas && cajaDentro(caja, nubesMapa.caja);
   if (vale) return pintarNubesMapa();
+  // Si ya hay una descarga en camino que cubre esta vista, se espera a esa.
+  const tipo = volar ? `volar:${clave}` : 'nubes';
+  if (nubesMapa.enCurso && nubesMapa.enCurso.tipo === tipo && cajaDentro(caja, nubesMapa.enCurso.caja)) return;
   const pedida = ampliarCaja(caja, 0.25);
   const turno = ++nubesMapa.pidiendo;
+  nubesMapa.enCurso = { tipo, caja: pedida, turno };
   $('#mapa-nubes-texto').textContent = volar ? 'Mirando el tiempo de toda la zona…' : 'Cargando el mapa de nubes…';
   try {
     if (volar) {
@@ -1748,9 +1766,12 @@ async function verNubesMapa(v = nubesMapa.vista) {
     }
   } catch {
     if (turno !== nubesMapa.pidiendo) return;
+    nubesMapa.enCurso = null;
     mapa.ponerCeldas([]);
     $('#mapa-nubes-texto').textContent = 'No se pudo descargar el mapa del tiempo.';
     return;
+  } finally {
+    if (nubesMapa.enCurso?.turno === turno) nubesMapa.enCurso = null;
   }
   pintarNubesMapa();
 }

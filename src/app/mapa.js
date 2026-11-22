@@ -17,13 +17,16 @@ export const URL_TESELAS = 'https://tile.openstreetmap.org';
  *   acercar), con el rectángulo que se ve: quien lo usa decide qué pedir.
  */
 export function crearMapa(caja, { lat, lon, z = 12, alMarcar, alVer = () => {} }) {
-  caja.innerHTML = `<div class="mapa-teselas"></div><svg class="mapa-nubes" aria-hidden="true"></svg><svg class="mapa-zonas" aria-hidden="true"></svg><div class="mapa-marca" hidden></div>
+  caja.innerHTML = `<div class="mapa-teselas"></div><svg class="mapa-nubes" aria-hidden="true"></svg><svg class="mapa-zonas" aria-hidden="true"></svg><svg class="mapa-flechas" aria-hidden="true"></svg><div class="mapa-marca" hidden></div>
     <div class="mapa-zoom"><button type="button" data-zoom="1" aria-label="Acercar">+</button><button type="button" data-zoom="-1" aria-label="Alejar">−</button></div>
     <p class="mapa-credito">© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a></p>`;
   const capa = caja.querySelector('.mapa-teselas');
   const marca = caja.querySelector('.mapa-marca');
   const svg = caja.querySelector('.mapa-zonas');
   const svgNubes = caja.querySelector('.mapa-nubes');
+  const svgFlechas = caja.querySelector('.mapa-flechas');
+  /** @type {{lat: number, lon: number, rumbo: number, texto: string, clase: string}[]} */
+  let flechas = [];
   /** @type {{oeste: number, este: number, sur: number, norte: number, opacidad: number}[]} */
   let celdas = [];
   const imgs = new Map();
@@ -55,6 +58,7 @@ export function crearMapa(caja, { lat, lon, z = 12, alMarcar, alVer = () => {} }
     for (const [clave, img] of imgs) if (!vistas.has(clave)) (img.remove(), imgs.delete(clave));
     pintarFormas(ancho, alto);
     pintarCeldas(ancho, alto);
+    pintarFlechas(ancho, alto);
     marca.hidden = !marcado;
     if (marcado) {
       const m = aTesela(marcado.lat, marcado.lon, zoom);
@@ -104,6 +108,38 @@ export function crearMapa(caja, { lat, lon, z = 12, alMarcar, alVer = () => {} }
       r.setAttribute('fill-opacity', k.opacidad.toFixed(2));
     });
     while (rects.length > celdas.length) rects[rects.length - 1].remove();
+  }
+
+  // Flechas de viento: una por celda, rotada hacia donde va el viento, con
+  // la fuerza escrita debajo. Se rehacen enteras (son 49 como mucho).
+  function pintarFlechas(ancho, alto) {
+    svgFlechas.setAttribute('width', String(Math.round(ancho)));
+    svgFlechas.setAttribute('height', String(Math.round(alto)));
+    svgFlechas.replaceChildren(
+      ...flechas.map((f) => {
+        const t = aTesela(f.lat, f.lon, zoom);
+        const x = ((t.x - c.x) * TAM + ancho / 2).toFixed(1);
+        const y = ((t.y - c.y) * TAM + alto / 2).toFixed(1);
+        const g = document.createElementNS(SVG, 'g');
+        g.setAttribute('class', `flecha ${f.clase}`);
+        const cuerpo = document.createElementNS(SVG, 'g');
+        cuerpo.setAttribute('transform', `translate(${x} ${y}) rotate(${Math.round(f.rumbo)})`);
+        const palo = document.createElementNS(SVG, 'line');
+        palo.setAttribute('x1', '0');
+        palo.setAttribute('x2', '0');
+        palo.setAttribute('y1', '9');
+        palo.setAttribute('y2', '-6');
+        const punta = document.createElementNS(SVG, 'polygon');
+        punta.setAttribute('points', '0,-12 -5,-4 5,-4');
+        cuerpo.append(palo, punta);
+        const texto = document.createElementNS(SVG, 'text');
+        texto.setAttribute('x', x);
+        texto.setAttribute('y', (Number(y) + 22).toFixed(1));
+        texto.textContent = f.texto;
+        g.append(cuerpo, texto);
+        return g;
+      }),
+    );
   }
 
   function avisarVista() {
@@ -172,6 +208,11 @@ export function crearMapa(caja, { lat, lon, z = 12, alMarcar, alVer = () => {} }
     /** Pinta estas zonas (sustituye a las anteriores). */
     ponerFormas(nuevas) {
       formas = nuevas;
+      pintar();
+    },
+    /** Pinta las flechas de viento (sustituye a las anteriores). */
+    ponerFlechas(nuevas) {
+      flechas = nuevas;
       pintar();
     },
     /** Pinta las celdas de nubes (sustituye a las anteriores). */

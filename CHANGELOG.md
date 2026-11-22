@@ -3,6 +3,17 @@
 Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
 `0.0.X` para correcciones. La versión sale en el pie de la app.
 
+## 0.36.0
+
+- **Flechas de viento en el mapa.** En el «Mapa del tiempo», elige **Viento
+  a tu altura**: una flecha por zona que apunta hacia donde va el viento,
+  con su fuerza escrita en tus unidades y del color del semáforo con tu
+  dron (verde, ámbar o rojo). Es el viento a la altura a la que vuelas, no
+  a 10 m. Abajo te dice entre cuánto y cuánto sopla en la zona y hasta
+  dónde llegan las rachas, a la hora de la barra.
+- Si mueves el mapa mientras se está cargando, ya no se descarga dos veces
+  lo mismo.
+
 ## 0.35.0
 
 - **Mapa de «dónde se puede volar».** En el mapa de elegir punto, marca

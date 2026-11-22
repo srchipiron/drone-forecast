@@ -35,6 +35,11 @@ export function veredictosRejilla(json, puntos, { ajustes, kp = [], ahora = Date
         horas: prev.horas.map((h) => ({
           ms: h.ms,
           estado: h.estado,
+          // El viento a tu altura, para las flechas del mapa.
+          viento: Number.isFinite(h.vientoAlt) ? h.vientoAlt : null,
+          racha: Number.isFinite(h.rachaAlt) ? h.rachaAlt : null,
+          dir: Number.isFinite(h.dirAlt) ? h.dirAlt : null,
+          estadoViento: h.factores.find((f) => f.id === 'viento')?.estado ?? 'sin-dato',
           motivos: h.estado === 'ok' ? [] : h.factores.filter((f) => f.estado === h.estado).map((f) => f.nombre),
         })),
       };
@@ -63,4 +68,18 @@ export function resumenVeredictos(celdas) {
   }
   const masRojo = [...porque.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
   return { ...cuenta, masRojo };
+}
+
+/**
+ * Las flechas de viento a la hora ms: una por celda, en su centro, apuntando
+ * hacia donde VA el viento (la dirección meteorológica es de dónde viene).
+ */
+export function flechasViento(celdas, ms) {
+  return celdas
+    .map((c) => {
+      const h = c.horas.find((x) => ms >= x.ms && ms < x.ms + 3600000);
+      if (!h || h.viento === null || h.dir === null) return null;
+      return { lat: c.lat, lon: c.lon, rumbo: (h.dir + 180) % 360, viento: h.viento, racha: h.racha, estado: h.estadoViento };
+    })
+    .filter(Boolean);
 }

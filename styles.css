@@ -750,6 +750,20 @@ dialog h3 { font-size: 0.75rem; font-weight: 700; color: var(--suave); text-tran
 
 .mapa-nubes .celda-nube.v-no { fill: #c01c28; }
 
+.mapa-flechas { position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible; }
+
+.mapa-flechas .flecha line { stroke-width: 3; stroke-linecap: round; }
+
+.mapa-flechas .flecha text { font-size: 11px; font-weight: 700; text-anchor: middle; fill: #0b1220; paint-order: stroke; stroke: #ffffff; stroke-width: 3px; }
+
+.mapa-flechas .f-ok line, .mapa-flechas .f-ok polygon { stroke: #157a3a; fill: #157a3a; }
+
+.mapa-flechas .f-precaucion line, .mapa-flechas .f-precaucion polygon { stroke: #a84a00; fill: #a84a00; }
+
+.mapa-flechas .f-no line, .mapa-flechas .f-no polygon { stroke: #c01c28; fill: #c01c28; }
+
+.mapa-flechas .f-sin-dato line, .mapa-flechas .f-sin-dato polygon { stroke: #5b6475; fill: #5b6475; }
+
 .mapa-nubes { position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible; }
 
 .nubes-mapa { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0.4rem 0.6rem; align-items: center; margin-top: 0.5rem; }

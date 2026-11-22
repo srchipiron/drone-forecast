@@ -48,6 +48,9 @@ const ICONOS = {
   nube: '<path d="M7 15a5 5 0 1 1 9.6-2H17a3 3 0 0 1 0 6H8a4 4 0 0 1-1-4Z"/>',
   modelos: '<path d="M4 18 9 9l4 6 3-4 4 7M4 6h4M4 10h2"/>',
   mision: '<rect x="4" y="5" width="16" height="14" rx="2"/><path d="m8 12 3 3 5-6"/>',
+  turbulencia: '<path d="M3 8c3-3 5 3 8 0s5-3 8 0M3 13c3-3 5 3 8 0s5-3 8 0M3 18c3-3 5 3 8 0"/>',
+  tormenta: '<path d="M7 14a5 5 0 1 1 9.6-2H17a3 3 0 0 1 0 6h-1"/><path d="m12 13-2 4h3l-2 4"/>',
+  hielo: '<path d="M12 2v20M4 7l16 10M20 7 4 17M9 4l3 2 3-2M9 20l3-2 3 2"/>',
   amanecer: '<path d="M4 18h16M7 18a5 5 0 0 1 10 0M12 4v5M9 7l3-3 3 3"/>',
 };
 
@@ -258,6 +261,9 @@ const ICONO_FACTOR = {
   kp: 'kp',
   satelites: 'satelite',
   consenso: 'modelos',
+  turbulencia: 'turbulencia',
+  tormenta: 'tormenta',
+  hielo: 'hielo',
 };
 
 // Flecha hacia donde SOPLA el viento: la dirección meteorológica dice de dónde
@@ -267,26 +273,37 @@ function flecha(grados) {
   return `<svg class="flecha" viewBox="0 0 24 24" aria-hidden="true"><g transform="rotate(${Math.round(grados)} 12 12)"><path d="M12 4v16M6 14l6 6 6-6"/></g></svg>`;
 }
 
-function listaCondiciones(h) {
-  return `<ul class="condiciones">${h.factores
-    .map(
-      (f) => `<li class="condicion ${f.estado}" data-factor="${esc(f.id)}">
+// Las condiciones: primero lo que no está en verde (lo peor arriba), que es
+// lo que hay que leer; lo que está en verde, plegado debajo con su cuenta.
+const ORDEN_FACTOR = { no: 0, precaucion: 1, 'sin-dato': 2, ok: 3 };
+function filaCondicion(f, h) {
+  return `<li class="condicion ${f.estado}" data-factor="${esc(f.id)}">
         ${icono(ICONO_FACTOR[f.id] ?? 'mision')}
         <span class="c-nombre">${esc(f.nombre)}</span>
         <span class="c-valor">${f.id === 'viento' ? flecha(h.dirAlt) : ''}${esc(f.valor)}</span>
         <span class="c-marca" aria-hidden="true">${SIMBOLO[f.estado]}</span><span class="visualmente-oculto">${ESTADOS[f.estado].corto}</span>
         ${f.detalle && f.estado !== 'ok' ? `<span class="c-detalle">${esc(f.detalle)}</span>` : ''}
-      </li>`,
-    )
-    .join('')}</ul>`;
+      </li>`;
+}
+
+function listaCondiciones(h) {
+  const orden = [...h.factores].sort((a, b) => ORDEN_FACTOR[a.estado] - ORDEN_FACTOR[b.estado]);
+  // «Sin dato» no decide la hora: va con las verdes, plegado.
+  const malos = orden.filter((f) => f.estado === 'no' || f.estado === 'precaucion');
+  const verdes = orden.filter((f) => f.estado === 'ok' || f.estado === 'sin-dato');
+  const sinDato = verdes.some((f) => f.estado === 'sin-dato');
+  const resumen = malos.length ? `${verdes.length} condiciones más, en verde${sinDato ? ' o sin dato' : ''}` : `Todas en verde${sinDato ? ' o sin dato' : ''} (${verdes.length})`;
+  const plegadas = verdes.length ? `<details class="condiciones-verdes"><summary>${resumen}</summary><ul class="condiciones">${verdes.map((f) => filaCondicion(f, h)).join('')}</ul></details>` : '';
+  return `${malos.length ? `<ul class="condiciones">${malos.map((f) => filaCondicion(f, h)).join('')}</ul>` : ''}${plegadas}`;
 }
 
 // «☀️ Despejado · 18 °C», como la cabecera de UAV Forecast.
-function lineaCielo(h) {
+function lineaCielo(h, conCapas = false) {
   const c = cielo(h.codigo, h.solElev >= -0.833);
   const t = Number.isFinite(h.temp) ? `${Math.round(h.temp)} °C` : '';
   if (!c && !t) return '';
-  const luz = luzNubes(h);
+  // Las capas de nubes y su luz, solo en el detalle de una hora (en el cartel estorban).
+  const luz = conCapas ? luzNubes(h) : null;
   const capas = luz ? `<p class="nota luz-nubes">Nubes: bajas ${h.nubesBajas ?? '—'} % · medias ${h.nubesMedias ?? '—'} % · altas ${h.nubesAltas ?? '—'} %. ${esc(luz.texto)}.</p>` : '';
   return `<p class="cielo">${c ? `<span aria-hidden="true">${c.icono}</span> ${esc(c.texto)}` : ''}${c && t ? ' · ' : ''}${esc(t)}</p>${capas}`;
 }
@@ -381,13 +398,16 @@ function zonaHtml(z, altitud, vistos = new Set()) {
     ...z.telefonos.map((t) => `<a class="contacto" href="tel:${esc(t.replace(/[^\d+]/g, ''))}">${icono('telefono')}<span>${esc(t)}</span></a>`),
     ...z.enlaces.map((e) => `<a class="contacto" href="${esc(e.url)}" target="_blank" rel="noopener noreferrer">${icono('enlace')}<span>${esc(e.texto)}</span></a>`),
   ].join('');
-  return `<li class="zona ${clase}">
-    <p class="zona-cabecera"><span class="chip ${clase}">${esc(chip)}</span> <strong>${esc(z.nombre)}</strong></p>
-    <p class="zona-datos">${esc(datos.join(' · '))}</p>
-    ${z.aplica !== 'no' && z.destacado && !vistos.has(z.destacado) && vistos.add(z.destacado) ? `<p class="zona-destacado">${esc(z.destacado)}</p>` : ''}
+  // Plegada: a la vista, qué pide, cómo se llama y de qué altura a qué altura;
+  // al tocarla, lo que dice ENAIRE y a quién llamar.
+  const destacado = z.aplica !== 'no' && z.destacado && !vistos.has(z.destacado) && vistos.add(z.destacado) ? `<p class="zona-destacado">${esc(z.destacado)}</p>` : '';
+  return `<li class="zona ${clase}"><details>
+    <summary><span class="zona-cabecera"><span class="chip ${clase}">${esc(chip)}</span> <strong>${esc(z.nombre)}</strong></span>
+    <span class="zona-datos">${esc(datos.join(' · '))}</span></summary>
+    ${destacado}
     ${contactos ? `<div class="zona-contactos">${contactos}</div>` : ''}
-    ${z.texto.length ? `<details class="zona-texto"><summary>Texto completo de ENAIRE</summary>${z.texto.map((t) => `<p>${esc(t)}</p>`).join('')}</details>` : ''}
-  </li>`;
+    ${z.texto.length ? `<div class="zona-texto">${z.texto.map((t) => `<p>${esc(t)}</p>`).join('')}</div>` : ''}
+  </details></li>`;
 }
 
 // Lo que dice el resumen de arriba, y la fila corta del cartel.
@@ -546,26 +566,21 @@ function svgGrafica(dia, p) {
 function svgNubes(dia, p) {
   const c = capasNubes(dia.horas);
   if (!c.hay) return '';
-  const ancho = 340;
-  const izq = 54;
-  const fila = 20;
-  const paso = (ancho - izq) / Math.max(1, c.horas.length);
-  const r = (n) => Math.round(n * 10) / 10;
+  // En HTML, no en SVG: el texto sale nítido y a tamaño de leer, y las celdas
+  // se reparten el ancho. La opacidad va por clases (la CSP no deja estilos
+  // en línea): nd-0 … nd-10, de 10 en 10 %.
+  const nivel = (v) => (v === null ? 'nd-x' : `nd-${Math.round(v / 10)}`);
   const capas = [['altas', 'Altas'], ['medias', 'Medias'], ['bajas', 'Bajas']];
-  const etiquetas = c.horas.filter((_, i) => i % 6 === 0).map((h) => ({ ms: h.ms, x: r(izq + c.horas.indexOf(h) * paso) }));
-  const alto = capas.length * fila + 18;
+  const filas = capas
+    .map(([k, t]) => `<span class="nd-capa">${t}</span><span class="nd-celdas">${c.horas.map((h) => `<i class="${nivel(h[k])}"></i>`).join('')}</span>`)
+    .join('');
+  const horas = c.horas.map((h, i) => `<span>${i % 6 === 0 ? esc(hora(h.ms, p.zona)) : ''}</span>`).join('');
+  const resumen = capas.map(([k, t]) => {
+    const vals = c.horas.map((h) => h[k]).filter((v) => v !== null);
+    return vals.length ? `${t.toLowerCase()} hasta ${Math.max(...vals)} %` : null;
+  }).filter(Boolean).join(', ');
   return `<figure class="nubes-dia">
-    <svg viewBox="0 0 ${ancho} ${alto}" role="img" aria-label="Nubes bajas, medias y altas a lo largo del día">
-      ${capas
-        .map(
-          ([k, t], j) =>
-            `<text class="capa" x="0" y="${j * fila + 14}">${t}</text>${c.horas
-              .map((h, i) => `<rect class="nube ${k}" x="${r(izq + i * paso)}" y="${j * fila + 1}" width="${r(paso - 0.5)}" height="${fila - 2}" fill-opacity="${h[k] === null ? 0 : Math.max(0.05, h[k] / 100).toFixed(2)}"></rect>`)
-              .join('')}`,
-        )
-        .join('')}
-      ${etiquetas.map((e) => `<text x="${e.x}" y="${alto - 2}">${esc(hora(e.ms, p.zona))}</text>`).join('')}
-    </svg>
+    <div class="nd-rejilla" role="img" aria-label="Nubes a lo largo del día: ${esc(resumen)}">${filas}<span></span><span class="nd-horas">${horas}</span></div>
     <figcaption class="nota">Más oscuro, más cubierto. Bajas: tapan y dan luz plana. Altas (cirros): dejan pasar el sol.
       <a href="${esc(urlWindyNubes(estado.lugar.lat, estado.lugar.lon))}" target="_blank" rel="noopener noreferrer">Mapa de nubes en Windy</a></figcaption>
   </figure>`;
@@ -676,7 +691,7 @@ function filaHora(h, p, abierta, ventana) {
     ${COLUMNAS.map((c) => `<td class="e-${esc(porId[c.id] ?? 'sin-dato')}">${c.celda(h, u)}</td>`).join('')}
   </tr>`;
   if (h !== abierta) return fila;
-  return `${fila}<tr class="fila-detalle"><td colspan="${COLUMNAS.length + 2}"><div class="detalle-hora ${h.estado}">${lineaCielo(h)}${bloquePerfil(h, p)}${listaCondiciones(h)}</div></td></tr>`;
+  return `${fila}<tr class="fila-detalle"><td colspan="${COLUMNAS.length + 2}"><div class="detalle-hora ${h.estado}">${lineaCielo(h, true)}${bloquePerfil(h, p)}${listaCondiciones(h)}</div></td></tr>`;
 }
 
 function pintarHoras(p) {

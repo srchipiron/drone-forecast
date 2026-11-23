@@ -3,6 +3,15 @@
 Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
 `0.0.X` para correcciones. La versión sale en el pie de la app.
 
+## 0.38.0
+
+- **«Mis drones» más fácil.** En Ajustes, tus drones salen ahora como
+  etiquetas, cada una con su ✕ para quitarla, y debajo un desplegable
+  **Añadir un dron…** agrupado por marcas (DJI, DJI anteriores, Enterprise,
+  Agras y FlyCart, Autel, Skydio, Parrot). Antes eran 50 casillas en dos
+  columnas con los nombres partidos; la pantalla de Ajustes es ahora un
+  tercio más corta.
+
 ## 0.37.0
 
 Una pantalla principal más clara y más corta (de casi 4 pantallas de móvil

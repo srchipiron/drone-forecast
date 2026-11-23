@@ -1000,6 +1000,12 @@ dialog h3 { font-size: 0.75rem; font-weight: 700; color: var(--suave); text-tran
 
 .form-plan .forma-trabajo input { width: auto; }
 
+.buscar-trabajo { display: flex; gap: 0.4rem; align-items: center; }
+
+.form-plan .buscar-trabajo input { flex: 1; min-width: 0; width: auto; }
+
+.buscar-trabajo button { flex: none; }
+
 .mapa-trabajo { height: 260px; margin: 0.3rem 0; }
 
 .mapa-ruta { position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible; }

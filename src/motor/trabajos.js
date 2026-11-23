@@ -46,7 +46,7 @@ export function crearTrabajo(d, ahora = Date.now()) {
   if (forma === 'puntos' && puntos.length < 2) return { error: 'Marca al menos dos puntos en el mapa (o elige «Un punto»).' };
   if (forma === 'traza' && puntos.length < 2) return { error: 'La traza necesita al menos dos puntos.' };
   const centro = puntos[0] ?? l;
-  if (!centro || !Number.isFinite(centro.lat) || !Number.isFinite(centro.lon) || Math.abs(centro.lat) > 90 || Math.abs(centro.lon) > 180) return { error: 'Elige el lugar del trabajo.' };
+  if (!centro || !Number.isFinite(centro.lat) || !Number.isFinite(centro.lon) || Math.abs(centro.lat) > 90 || Math.abs(centro.lon) > 180) return { error: 'Falta el sitio: búscalo, usa tu ubicación o tócalo en el mapa.' };
   if (!TIPOS_TRABAJO.includes(d.tipo)) return { error: 'Elige el tipo de trabajo.' };
   if (!esFecha(d.desde) || !esFecha(d.hasta)) return { error: 'Pon las fechas del permiso.' };
   if (d.hasta < d.desde) return { error: 'El permiso termina antes de empezar: revisa las fechas.' };
@@ -77,6 +77,8 @@ export function crearTrabajo(d, ahora = Date.now()) {
       jornadas,
       horasJornada,
       fraccionable: jornadas > 1 && Boolean(d.fraccionable),
+      // No comparte horas con ningún otro trabajo (p. ej. cuando vais los dos).
+      exclusivo: Boolean(d.exclusivo),
       ajustes,
       // Los vuelos apuntados en «Vuelos planificados» desde este trabajo.
       planes: Array.isArray(d.planes) ? d.planes.filter((x) => typeof x === 'string').slice(0, MAXIMO_JORNADAS) : [],
@@ -108,7 +110,7 @@ function partesLocales(ms, zona) {
  * del horario, en verde si lo hay; si no, en ámbar. Sin tramo, el porqué.
  * @param {{clave: string, horas: object[]}} dia  un día de construirPrevision()
  */
-export function valorarDia(dia, trabajo, zona, ahora = Date.now()) {
+export function valorarDia(dia, trabajo, zona, ahora = Date.now(), ocupado = []) {
   const enHorario = dia.horas.filter((h) => {
     const { hora } = partesLocales(h.ms, zona);
     return hora >= trabajo.horaInicio && hora < trabajo.horaFin;
@@ -116,15 +118,19 @@ export function valorarDia(dia, trabajo, zona, ahora = Date.now()) {
   const futuras = enHorario.filter((h) => h.ms + HORA > ahora);
   if (!futuras.length) return { clave: dia.clave, estado: 'no', porQue: enHorario.length ? 'ya pasó' : 'fuera de horario' };
   const n = trabajo.horasJornada;
-  const buscar = (vale) => {
+  // Las horas en que ya vuela otro trabajo que no se puede solapar.
+  const libre = (h) => !ocupado.some((o) => h.ms < o.fin && h.ms + HORA > o.inicio);
+  const buscar = (vale, conLibre = true) => {
     for (let k = 0; k + n <= futuras.length; k++) {
       const tramo = futuras.slice(k, k + n);
-      if (tramo.every((h, i) => vale(h.estado) && h.ms === tramo[0].ms + i * HORA)) return tramo;
+      if (tramo.every((h, i) => vale(h.estado) && (!conLibre || libre(h)) && h.ms === tramo[0].ms + i * HORA)) return tramo;
     }
     return null;
   };
+  const volable = (e) => e === 'ok' || e === 'precaucion';
   const verde = buscar((e) => e === 'ok');
-  const tramo = verde ?? buscar((e) => e === 'ok' || e === 'precaucion');
+  const tramo = verde ?? buscar(volable);
+  if (!tramo && ocupado.length && buscar(volable, false)) return { clave: dia.clave, estado: 'no', porQue: 'otro trabajo' };
   if (!tramo) {
     // Quedan horas pero no seguidas: si alguna se puede volar, lo dice.
     const sueltas = futuras.some((h) => h.estado === 'ok' || h.estado === 'precaucion');
@@ -147,7 +153,7 @@ const puntos = (lista) => lista.reduce((s, d) => s + RANGO[d.estado], 0);
  *   dias: cada día del permiso que queda (ok, precaucion, no o sin-prevision);
  *   elegidos: las jornadas propuestas, por fecha.
  */
-export function organizarTrabajo(trabajo, p, ahora = Date.now()) {
+export function organizarTrabajo(trabajo, p, ahora = Date.now(), ocupado = []) {
   const hoy = partesLocales(ahora, p.zona).clave;
   const hastaPrevision = p.dias.at(-1)?.clave ?? null;
   if (trabajo.hasta < hoy) return { estado: 'caducado', dias: [], elegidos: [], faltan: trabajo.jornadas, hastaPrevision };
@@ -157,7 +163,7 @@ export function organizarTrabajo(trabajo, p, ahora = Date.now()) {
     // El último día de la previsión puede venir a medias: si no cubre el
     // horario entero, todavía no se sabe.
     const cubre = d && d.horas.some((h) => partesLocales(h.ms, p.zona).hora >= trabajo.horaFin - 1);
-    return cubre ? valorarDia(d, trabajo, p.zona, ahora) : { clave, estado: 'sin-prevision' };
+    return cubre ? valorarDia(d, trabajo, p.zona, ahora, ocupado) : { clave, estado: 'sin-prevision' };
   });
   const sinPrevision = dias.some((d) => d.estado === 'sin-prevision');
   const n = trabajo.jornadas;
@@ -211,6 +217,32 @@ export function combinarPrevisiones(lista) {
     .map((d) => ({ ...d, horas: d.horas.map(combinar).filter(Boolean) }))
     .filter((d) => d.horas.length);
   return { ...primera, horas: dias.flatMap((d) => d.horas), dias, puntos: lista.length };
+}
+
+/**
+ * Organiza todos los trabajos a la vez para que los que no se pueden solapar
+ * no compartan horas con ningún otro. Va primero el permiso que antes acaba
+ * (el más urgente); cada uno ve ocupadas las jornadas ya repartidas con las
+ * que no puede coincidir (las de cualquiera si él es exclusivo; si no, las
+ * de los exclusivos) y, si es exclusivo, también los vuelos planificados a
+ * mano (`otros`).
+ * @param {Array<{trabajo: object, p: object|null}>} lista  p null: aún sin previsión (no se organiza)
+ * @param {{inicio: number, fin: number}[]} otros
+ * @returns {Map<string, object>}  por id de trabajo, su organizarTrabajo()
+ */
+export function organizarTodos(lista, ahora = Date.now(), otros = []) {
+  const orden = lista
+    .filter((x) => x.p)
+    .sort((a, b) => (a.trabajo.hasta < b.trabajo.hasta ? -1 : a.trabajo.hasta > b.trabajo.hasta ? 1 : a.trabajo.desde < b.trabajo.desde ? -1 : a.trabajo.desde > b.trabajo.desde ? 1 : a.trabajo.id < b.trabajo.id ? -1 : 1));
+  const repartidas = [];
+  const salida = new Map();
+  for (const { trabajo, p } of orden) {
+    const ocupado = trabajo.exclusivo ? [...repartidas, ...otros] : repartidas.filter((r) => r.exclusivo);
+    const org = organizarTrabajo(trabajo, p, ahora, ocupado);
+    salida.set(trabajo.id, org);
+    for (const d of org.elegidos) repartidas.push({ inicio: d.inicio, fin: d.fin, exclusivo: trabajo.exclusivo });
+  }
+  return salida;
 }
 
 /** Los vuelos planificados de una propuesta: uno por jornada. */

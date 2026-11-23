@@ -578,12 +578,23 @@ try {
   await page.locator('#dlg-trabajo').waitFor();
   assert.equal(await page.isDisabled('#trab-fraccionable'), true, 'con una jornada no hay nada que partir');
   assert.match(await page.textContent('#trab-dron'), /^Se juzga con DJI Mini 5 Pro a 120 m/);
-  assert.match(await page.textContent('#trab-lugar'), /Getafe<img/);
+  // El sitio se elige aquí mismo, sin pasar por el lugar de la previsión.
+  assert.equal(await page.textContent('#trab-puntos'), 'Aún sin sitio.');
   const hoyTrab = await page.inputValue('#trab-desde');
   assert.match(hoyTrab, /^\d{4}-\d\d-\d\d$/, 'el permiso empieza hoy por defecto');
   await page.locator('#form-trabajo button[type="submit"]').click();
   assert.match(await page.textContent('#trab-error'), /nombre/, 'sin nombre no se guarda');
   await page.fill('#trab-nombre', 'Orto <i>parcela</i>');
+  await page.locator('#form-trabajo button[type="submit"]').click();
+  assert.match(await page.textContent('#trab-error'), /Falta el sitio/, 'sin sitio no se guarda');
+  await page.fill('#trab-buscar', 'Getafe');
+  await page.press('#trab-buscar', 'Enter');
+  assert.equal(await page.locator('#dlg-trabajo').isVisible(), true, 'Intro busca, no envía el formulario');
+  await page.locator('[data-trab-res="0"]').click();
+  assert.equal(await page.textContent('#trab-puntos'), 'Punto: 40.30570, -3.73290.');
+  assert.equal(await page.inputValue('#trab-nombre-zona'), 'Getafe<img src=x onerror="window.__xss=1">');
+  assert.equal(await page.locator('#trab-mapa .ruta-punto').count(), 1);
+  if (process.env.CAPTURA_TRABAJOS) await page.locator('#dlg-trabajo').screenshot({ path: process.env.CAPTURA_TRABAJOS.replace('.png', '-punto.png') });
   await page.fill('#trab-hasta', '2020-01-01');
   await page.locator('#form-trabajo button[type="submit"]').click();
   assert.match(await page.textContent('#trab-error'), /antes de empezar/);
@@ -644,10 +655,15 @@ try {
   // luego una traza importada de un GPX y una misión de DJI (KMZ).
   await page.locator('[data-accion="nuevo-trabajo"]').click();
   await page.fill('#trab-nombre', 'Inspección línea');
-  assert.equal(await page.locator('#trab-dibujo').isVisible(), false, 'un punto: sin mapa');
-  await page.check('input[name="trab-forma"][value="puntos"]');
-  assert.equal(await page.locator('#trab-un-punto').isVisible(), false);
+  // Un punto: tocar el mapa lo pone y tocar otra vez lo mueve (sigue siendo uno).
   await page.locator('#trab-mapa .mapa-zoom').waitFor();
+  await page.locator('#trab-mapa').click({ position: { x: 120, y: 120 } });
+  assert.match(await page.textContent('#trab-puntos'), /^Punto: -?\d+\.\d{5}, -?\d+\.\d{5}\.$/);
+  assert.equal(await page.inputValue('#trab-nombre-zona'), 'Punto del mapa');
+  await page.locator('#trab-mapa').click({ position: { x: 200, y: 150 } });
+  assert.equal(await page.locator('#trab-mapa .ruta-punto').count(), 1);
+  await page.locator('[data-accion="trab-vaciar"]').click();
+  await page.check('input[name="trab-forma"][value="puntos"]');
   await page.locator('#trab-mapa').click({ position: { x: 80, y: 80 } });
   assert.equal(await page.textContent('#trab-puntos'), '1 punto: añade al menos otro.');
   await page.locator('#trab-mapa').click({ position: { x: 260, y: 180 } });
@@ -669,19 +685,20 @@ try {
   await page.setInputFiles('#trab-fichero', { name: 'ruta.gpx', mimeType: 'application/gpx+xml', buffer: Buffer.from('<gpx><trk><name>Línea <b>3</b></name><trkseg><trkpt lat="40.30" lon="-3.75"/><trkpt lat="40.33" lon="-3.72"/><trkpt lat="40.35" lon="-3.68"/></trkseg></trk></gpx>') });
   await page.locator('#trab-puntos').filter({ hasText: 'Importado' }).waitFor();
   assert.match(await page.textContent('#trab-puntos'), /^Importado: Traza de 3 puntos, [\d,]+ km; el tiempo se mirará en \d\.$/);
-  assert.equal(await page.inputValue('#trab-nombre-zona'), 'Línea <b>3</b>');
-  // KMZ de DJI Pilot 2 (comprimido): sustituye a lo anterior y no pisa el nombre ya puesto.
+  assert.equal(await page.inputValue('#trab-nombre-zona'), 'Línea <b>3</b>', 'el nombre puesto solo («Punto del mapa») lo cambia el del fichero');
+  await page.fill('#trab-nombre-zona', 'Línea norte');
+  // KMZ de DJI Pilot 2 (comprimido): sustituye a lo anterior y no pisa el nombre escrito a mano.
   const wpml = '<kml xmlns:wpml="http://www.dji.com/wpmz/1.0.2"><Document><Placemark><Point><coordinates>-3.7329,40.3057</coordinates></Point></Placemark><Placemark><Point><coordinates>-3.7200,40.3100</coordinates></Point></Placemark><Placemark><Point><coordinates>-3.7100,40.3200</coordinates></Point></Placemark><Placemark><Point><coordinates>-3.7000,40.3300</coordinates></Point></Placemark></Document></kml>';
   await page.setInputFiles('#trab-fichero', { name: 'mision.kmz', mimeType: 'application/vnd.google-earth.kmz', buffer: kmz('wpmz/waylines.wpml', wpml) });
   await page.locator('#trab-puntos').filter({ hasText: 'Traza de 4 puntos' }).waitFor();
   assert.equal(await page.isChecked('input[name="trab-forma"][value="traza"]'), true);
-  assert.equal(await page.inputValue('#trab-nombre-zona'), 'Línea <b>3</b>');
+  assert.equal(await page.inputValue('#trab-nombre-zona'), 'Línea norte');
   if (process.env.CAPTURA_TRABAJOS) await page.locator('#dlg-trabajo').screenshot({ path: process.env.CAPTURA_TRABAJOS.replace('.png', '-traza.png') });
   const pedidasTraza = pedidasMeteo.length;
   await page.locator('#form-trabajo button[type="submit"]').click();
   const tarjetaTraza = page.locator('#lista-trabajos .trabajo').filter({ hasText: 'Inspección línea' });
   await tarjetaTraza.locator('.t-dias').waitFor();
-  assert.match(await tarjetaTraza.textContent(), /Línea <b>3<\/b> \(traza de [\d,]+ km, el tiempo mirado en \d puntos\)/);
+  assert.match(await tarjetaTraza.textContent(), /Línea norte \(traza de [\d,]+ km, el tiempo mirado en \d puntos\)/);
   assert.match(await tarjetaTraza.locator('.t-propuesta').textContent(), /^Lo mejor/);
   const pedidaTraza = pedidasMeteo.slice(pedidasTraza).find((u) => new URL(u).searchParams.get('latitude').includes(','));
   assert.ok(pedidaTraza, 'una sola petición con todos los puntos de la traza');
@@ -696,6 +713,32 @@ try {
   await page.locator('[data-borrar-trabajo]').click();
   assert.equal(await page.locator('#lista-trabajos .trabajo').count(), 0);
   assert.match(await page.textContent('#anuncio-trabajos'), /^Trabajo borrado/);
+  // Dos trabajos en el mismo sitio y con el mismo horario; uno «sin solapar»
+  // (vais los dos): sus horas propuestas no coinciden con las del otro.
+  assert.equal(await page.isChecked('#trab-exclusivo'), false);
+  await page.evaluate(() => {
+    const hoy = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+    const dentro = new Date(Date.parse(`${hoy}T12:00:00Z`) + 6 * 86400000).toISOString().slice(0, 10);
+    const base = { lugar: { nombre: 'Getafe', lat: 40.3057, lon: -3.7329 }, tipo: 'general', desde: hoy, hasta: dentro, horaInicio: 0, horaFin: 24, jornadas: 1, horasJornada: 3, fraccionable: false, ajustes: JSON.parse(localStorage.getItem('drone-forecast:ajustes')), planes: [] }; // con los 4 satélites de mínimo de esta parte de la prueba
+    localStorage.setItem('drone-forecast:trabajos', JSON.stringify([{ ...base, id: 'tA', nombre: 'Normal' }, { ...base, id: 'tB', nombre: 'Los dos', exclusivo: true }]));
+  });
+  await page.reload();
+  await page.locator('[data-vista="trabajos"]').click();
+  await page.locator('#lista-trabajos .trabajo .t-dias').first().waitFor();
+  await page.locator('#lista-trabajos .trabajo:nth-child(2) .t-dias').waitFor();
+  assert.match(await page.textContent('#lista-trabajos .trabajo:nth-child(2)'), /1 jornada de 3 h, sin solapar con otros trabajos/);
+  const tramo = async (n) => {
+    const t = await page.textContent(`#lista-trabajos .trabajo:nth-child(${n}) .t-propuesta`);
+    const m = t.match(/(\w+, \d{1,2} \w+) de (\d\d):00 a (\d\d):00/);
+    assert.ok(m, t);
+    return { dia: m[1], de: Number(m[2]), a: Number(m[3]) || 24 };
+  };
+  const [normal, exclusivo] = [await tramo(1), await tramo(2)];
+  assert.ok(normal.dia !== exclusivo.dia || normal.a <= exclusivo.de || exclusivo.a <= normal.de, `se solapan: ${JSON.stringify([normal, exclusivo])}`);
+  await page.locator('#lista-trabajos .trabajo:nth-child(2) [data-editar-trabajo]').click();
+  assert.equal(await page.isChecked('#trab-exclusivo'), true, 'el formulario lo trae marcado');
+  await page.locator('[data-accion="cerrar-trabajo"]').click();
+  await page.evaluate(() => localStorage.removeItem('drone-forecast:trabajos'));
   await page.evaluate(() => localStorage.removeItem('drone-forecast:planes'));
   await page.locator('[data-vista="prevision"]').click();
 

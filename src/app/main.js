@@ -13,7 +13,7 @@ import { DRONES } from '../motor/drones.js';
 import { MISIONES, MODOS } from '../motor/misiones.js';
 import { MARGEN_DIARIO, MAXIMO_PLANES, NOMBRE_ESTADO, anadirPlan, crearPlan, cuandoPlan, empeora, fasePlan, fijarAjustesPlanes, huecosPlan, icsPlan, planesValidos, valorarPlan } from '../motor/planificado.js';
 import { construirPrevision, normalizarAjustes, resumenDias } from '../motor/prevision.js';
-import { MAXIMO_TRABAJOS, TIPOS_TRABAJO, combinarPrevisiones, crearTrabajo, organizarTrabajo, planesDeTrabajo, trabajosValidos } from '../motor/trabajos.js';
+import { MAXIMO_TRABAJOS, TIPOS_TRABAJO, combinarPrevisiones, crearTrabajo, organizarTodos, planesDeTrabajo, trabajosValidos } from '../motor/trabajos.js';
 import { MAX_PUNTOS, centroDe, leerTraza, limpiarPuntos, longitudKm, puntosTiempo, zoomParaVer } from '../motor/traza.js';
 import { leerFicheroTraza } from './ficheros.js';
 import { fmtHora as hora, fmtViento } from '../motor/unidades.js';
@@ -115,7 +115,7 @@ const estado = {
   avisoUltimo: '',
   // Trabajos: el que se edita en el formulario y los lugares que ofrece.
   trabajoEditando: null,
-  lugaresTrabajo: [],
+  resultadosTrabajo: [],
   // Los puntos que se van marcando en el mapa del formulario (varios puntos o traza).
   dibujo: [],
 };
@@ -1313,16 +1313,29 @@ function textoZona(lugar) {
   return `${zona}, el tiempo mirado en ${n} ${n === 1 ? 'punto' : 'puntos'}`;
 }
 
+// Todos los trabajos a la vez: los que no se pueden solapar no comparten
+// horas con otros ni con los vuelos planificados a mano.
+function organizarTrabajos(lista) {
+  const pps = new Map(lista.map((t) => [t.id, previsionTrabajo(t)]));
+  const deTrabajos = new Set(lista.flatMap((t) => t.planes));
+  const otros = planesGuardados()
+    .filter((x) => !deTrabajos.has(x.id))
+    .map((x) => ({ inicio: x.ms, fin: x.ms + x.horas * 3600000 }));
+  const listos = lista.map((t) => ({ trabajo: t, p: pps.get(t.id) && pps.get(t.id) !== 'error' ? pps.get(t.id) : null }));
+  return { pps, orgs: organizarTodos(listos, Date.now(), otros) };
+}
+
 function pintarTrabajos() {
   if (estado.vista !== 'trabajos') return;
   const lista = trabajosGuardados();
   const planes = planesGuardados();
+  const { pps, orgs } = organizarTrabajos(lista);
   $('#lista-trabajos').innerHTML = lista
     .map((t) => {
-      const pp = previsionTrabajo(t);
-      const org = pp && pp !== 'error' ? organizarTrabajo(t, pp) : null;
+      const pp = pps.get(t.id);
+      const org = orgs.get(t.id) ?? null;
       const tipo = MISIONES[t.tipo]?.nombre ?? t.tipo;
-      const jornadas = t.jornadas === 1 ? `1 jornada de ${t.horasJornada} h` : `${t.jornadas} jornadas de ${t.horasJornada} h, ${t.fraccionable ? 'se pueden partir' : 'seguidas'}`;
+      const jornadas = `${t.jornadas === 1 ? `1 jornada de ${t.horasJornada} h` : `${t.jornadas} jornadas de ${t.horasJornada} h, ${t.fraccionable ? 'se pueden partir' : 'seguidas'}`}${t.exclusivo ? ', sin solapar con otros trabajos' : ''}`;
       const cabecera = `<div><strong>${esc(t.nombre)}</strong> · ${esc(t.lugar.nombre)}${t.lugar.forma ? ` <span class="nota">(${esc(textoZona(t.lugar))})</span>` : ''}</div>
         <div class="nota">${esc(tipo)} · permiso del ${esc(fechaLarga(t.desde))} al ${esc(fechaLarga(t.hasta))} · de ${esc(t.horaInicio)} a ${esc(t.horaFin)} h · ${esc(jornadas)}</div>`;
       const borrar = `<button type="button" class="icono" data-borrar-trabajo="${esc(t.id)}" aria-label="Borrar el trabajo ${esc(t.nombre)}">✕</button>`;
@@ -1357,24 +1370,11 @@ function pintarTrabajos() {
   if (!lista.length) $('#lista-trabajos').innerHTML = '<li class="nota sin-trabajos">Aún no tienes trabajos.</li>';
 }
 
-// Los lugares que se pueden elegir: el de la pantalla y los favoritos (sin repetir).
-function lugaresTrabajo(actual) {
-  const salida = [];
-  for (const l of [actual, estado.lugar, ...estado.favoritos]) if (l && !salida.some((x) => mismoSitio(x, l))) salida.push(l);
-  return salida;
-}
-
 function abrirTrabajo(id = null) {
   const t = id ? trabajosGuardados().find((x) => x.id === id) : null;
   estado.trabajoEditando = t?.id ?? null;
-  estado.lugaresTrabajo = lugaresTrabajo(t?.lugar);
-  if (!estado.lugaresTrabajo.length) {
-    abrirLugar();
-    return;
-  }
   $('#form-trabajo').reset();
   $('#titulo-trabajo').textContent = t ? 'Editar trabajo' : 'Nuevo trabajo';
-  $('#trab-lugar').innerHTML = estado.lugaresTrabajo.map((l, i) => `<option value="${i}">${esc(l.nombre)}</option>`).join('');
   $('#trab-tipo').innerHTML = TIPOS_TRABAJO.map((m) => `<option value="${esc(m)}">${esc(MISIONES[m].nombre)}</option>`).join('');
   const hoy = hoyLocal();
   const dentroDe = (n) => new Date(Date.parse(`${hoy}T12:00:00Z`) + n * 86400000).toISOString().slice(0, 10);
@@ -1388,10 +1388,14 @@ function abrirTrabajo(id = null) {
   $('#trab-jornadas').value = String(t?.jornadas ?? 1);
   $('#trab-horas').value = String(t?.horasJornada ?? 2);
   $('#trab-fraccionable').checked = Boolean(t?.fraccionable);
+  $('#trab-exclusivo').checked = Boolean(t?.exclusivo);
+  // El sitio se elige aquí mismo (buscar, mapa, ubicación o fichero): el
+  // trabajo no depende del lugar de la pantalla de previsión.
   const forma = t?.lugar.forma ?? 'punto';
   document.querySelector(`input[name="trab-forma"][value="${forma}"]`).checked = true;
-  estado.dibujo = t?.lugar.puntos ? [...t.lugar.puntos] : [];
-  $('#trab-nombre-zona').value = t?.lugar.forma ? t.lugar.nombre : '';
+  estado.dibujo = !t ? [] : t.lugar.puntos ? [...t.lugar.puntos] : [{ lat: t.lugar.lat, lon: t.lugar.lon }];
+  $('#trab-nombre-zona').value = t?.lugar.nombre ?? '';
+  $('#trab-resultados').innerHTML = '';
   const dron = DRONES.find((d) => d.id === ajustes.dron)?.nombre ?? (ajustes.dron === 'personalizado' ? 'tu dron personalizado' : 'tu dron');
   $('#trab-dron').textContent = `Se juzga con ${dron} a ${ajustes.altitud ?? estado.ajustes.altitud} m${t ? ' (los de cuando lo creaste)' : ' (los que tienes puestos ahora)'}.`;
   $('#trab-error').textContent = '';
@@ -1400,32 +1404,29 @@ function abrirTrabajo(id = null) {
   pintarFormaTrabajo(true);
 }
 
-// Un punto: el desplegable de lugares. Varios puntos o traza: el mapa.
+const formaTrabajo = () => new FormData($('#form-trabajo')).get('trab-forma');
+const AYUDA_FORMA = {
+  punto: 'Busca el sitio, usa tu ubicación o toca el mapa.',
+  puntos: 'Toca el mapa para añadir cada punto (o búscalos), o importa un KML, KMZ o GPX.',
+  traza: 'Toca el mapa punto a punto a lo largo de la traza, o importa un KML, KMZ (DJI Pilot) o GPX.',
+};
+
+// El mapa del formulario: un punto (tocar lo mueve) o varios / traza (tocar añade).
 let mapaTrabajo = null;
 function pintarFormaTrabajo(centrar = false) {
-  const forma = new FormData($('#form-trabajo')).get('trab-forma');
-  const dibujo = forma !== 'punto';
-  $('#trab-un-punto').hidden = dibujo;
-  $('#trab-dibujo').hidden = !dibujo;
-  if (!dibujo) return;
+  const forma = formaTrabajo();
+  if (forma === 'punto' && estado.dibujo.length > 1) estado.dibujo = estado.dibujo.slice(0, 1);
+  $('#trab-ayuda-dibujo').textContent = AYUDA_FORMA[forma];
+  $('[data-accion="trab-deshacer"]').hidden = forma === 'punto';
   const caja = $('#trab-mapa');
   const ver = () => {
-    const pts = estado.dibujo.length ? estado.dibujo : [estado.lugaresTrabajo[0] ?? { lat: 40.2, lon: -3.7 }];
+    const pts = estado.dibujo.length ? estado.dibujo : [estado.lugar ?? { lat: 40.2, lon: -3.7 }];
     const { width, height } = caja.getBoundingClientRect();
     const c = centroDe(pts);
-    return { lat: c.lat, lon: c.lon, z: estado.dibujo.length > 1 ? zoomParaVer(pts, width, height) : 13 };
+    return { lat: c.lat, lon: c.lon, z: estado.dibujo.length > 1 ? zoomParaVer(pts, width, height) : estado.dibujo.length || estado.lugar ? 13 : 6 };
   };
   if (!mapaTrabajo) {
-    const v = ver();
-    mapaTrabajo = crearMapa(caja, {
-      ...v,
-      alMarcar: (p) => {
-        mapaTrabajo.quitarMarca();
-        if (estado.dibujo.length >= MAX_PUNTOS) return;
-        estado.dibujo.push({ lat: Number(p.lat.toFixed(5)), lon: Number(p.lon.toFixed(5)) });
-        pintarDibujo();
-      },
-    });
+    mapaTrabajo = crearMapa(caja, { ...ver(), alMarcar: (p) => (mapaTrabajo.quitarMarca(), anadirPunto({ lat: p.lat, lon: p.lon }, 'Punto del mapa')) });
   } else if (centrar) {
     const v = ver();
     mapaTrabajo.centrar(v.lat, v.lon, v.z);
@@ -1433,14 +1434,74 @@ function pintarFormaTrabajo(centrar = false) {
   pintarDibujo();
 }
 
+// Un sitio nuevo (tocado, buscado o la ubicación): en «un punto» sustituye al
+// anterior y pone su nombre si no hay uno escrito a mano; si no, se añade.
+function anadirPunto(p, nombre = '', centrar = false) {
+  const q = { lat: Number(p.lat.toFixed(5)), lon: Number(p.lon.toFixed(5)) };
+  if (formaTrabajo() === 'punto') {
+    estado.dibujo = [q];
+    const campo = $('#trab-nombre-zona');
+    if (nombre && (!campo.value || campo.dataset.auto === '1')) (campo.value = nombre.slice(0, 80)), (campo.dataset.auto = '1');
+  } else if (estado.dibujo.length < MAX_PUNTOS) estado.dibujo.push(q);
+  if (centrar) mapaTrabajo?.centrar(q.lat, q.lon, Math.max(mapaTrabajo.zoom(), 13));
+  pintarDibujo();
+}
+
 function pintarDibujo() {
-  const forma = new FormData($('#form-trabajo')).get('trab-forma');
+  const forma = formaTrabajo();
   const n = estado.dibujo.length;
   mapaTrabajo?.ponerRuta(estado.dibujo, forma === 'traza');
   $('#trab-error').textContent = '';
-  if (!n) return void ($('#trab-puntos').textContent = 'Aún sin puntos.');
   const lugar = { forma, puntos: estado.dibujo };
-  $('#trab-puntos').textContent = n < 2 ? '1 punto: añade al menos otro.' : `${forma === 'traza' ? `Traza de ${n} puntos, ${km(longitudKm(estado.dibujo))}` : `${n} puntos`}; el tiempo se mirará en ${puntosTiempo(lugar).length}.`;
+  $('#trab-puntos').textContent = !n
+    ? 'Aún sin sitio.'
+    : forma === 'punto'
+      ? `Punto: ${estado.dibujo[0].lat.toFixed(5)}, ${estado.dibujo[0].lon.toFixed(5)}.`
+      : n < 2
+        ? '1 punto: añade al menos otro.'
+        : `${forma === 'traza' ? `Traza de ${n} puntos, ${km(longitudKm(estado.dibujo))}` : `${n} puntos`}; el tiempo se mirará en ${puntosTiempo(lugar).length}.`;
+}
+
+async function buscarTrabajo() {
+  const t = $('#trab-buscar').value.trim();
+  const caja = $('#trab-resultados');
+  const coords = t.match(/^(-?\d{1,2}(?:\.\d+)?)\s*[,;\s]\s*(-?\d{1,3}(?:\.\d+)?)$/);
+  if (coords && Math.abs(Number(coords[1])) <= 90 && Math.abs(Number(coords[2])) <= 180) {
+    caja.innerHTML = '';
+    return anadirPunto({ lat: Number(coords[1]), lon: Number(coords[2]) }, `${Number(coords[1]).toFixed(4)}, ${Number(coords[2]).toFixed(4)}`, true);
+  }
+  if (t.length < 2) return;
+  caja.innerHTML = '<li class="nota">Buscando…</li>';
+  try {
+    estado.resultadosTrabajo = await buscarLugar(t);
+    caja.innerHTML = estado.resultadosTrabajo.length
+      ? estado.resultadosTrabajo.map((r, i) => `<li><button type="button" data-trab-res="${i}">${esc(r.nombre)} <span class="nota">${esc(r.zona)}</span></button></li>`).join('')
+      : '<li class="nota">Nada con ese nombre.</li>';
+  } catch (e) {
+    caja.innerHTML = `<li class="nota">No se pudo buscar (${esc(e.message)}).</li>`;
+  }
+}
+
+function elegirResultadoTrabajo(i) {
+  const r = estado.resultadosTrabajo[i];
+  if (!r) return;
+  $('#trab-resultados').innerHTML = '';
+  $('#trab-buscar').value = '';
+  if (formaTrabajo() === 'traza') return void mapaTrabajo?.centrar(r.lat, r.lon, 13); // en una traza, solo lleva allí
+  anadirPunto(r, r.nombre, true);
+}
+
+async function ubicacionTrabajo(b) {
+  if (!navigator.geolocation) return void ($('#trab-error').textContent = 'Este navegador no da la ubicación: busca el sitio o tócalo en el mapa.');
+  b.classList.add('girando');
+  try {
+    const p = await pedirUbicacion(navigator.geolocation);
+    anadirPunto({ lat: p.coords.latitude, lon: p.coords.longitude }, 'Mi ubicación', true);
+  } catch (e) {
+    $('#trab-error').textContent = mensajeUbicacion(e);
+  } finally {
+    b.classList.remove('girando');
+  }
 }
 
 async function importarTraza(fichero) {
@@ -1450,7 +1511,8 @@ async function importarTraza(fichero) {
     if (r.error) throw new Error(r.error);
     document.querySelector(`input[name="trab-forma"][value="${r.forma}"]`).checked = true;
     estado.dibujo = r.puntos;
-    if (!$('#trab-nombre-zona').value) $('#trab-nombre-zona').value = (r.nombre || fichero.name.replace(/\.[^.]+$/, '')).slice(0, 80);
+    const campo = $('#trab-nombre-zona');
+    if (!campo.value || campo.dataset.auto === '1') (campo.value = (r.nombre || fichero.name.replace(/\.[^.]+$/, '')).slice(0, 80)), (campo.dataset.auto = '1');
     pintarFormaTrabajo(true);
     $('#trab-puntos').textContent = `Importado: ${$('#trab-puntos').textContent}`;
   } catch (e) {
@@ -1468,8 +1530,8 @@ function pintarFraccionable() {
 }
 
 function lugarDelFormulario() {
-  const forma = new FormData($('#form-trabajo')).get('trab-forma');
-  if (forma === 'punto') return estado.lugaresTrabajo[Number($('#trab-lugar').value)];
+  const forma = formaTrabajo();
+  if (forma === 'punto') return estado.dibujo[0] ? { nombre: $('#trab-nombre-zona').value.trim() || 'Punto del mapa', ...estado.dibujo[0] } : null;
   const puntos = limpiarPuntos(estado.dibujo);
   const nombre = $('#trab-nombre-zona').value.trim() || (forma === 'traza' && puntos.length > 1 ? `Traza de ${km(longitudKm(puntos))}` : `${puntos.length} puntos`);
   return { nombre, forma, puntos };
@@ -1495,6 +1557,7 @@ function guardarTrabajo(e) {
     jornadas: $('#trab-jornadas').value,
     horasJornada: $('#trab-horas').value,
     fraccionable: $('#trab-fraccionable').checked,
+    exclusivo: $('#trab-exclusivo').checked,
     ajustes: antes?.ajustes ?? estado.ajustes,
     planes: antes?.planes,
   });
@@ -1517,9 +1580,11 @@ function guardarTrabajo(e) {
 function apuntarTrabajo(id) {
   const lista = trabajosGuardados();
   const t = lista.find((x) => x.id === id);
-  const pp = t && previsionTrabajo(t);
-  if (!pp || pp === 'error') return;
-  const org = organizarTrabajo(t, pp);
+  if (!t) return;
+  const { pps, orgs } = organizarTrabajos(lista);
+  const pp = pps.get(id);
+  const org = orgs.get(id);
+  if (!pp || pp === 'error' || !org) return;
   if (!org.elegidos.length) return;
   let planes = planesGuardados().filter((x) => !t.planes.includes(x.id));
   if (planes.length + org.elegidos.length > MAXIMO_PLANES) {
@@ -2224,6 +2289,9 @@ function enlazar() {
     else if (b.dataset.accion === 'cerrar-trabajo') $('#dlg-trabajo').close();
     else if (b.dataset.accion === 'trab-deshacer') (estado.dibujo.pop(), pintarDibujo());
     else if (b.dataset.accion === 'trab-vaciar') ((estado.dibujo = []), pintarDibujo());
+    else if (b.dataset.accion === 'trab-buscar') buscarTrabajo();
+    else if (b.dataset.accion === 'trab-gps') ubicacionTrabajo(b);
+    else if (b.dataset.trabRes) elegirResultadoTrabajo(Number(b.dataset.trabRes));
     else if (b.dataset.editarTrabajo) abrirTrabajo(b.dataset.editarTrabajo);
     else if (b.dataset.apuntarTrabajo) apuntarTrabajo(b.dataset.apuntarTrabajo);
     else if (b.dataset.borrarTrabajo) borrarTrabajo(b.dataset.borrarTrabajo);
@@ -2288,6 +2356,12 @@ function enlazar() {
   $('#trab-jornadas').addEventListener('change', pintarFraccionable);
   for (const r of document.querySelectorAll('input[name="trab-forma"]')) r.addEventListener('change', () => pintarFormaTrabajo(true));
   $('#trab-fichero').addEventListener('change', (e) => importarTraza(e.target.files?.[0]));
+  $('#trab-buscar').addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault(); // no enviar el formulario
+    buscarTrabajo();
+  });
+  $('#trab-nombre-zona').addEventListener('input', (e) => delete e.target.dataset.auto);
   $('#form-trabajo').addEventListener('input', () => ($('#trab-error').textContent = ''));
   $('#mapa-nubes').addEventListener('change', () => verNubesMapa());
   $('#mapa-nubes-capa').addEventListener('change', () => verNubesMapa());

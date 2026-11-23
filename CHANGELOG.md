@@ -16,6 +16,14 @@ Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
   dice la longitud de la traza y en cuántos puntos se ha mirado.
 - Los vuelos que apuntes en «Vuelos planificados» se vigilan en el primer
   punto de la zona.
+- **Trabajos va por su cuenta**: el sitio se elige en el propio formulario
+  (buscar un sitio o unas coordenadas, tu ubicación, tocar el mapa o importar
+  un fichero), sin pasar por el lugar de la pantalla de Previsión.
+- **No solapar con otros trabajos.** Marca un trabajo así cuando salís los
+  dos (o todo el equipo): sus horas no se reparten a ningún otro trabajo, y
+  él tampoco pisa a los demás ni a tus vuelos planificados a mano. Se
+  reparte primero el permiso que antes acaba; los días que pierde un trabajo
+  por eso dicen «Otro trabajo».
 
 ## 0.40.1
 

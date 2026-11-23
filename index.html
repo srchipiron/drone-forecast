@@ -264,21 +264,21 @@
         <label><input type="radio" name="trab-forma" value="puntos"> Varios puntos</label>
         <label><input type="radio" name="trab-forma" value="traza"> Traza</label>
       </fieldset>
-      <div id="trab-un-punto">
-        <label>Lugar <select id="trab-lugar"></select></label>
-        <p class="nota">¿Otro sitio? Búscalo arriba (o guárdalo en favoritos) y vuelve aquí.</p>
+      <div class="buscar-trabajo">
+        <input id="trab-buscar" type="search" enterkeyhint="search" placeholder="Sitio o coordenadas" aria-label="Buscar el sitio del trabajo">
+        <button type="button" data-accion="trab-buscar">Buscar</button>
+        <button type="button" class="icono" data-accion="trab-gps" aria-label="Usar mi ubicación"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="7.5"/></svg></button>
       </div>
-      <div id="trab-dibujo" hidden>
-        <p id="trab-ayuda-dibujo" class="nota">Toca el mapa para añadir puntos, o importa un KML, KMZ (Google Earth, DJI Pilot) o GPX.</p>
-        <div id="trab-mapa" class="mapa mapa-trabajo" role="application" aria-label="Mapa: arrastra para moverte y toca para añadir un punto"></div>
-        <p id="trab-puntos" class="nota" aria-live="polite"></p>
-        <div class="acciones-dibujo">
-          <button type="button" class="enlace" data-accion="trab-deshacer">Quitar el último</button>
-          <button type="button" class="enlace" data-accion="trab-vaciar">Borrar todo</button>
-          <label class="enlace boton-fichero">Importar KML / KMZ / GPX<input id="trab-fichero" type="file" accept=".kml,.kmz,.gpx,.wpml,application/vnd.google-earth.kml+xml,application/vnd.google-earth.kmz,application/gpx+xml"></label>
-        </div>
-        <label>Nombre de la zona (opcional) <input id="trab-nombre-zona" type="text" maxlength="80" placeholder="Línea 3, parcelas del norte…"></label>
+      <ul id="trab-resultados" class="lista-lugares" aria-live="polite"></ul>
+      <p id="trab-ayuda-dibujo" class="nota"></p>
+      <div id="trab-mapa" class="mapa mapa-trabajo" role="application" aria-label="Mapa: arrastra para moverte y toca para poner el punto"></div>
+      <p id="trab-puntos" class="nota" aria-live="polite"></p>
+      <div class="acciones-dibujo">
+        <button type="button" class="enlace" data-accion="trab-deshacer">Quitar el último</button>
+        <button type="button" class="enlace" data-accion="trab-vaciar">Borrar todo</button>
+        <label class="enlace boton-fichero">Importar KML / KMZ / GPX<input id="trab-fichero" type="file" accept=".kml,.kmz,.gpx,.wpml,application/vnd.google-earth.kml+xml,application/vnd.google-earth.kmz,application/gpx+xml"></label>
       </div>
+      <label>Nombre del sitio (opcional) <input id="trab-nombre-zona" type="text" maxlength="80" placeholder="Parcela norte, línea 3…"></label>
       <label>Tipo de trabajo <select id="trab-tipo"></select></label>
       <div class="dos-campos">
         <label>Permiso desde <input id="trab-desde" type="date" required></label>
@@ -293,6 +293,7 @@
         <label>Vuelo por jornada <select id="trab-horas"><option value="1">1 h</option><option value="2">2 h</option><option value="3">3 h</option><option value="4">4 h</option><option value="5">5 h</option><option value="6">6 h</option><option value="7">7 h</option><option value="8">8 h</option></select></label>
       </div>
       <label class="casilla"><input id="trab-fraccionable" type="checkbox"> Se puede partir en días sueltos (un vuelo el martes y otro el jueves)</label>
+      <label class="casilla"><input id="trab-exclusivo" type="checkbox"> No solapar con otros trabajos (cuando vais los dos o todo el equipo): sus horas no se reparten a ningún otro trabajo ni pisan tus vuelos planificados</label>
       <p id="trab-dron" class="nota"></p>
       <p id="trab-error" class="error-form" role="alert"></p>
       <div class="acciones"><button type="submit">Guardar y organizar</button></div>

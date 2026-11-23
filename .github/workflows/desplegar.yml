@@ -62,7 +62,7 @@ jobs:
       - name: Preparar lo que se publica
         run: |
           mkdir -p _site
-          cp -r index.html styles.css sw.js sw-modulo.js manifest.webmanifest icons src data _site/
+          cp -r index.html styles.css sw.js sw-modulo.js CHANGELOG.md manifest.webmanifest icons src data _site/
       - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
         with:
           path: _site

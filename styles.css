@@ -1024,6 +1024,29 @@ dialog h3 { font-size: 0.75rem; font-weight: 700; color: var(--suave); text-tran
 
 .boton-fichero:focus-within { outline: 2px solid var(--acento); outline-offset: 2px; }
 
+/* ── Novedades ──────────────────────────────────────────────────── */
+.novedades-aviso { display: flex; flex-wrap: wrap; align-items: center; gap: 0.2rem 0.8rem; margin: 0 0 0.8rem; padding: 0.6rem 0.8rem; border-radius: var(--radio-pequeno); background: var(--tarjeta); border-left: 4px solid var(--acento); }
+
+.novedades-aviso p { margin: 0; flex: 1 1 12rem; }
+
+.novedades-aviso .enlace { color: var(--acento); text-align: left; }
+
+.novedades { font-size: 0.95rem; overflow-wrap: anywhere; }
+
+.novedades h3 { font-size: 1rem; margin: 1rem 0 0.3rem; }
+
+.novedades ul { padding-left: 1.2rem; margin: 0.3rem 0; }
+
+.novedades li { margin: 0.25rem 0; }
+
+.novedades details { border-top: 1px solid var(--separador); padding: 0.2rem 0; }
+
+.novedades summary { min-height: 44px; display: flex; align-items: center; font-weight: 700; }
+
+.novedades summary .nota { font-weight: 500; margin-left: 0.4rem; }
+
+.novedades code { font-size: 0.85em; background: var(--tarjeta-2); padding: 0 0.25rem; border-radius: 4px; }
+
 /* ── Informe para el cliente: solo existe al imprimir ────────────── */
 #informe { display: none; }
 

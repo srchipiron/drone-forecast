@@ -2,11 +2,12 @@
 // La cáscara se sirve de caché; data/*.json, red primero. Las APIs de fuera
 // (Open-Meteo, NOAA) no se tocan aquí: su respaldo es la caché de almacen.js.
 
-const VERSION = '0.42.0';
+const VERSION = '0.43.0';
 const CACHE = `drone-forecast-${VERSION}`;
 const CASCARA = [
   './',
   'index.html',
+  'CHANGELOG.md',
   'styles.css',
   'manifest.webmanifest',
   'icons/icono.svg',
@@ -35,6 +36,7 @@ const CASCARA = [
   'src/motor/kp.js',
   'src/motor/meteo.js',
   'src/motor/misiones.js',
+  'src/motor/novedades.js',
   'src/motor/nubes.js',
   'src/motor/planificado.js',
   'src/motor/trabajos.js',

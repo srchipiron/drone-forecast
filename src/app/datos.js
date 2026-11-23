@@ -29,6 +29,13 @@ export async function cargarSoloPrevision(lat, lon) {
   return leerPrevision(await pedir(urlPrevision(lat, lon)));
 }
 
+// El historial de cambios (va en la precarga: se lee también sin conexión).
+export async function cargarNovedades() {
+  const r = await fetch('CHANGELOG.md', { signal: AbortSignal.timeout(10000) });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.text();
+}
+
 // La previsión de varios puntos (una traza, varios sitios) en una petición.
 export async function cargarPrevisionVarios(puntos) {
   if (puntos.length === 1) return [await cargarSoloPrevision(puntos[0].lat, puntos[0].lon)];

@@ -11,6 +11,7 @@ import { VALORACIONES, anadirEntrada, crearEntrada, diarioCSV, diarioValido, res
 import { graficaDia } from '../motor/grafica.js';
 import { DRONES } from '../motor/drones.js';
 import { MISIONES, MODOS } from '../motor/misiones.js';
+import { leerNovedades, novedadesDesde } from '../motor/novedades.js';
 import { MARGEN_DIARIO, MAXIMO_PLANES, NOMBRE_ESTADO, anadirPlan, crearPlan, cuandoPlan, empeora, fasePlan, fijarAjustesPlanes, huecosPlan, icsPlan, planesValidos, puntosPlan, valorarPlan } from '../motor/planificado.js';
 import { construirPrevision, normalizarAjustes, resumenDias } from '../motor/prevision.js';
 import { MAXIMO_TRABAJOS, TIPOS_TRABAJO, combinarPrevisiones, crearTrabajo, organizarTodos, planesDeTrabajo, trabajosValidos } from '../motor/trabajos.js';
@@ -24,7 +25,7 @@ import { almacen } from './almacen.js';
 import { ETIQUETA, INTERVALO, comprobarAvisos } from './aviso.js';
 import { crearMapa } from './mapa.js';
 import { ampliarCaja, cajaDentro } from '../motor/mapa.js';
-import { buscarLugar, cargarKp, cargarPrevision, cargarSatelites, cargarFormasEnaire, cargarNubesAltura, cargarNubesRejilla, cargarRejillaVuelo, cargarPrevisionVarios, cargarSoloPrevision, consultarEnaire, leerDescarga } from './datos.js';
+import { buscarLugar, cargarKp, cargarPrevision, cargarSatelites, cargarFormasEnaire, cargarNubesAltura, cargarNubesRejilla, cargarRejillaVuelo, cargarNovedades, cargarPrevisionVarios, cargarSoloPrevision, consultarEnaire, leerDescarga } from './datos.js';
 import { mensajeUbicacion, pedirUbicacion } from './ubicacion.js';
 
 const $ = (s) => document.querySelector(s);
@@ -888,6 +889,37 @@ function pintarAviso(p) {
   if (p && !p.satelitesDisponibles) avisos.push('Sin órbitas de satélites recientes: el recuento GNSS no está disponible.');
   el.hidden = !avisos.length;
   el.innerHTML = avisos.map((a) => `<p>${esc(a)}</p>`).join('');
+}
+
+// ---------- Novedades ----------
+
+// Tras actualizarse, una vez: «Actualizada a la 0.42.0 · ver novedades». La
+// primera vez que se abre la app no sale (no hay «antes»): solo se apunta.
+function pintarAvisoNovedades() {
+  const vista = almacen.versionVista();
+  const caja = $('#aviso-novedades');
+  if (!vista) almacen.guardarVersionVista(VERSION);
+  caja.hidden = !vista || vista === VERSION;
+  if (caja.hidden) return;
+  caja.innerHTML = `<p>Actualizada a la <strong>v${esc(VERSION)}</strong>.</p><button type="button" class="enlace" data-accion="novedades" data-desde="${esc(vista)}">Ver las novedades</button><button type="button" class="icono" data-accion="cerrar-novedades" aria-label="Cerrar el aviso de novedades">✕</button>`;
+}
+
+async function abrirNovedades(desde = null) {
+  almacen.guardarVersionVista(VERSION);
+  $('#aviso-novedades').hidden = true;
+  const cuerpo = $('#novedades-cuerpo');
+  cuerpo.innerHTML = '<p class="nota">Cargando…</p>';
+  $('#dlg-novedades').showModal();
+  try {
+    const { destacado, versiones } = leerNovedades(await cargarNovedades());
+    const nuevas = desde ? novedadesDesde(versiones, desde) : [];
+    const version = (v, abierta) => `<details${abierta ? ' open' : ''}><summary>v${esc(v.version)}${v.fecha ? `<span class="nota">${esc(v.fecha)}</span>` : ''}</summary>${v.html}</details>`;
+    cuerpo.innerHTML = `${nuevas.length ? `<h3>Desde tu última versión (v${esc(desde)})</h3>${nuevas.map((v) => version(v, true)).join('')}` : ''}
+      <h3>Lo más importante hasta ahora</h3>${destacado}
+      <h3>Todas las versiones (${versiones.length})</h3>${versiones.map((v, i) => version(v, !nuevas.length && i === 0)).join('')}`;
+  } catch (e) {
+    cuerpo.innerHTML = `<p class="nota">No se pudieron cargar las novedades (${esc(e.message)}).</p>`;
+  }
 }
 
 function pintarPie() {
@@ -2296,6 +2328,8 @@ function enlazar() {
     else if (b.dataset.accion === 'cerrar-plan') $('#dlg-plan').close();
     else if (b.dataset.hueco) elegirHueco(b);
     else if (b.dataset.accion === 'nuevo-trabajo') abrirTrabajo();
+    else if (b.dataset.accion === 'novedades') abrirNovedades(b.dataset.desde ?? null);
+    else if (b.dataset.accion === 'cerrar-novedades') (almacen.guardarVersionVista(VERSION), ($('#aviso-novedades').hidden = true));
     else if (b.dataset.accion === 'cerrar-trabajo') $('#dlg-trabajo').close();
     else if (b.dataset.accion === 'trab-deshacer') (estado.dibujo.pop(), pintarDibujo());
     else if (b.dataset.accion === 'trab-vaciar') ((estado.dibujo = []), pintarDibujo());
@@ -2474,6 +2508,7 @@ async function arrancar() {
   // Planes de antes de 0.29.1: se quedan con los ajustes de ahora (una vez).
   const migrados = fijarAjustesPlanes(almacen.planes(), estado.ajustes);
   if (migrados.cambiados) almacen.guardarPlanes(migrados.planes);
+  pintarAvisoNovedades();
   // El instalador primero: si se cierra la app antes de que acabe todo lo
   // demás, que al menos quede para usarla sin cobertura.
   // Con aviso de ventana, el instalador de tipo módulo (lleva sw.js dentro);

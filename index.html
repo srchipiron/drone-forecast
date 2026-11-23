@@ -48,6 +48,7 @@
       </section>
 
       <section id="aviso" class="aviso" hidden></section>
+      <section id="aviso-novedades" class="novedades-aviso" hidden></section>
       <section id="ahora" class="tarjeta veredicto"></section>
       <section id="planes" class="tarjeta" aria-labelledby="titulo-planes" hidden></section>
       <p id="anuncio" class="visualmente-oculto" aria-live="polite"></p>
@@ -144,7 +145,7 @@
         <p><a href="https://drones.enaire.es/" target="_blank" rel="noopener noreferrer">Consulta las zonas geográficas UAS en ENAIRE Drones</a> antes de cada vuelo.</p>
         <p id="fuentes" class="nota"></p>
         <p class="nota">Orientativo: la decisión y la responsabilidad del vuelo son del piloto.</p>
-        <p class="nota">Drone Forecast <span id="version"></span></p>
+        <p class="nota">Drone Forecast <button id="btn-novedades" type="button" class="enlace" data-accion="novedades"><span id="version"></span> · Novedades</button></p>
         <div class="acciones"><button id="btn-diagnostico" type="button">Diagnóstico</button></div>
       </footer>
     </div>
@@ -298,6 +299,14 @@
       <p id="trab-error" class="error-form" role="alert"></p>
       <div class="acciones"><button type="submit">Guardar y organizar</button></div>
     </form>
+  </dialog>
+
+  <dialog id="dlg-novedades" aria-labelledby="titulo-novedades">
+    <form method="dialog" class="dlg-cabecera">
+      <h2 id="titulo-novedades">Novedades</h2>
+      <button class="icono" value="cerrar" aria-label="Cerrar">✕</button>
+    </form>
+    <div id="novedades-cuerpo" class="novedades"><p class="nota">Cargando…</p></div>
   </dialog>
 
   <dialog id="dlg-diagnostico" aria-labelledby="titulo-diagnostico">

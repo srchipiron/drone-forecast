@@ -1,10 +1,50 @@
 # Cambios
 
+Todo lo que ha ido cambiando en Drone Forecast desde la primera versión, lo
+más nuevo arriba. Se ve también en la app: toca la versión del pie
+(Ajustes) o el aviso «Novedades» que sale tras cada actualización.
+
 Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
 `0.0.X` para correcciones. La versión sale en el pie de la app.
 
-## 0.42.0
+## Lo más importante hasta ahora
 
+- **El semáforo de vuelo** (0.1.0, 23-10-2026): ¿se puede volar ahora y a
+  qué hora?, con el viento a tu altura, rachas, lluvia, temperatura, Kp y
+  satélites, para tu dron y en modo recreativo o profesional (fotogrametría,
+  termografía, inspección).
+- **Las zonas de ENAIRE** (0.4.0 → 0.29.2): si el punto cae en una zona UAS
+  y qué pide a tu altura, y después dibujadas en el mapa.
+- **Herramientas de trabajo** (0.7.0 → 0.30.0): diario de vuelos (JSON y
+  CSV), informe para el cliente, vuelos planificados con aviso si empeoran,
+  al calendario y del plan al diario con un toque.
+- **Como UAV Forecast, y más** (0.10.0 → 0.17.0): cartel con el veredicto,
+  la semana de un vistazo, elegir el punto en el mapa, compartir y la
+  próxima ventana.
+- **Todos tus drones** (0.3.0 → 0.38.0): toda la gama de DJI (también
+  Enterprise y Agras), Autel, Skydio y Parrot, y «Mis drones» para ver cómo
+  está cada uno.
+- **La previsión en altura, más fina** (0.32.0): hielo en las hélices,
+  tormentas, turbulencia, rachas de varios modelos, nubes bajas y niebla.
+- **Las nubes y el tiempo en el mapa, como en Windy** (0.33.0 → 0.36.0):
+  nubes por capas y por altura, el mapa de «dónde se puede volar» y las
+  flechas de viento.
+- **Planificador de trabajos** (0.40.0 → 0.42.0): lugar, permiso, horario y
+  jornadas; elige los mejores días; trazas y varios puntos (KML, KMZ de DJI
+  Pilot, GPX) y trabajos que no se solapan.
+
+## 0.43.0 · 23-11-2026
+
+- **Novedades dentro de la app.** Toca la versión del pie (en Ajustes) y ves
+  todo lo que ha cambiado desde la primera versión: arriba **lo más
+  importante hasta ahora** y debajo cada versión con su fecha, la más nueva
+  primero. Funciona también sin conexión.
+- **Tras cada actualización**, arriba en Previsión sale «Actualizada a la
+  vX» con **Ver las novedades**: te enseña solo lo nuevo desde la versión
+  que tenías. Sale una vez; con la ✕ lo quitas.
+- El historial lleva ahora la fecha de cada versión.
+
+## 0.42.0 · 23-11-2026
 - **El aviso de los vuelos de una traza mira la traza entera.** Los vuelos
   que apuntas desde un trabajo en una traza o en varios sitios llevan sus
   puntos de tiempo: el aviso en segundo plano y la tarjeta de «Vuelos
@@ -12,8 +52,7 @@ Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
   primero. Si a mitad de la traza se pone a soplar, te avisa. La tarjeta
   dice en cuántos puntos se mira.
 
-## 0.41.1
-
+## 0.41.1 · 23-11-2026
 - **«No solapar con otros trabajos» reserva el día del vuelo, entero, y solo
   ese.** Antes guardaba solo las horas del vuelo y otro trabajo podía caer
   esa misma tarde. Ahora el día que se elige para volarlo queda para él (y
@@ -21,8 +60,7 @@ Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
   permiso nunca se reservan: los demás días siguen libres para otros
   trabajos.
 
-## 0.41.0
-
+## 0.41.0 · 23-11-2026
 - **Trabajos en una traza o en varios puntos.** En «Zona de trabajo» eliges
   **Un punto** (como hasta ahora), **Varios puntos** o **Traza**. Los puntos
   se marcan tocando el mapa del formulario (con «Quitar el último» y «Borrar
@@ -43,8 +81,7 @@ Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
   reparte primero el permiso que antes acaba; los días que pierde un trabajo
   por eso dicen «Otro trabajo».
 
-## 0.40.1
-
+## 0.40.1 · 23-11-2026
 - **El aviso en segundo plano y la app sin conexión, arreglados.** El fichero
   del instalador con aviso (`sw-modulo.js`) no se subía a la web: desde la
   0.11.0 el aviso de ventana y de vuelos planificados nunca llegó a funcionar,
@@ -53,8 +90,7 @@ Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
   falla si algo que la app pide se queda fuera.
 - Publicar ya no falla a ratos con «No artifacts named github-pages».
 
-## 0.40.0
-
+## 0.40.0 · 23-11-2026
 - **Planificador de trabajos** (pestaña nueva, **Trabajos**). Para cada
   encargo pones el nombre, el lugar (el de arriba o un favorito), el tipo de
   trabajo (fotogrametría, termografía, inspección…), las **fechas del
@@ -73,8 +109,7 @@ Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
 - Se juzga con el dron y la altura que tienes puestos al crearlo, como
   misión el tipo de trabajo.
 
-## 0.39.0
-
+## 0.39.0 · 23-11-2026
 - **Los días sin vuelo dicen por qué.** Debajo de «Sin vuelo», cada tarjeta
   de la semana lleva la razón en una palabra: **Viento**, **Rachas**,
   **Lluvia**, **Tormenta**, **Hielo**, **Frío**, **Nubes bajas**… Es lo que
@@ -83,8 +118,7 @@ Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
   sabes de un vistazo si merece la pena mirar el día o si no hay nada que
   hacer.
 
-## 0.38.0
-
+## 0.38.0 · 23-11-2026
 - **«Mis drones» más fácil.** En Ajustes, tus drones salen ahora como
   etiquetas, cada una con su ✕ para quitarla, y debajo un desplegable
   **Añadir un dron…** agrupado por marcas (DJI, DJI anteriores, Enterprise,
@@ -92,8 +126,7 @@ Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
   columnas con los nombres partidos; la pantalla de Ajustes es ahora un
   tercio más corta.
 
-## 0.37.0
-
+## 0.37.0 · 22-11-2026
 Una pantalla principal más clara y más corta (de casi 4 pantallas de móvil
 a menos de 3):
 
@@ -113,8 +146,7 @@ a menos de 3):
 - La línea de las nubes ya no sale en el cartel (se leía mal sobre el
   color); sigue en el detalle de cada hora.
 
-## 0.36.0
-
+## 0.36.0 · 22-11-2026
 - **Flechas de viento en el mapa.** En el «Mapa del tiempo», elige **Viento
   a tu altura**: una flecha por zona que apunta hacia donde va el viento,
   con su fuerza escrita en tus unidades y del color del semáforo con tu
@@ -124,8 +156,7 @@ a menos de 3):
 - Si mueves el mapa mientras se está cargando, ya no se descarga dos veces
   lo mismo.
 
-## 0.35.0
-
+## 0.35.0 · 22-11-2026
 - **Mapa de «dónde se puede volar».** En el mapa de elegir punto, marca
   **Mapa del tiempo**: ahora lo primero que enseña es el semáforo de toda
   la zona, celda a celda, **con tu dron, tu altura y tus límites**, a la
@@ -137,8 +168,7 @@ a menos de 3):
   Las zonas de ENAIRE se siguen viendo encima, aparte.
 - Las nubes bajas, medias y altas siguen en el mismo menú del mapa.
 
-## 0.34.0
-
+## 0.34.0 · 22-11-2026
 - **Nubes por altura, como el «airgram» de Windy.** En la vista de horas,
   abre **Nubes por altura**: un gráfico con las horas a lo ancho y la altura
   sobre el suelo a lo alto (de 100 m a 9 km). Cada nivel sale más oscuro
@@ -153,8 +183,7 @@ a menos de 3):
 - Los datos son de los modelos (la misma fuente de siempre, Open-Meteo):
   se piden solo al abrir cada cosa, para no gastar datos.
 
-## 0.33.0
-
+## 0.33.0 · 22-11-2026
 - **Las nubes por capas, como en Windy.** En la vista de horas sale «Nubes
   del día: bajas, medias y altas», una franja por capa y por hora (más
   oscuro, más cubierto). Así sabes qué nubes vienen: las bajas tapan y dan
@@ -170,8 +199,7 @@ a menos de 3):
   y sin sol (de noche y al amanecer), ámbar aunque la previsión no pinte
   niebla.
 
-## 0.32.0
-
+## 0.32.0 · 21-11-2026
 Una previsión más fina a la altura de vuelo, mirando lo que miran las
 grandes apps de drones y del tiempo (Aloft, UAV Forecast, Windy). El rojo
 («No vueles») sigue saliendo solo cuando la previsión principal pasa un
@@ -200,8 +228,7 @@ nada.
   temperatura de su ficha. Si tenías guardado un modelo anterior, ahora
   sale tal cual en vez de su sucesor.
 
-## 0.31.0
-
+## 0.31.0 · 21-11-2026
 - **Modo «Al sol».** En Ajustes → **Pantalla** puedes elegir «Al sol
   (máximo contraste)»: fondo blanco puro, texto negro, colores del
   semáforo más oscuros, bordes marcados y la letra un poco más grande. Se
@@ -210,8 +237,7 @@ nada.
 - En el mismo sitio puedes fijar la pantalla clara u oscura, o dejar la del
   móvil (como hasta ahora). Se recuerda al volver a abrir la app.
 
-## 0.30.0
-
+## 0.30.0 · 19-11-2026
 - **Del vuelo planificado al diario, con un toque.** Cuando llega la hora de
   un plan, su tarjeta dice «En marcha» y tiene **He volado**. Cuando
   termina, se queda 12 horas más con «Terminado: ¿cómo ha ido?» y el botón
@@ -220,8 +246,7 @@ nada.
   ahora), lo que decía la previsión en su peor hora y, de partida, la nota
   del plan. Después el plan sale de la tarjeta.
 
-## 0.29.2
-
+## 0.29.2 · 19-11-2026
 Correcciones del mapa de zonas de ENAIRE (otra revisión a fondo):
 
 - **Al tocar un punto del mapa, sus zonas se preguntan a ENAIRE por ese
@@ -241,8 +266,7 @@ Correcciones del mapa de zonas de ENAIRE (otra revisión a fondo):
 - Los vuelos planificados antes de 0.29.1 se quedan con el dron que tengas
   puesto al abrir la app, y ya no cambian si luego cambias de dron.
 
-## 0.29.1
-
+## 0.29.1 · 19-11-2026
 Correcciones en los vuelos planificados (una revisión a fondo de lo nuevo):
 
 - **Cada plan se juzga con su dron y su altura**, los de cuando lo
@@ -264,8 +288,7 @@ Correcciones en los vuelos planificados (una revisión a fondo de lo nuevo):
 - Con 20 planes (el tope), al intentar guardar otro te lo dice en vez de
   descartarlo sin avisar.
 
-## 0.29.0
-
+## 0.29.0 · 19-11-2026
 - **Te sugiere cuándo planificar.** Al planificar un vuelo, debajo de la
   previsión sale **Con 2 h seguidas en verde:** y un botón por cada día en
   que caben esas horas seguidas en verde, con la hora a la que empieza el
@@ -274,8 +297,7 @@ Correcciones en los vuelos planificados (una revisión a fondo de lo nuevo):
 - Si ningún día tiene esas horas en verde, te enseña los huecos en ámbar y
   lo dice; si tampoco hay, te dice que no caben en toda la previsión.
 
-## 0.28.0
-
+## 0.28.0 · 19-11-2026
 - **Informe para el cliente de un vuelo planificado.** Cada plan de
   **Vuelos planificados** tiene **Informe para el cliente** (en cuanto la
   previsión llega a ese día). Es el informe de siempre, listo para imprimir
@@ -285,8 +307,7 @@ Correcciones en los vuelos planificados (una revisión a fondo de lo nuevo):
 - Las zonas de ENAIRE son las del punto del plan, aunque estés mirando otro
   lugar en la pantalla: la app se las pregunta a ENAIRE en el momento.
 
-## 0.27.0
-
+## 0.27.0 · 19-11-2026
 - **Un vuelo planificado, al calendario.** Cada plan de la tarjeta
   **Vuelos planificados** tiene **Al calendario**. En el móvil abre el menú
   de compartir: elige tu calendario para guardarlo, o WhatsApp o el correo
@@ -296,8 +317,7 @@ Correcciones en los vuelos planificados (una revisión a fondo de lo nuevo):
   nota y cómo estaba la previsión al exportarlo, y un recordatorio la
   víspera para que mires la previsión otra vez.
 
-## 0.26.0
-
+## 0.26.0 · 19-11-2026
 - **La semana con todos tus drones.** Si tienes marcados otros drones en
   Ajustes → Mis drones, debajo de la fila de días sale **Con tus otros
   drones**: para cada uno, la mejor ventana de cada día («Mañ. 10–14 h»), en
@@ -305,8 +325,7 @@ Correcciones en los vuelos planificados (una revisión a fondo de lo nuevo):
   ves de un vistazo qué día sale el vuelo con el dron que aguanta más
   viento. Tocar un día lo abre en la tabla de horas.
 
-## 0.25.0
-
+## 0.25.0 · 19-11-2026
 - **Vuelos planificados.** Con el botón **Planificar vuelo** (debajo del
   cartel) eliges el día, la hora de empezar y cuánto dura el vuelo, por
   ejemplo el de un cliente, y una nota. Antes de guardarlo ya te dice cómo
@@ -321,8 +340,7 @@ Correcciones en los vuelos planificados (una revisión a fondo de lo nuevo):
   desaparecen solos.
 - Para planificar, el día tiene que estar dentro de la previsión (7 días).
 
-## 0.24.0
-
+## 0.24.0 · 18-11-2026
 - **El diario, a hoja de cálculo.** En Diario, el botón **Exportar a hoja
   de cálculo (CSV)** baja un fichero que se abre tal cual en Excel o en
   Hojas de cálculo de Google, con una fila por vuelo: fecha, hora, lugar,
@@ -332,8 +350,7 @@ Correcciones en los vuelos planificados (una revisión a fondo de lo nuevo):
   con los acentos bien.
 - La copia en JSON sigue ahí, como **Copia de seguridad (JSON)**.
 
-## 0.23.0
-
+## 0.23.0 · 18-11-2026
 - **Las zonas de ENAIRE, dibujadas en el mapa.** Al elegir el punto en el
   mapa (Lugar → Elegir en el mapa) ves encima las zonas UAS de la parte que
   estás mirando: rojo si está prohibido, naranja si hace falta autorización,
@@ -347,8 +364,7 @@ Correcciones en los vuelos planificados (una revisión a fondo de lo nuevo):
 - Si alejas mucho el mapa te pide acercarlo (con media España a la vista
   serían miles de zonas). Si alguna capa de ENAIRE no responde, lo dice.
 
-## 0.22.0
-
+## 0.22.0 · 18-11-2026
 - **Aviso de versión nueva.** Cuando se instala una versión nueva de la
   app, sale abajo «Hay una versión nueva de la app» con el botón
   **Actualizar**. Antes, con la app instalada y sin cerrarla del todo,
@@ -363,8 +379,7 @@ Correcciones en los vuelos planificados (una revisión a fondo de lo nuevo):
 - Las alturas se leen mejor: «Desde 3200 m hasta 30.450 m sobre el nivel
   del mar», sin repetirlo.
 
-## 0.21.0
-
+## 0.21.0 · 17-11-2026
 **Los avisos de ENAIRE, rehechos con sus datos reales.**
 
 - **Tarjeta propia, «Zonas UAS · ENAIRE»**, debajo del cartel. Arriba, lo
@@ -394,8 +409,7 @@ Correcciones en los vuelos planificados (una revisión a fondo de lo nuevo):
 - El informe para el cliente lista cada zona con su restricción y sus
   alturas.
 
-## 0.20.0
-
+## 0.20.0 · 17-11-2026
 - **Compartir dice más.** Si hoy y mañana no se puede volar, el mensaje
   añade cuándo es la próxima ventana («Próxima ventana: mar 23
   10:00–14:00»), o que no la hay en toda la semana. Y si tienes marcados
@@ -406,16 +420,14 @@ Correcciones en los vuelos planificados (una revisión a fondo de lo nuevo):
   vuelo planificado y ventanas de la semana para todos tus drones). Puedes
   reordenarlas o quitar las que no quieras.
 
-## 0.19.1
-
+## 0.19.1 · 17-11-2026
 - **Vuelve el DJI Mavic 3 Enterprise (M3E / M3T)**, en el grupo DJI
   Enterprise: viento máximo 12 m/s y de -10 a 40 °C, según la ficha de DJI.
   Ya no se vende, pero Aeroscan lo usa. Antes, quien lo tenía guardado
   pasaba sin avisar al Matrice 4E; ahora se queda con el suyo. También se
   puede marcar en «Mis drones».
 
-## 0.19.0
-
+## 0.19.0 · 30-10-2026
 - **Instalar la app con un botón.** Cuando Chrome permite instalarla, en
   Ajustes sale la tarjeta «Instalar la app» con su botón: un toque y
   Chrome pregunta si quieres añadirla a la pantalla de inicio. Instalada
@@ -424,8 +436,7 @@ Correcciones en los vuelos planificados (una revisión a fondo de lo nuevo):
   buscarlo en el menú ⋮ del navegador.
 - Si ya la tienes instalada y la abres desde el icono, la tarjeta lo dice.
 
-## 0.18.1
-
+## 0.18.1 · 29-10-2026
 - **Accesibilidad revisada con axe** (la herramienta estándar de
   auditoría), en todas las pantallas y en claro y oscuro: ahora sale sin
   ningún problema. Arreglado: la página entera se anunciaba como un botón
@@ -434,8 +445,7 @@ Correcciones en los vuelos planificados (una revisión a fondo de lo nuevo):
   barra de abajo no contaba como zona de navegación. A la vista no cambia
   nada.
 
-## 0.18.0
-
+## 0.18.0 · 29-10-2026
 **Tus otros drones.**
 
 - En **Ajustes → Mis drones** marca los que tienes. El cartel añade
@@ -446,16 +456,14 @@ Correcciones en los vuelos planificados (una revisión a fondo de lo nuevo):
 - Se calcula igual que el veredicto principal (mismo lugar, hora, altura y
   misión), solo cambia el dron.
 
-## 0.17.0
-
+## 0.17.0 · 29-10-2026
 - **Próxima ventana**, en lugar de «Mejor ventana hoy». Si hoy queda una
   ventana, sale la de hoy; si no, el primer día de la semana con horas en
   verde, por ejemplo «Sáb 31 · 08:00–14:00». Tócala y la tabla salta a ese
   día. Si en toda la semana no hay verde, sale la primera «con
   precaución»; y si no hay nada volable, lo dice («Ninguna en 7 días»).
 
-## 0.16.0
-
+## 0.16.0 · 29-10-2026
 - **El cielo de cada hora, con su icono**, como en UAV Forecast: en la
   tabla hora a hora, la columna «Cielo» enseña ☀️, ⛅, ☁️, 🌧️, ⛈️ o 🌙
   según la hora, en vez del porcentaje de nubes. Si la base de las nubes
@@ -464,15 +472,13 @@ Correcciones en los vuelos planificados (una revisión a fondo de lo nuevo):
   («⛅ Nubes y claros · 16 °C»).
 - Arreglado el título de la tabla, que salía pegado («Hora a hora ·Hoy»).
 
-## 0.15.1
-
+## 0.15.1 · 29-10-2026
 - **Más rápida.** Calcular la previsión de la semana tarda menos de la
   mitad que antes: la app ya no rehace el formato de la fecha en cada hora.
   Se nota al abrirla, al cambiar de lugar o de ajustes y al ver los
   favoritos, sobre todo en móviles modestos.
 
-## 0.15.0
-
+## 0.15.0 · 29-10-2026
 **Pasar de día deslizando el dedo.**
 
 - Desliza a la izquierda sobre la tabla hora a hora (o sobre los días) y
@@ -483,8 +489,7 @@ Correcciones en los vuelos planificados (una revisión a fondo de lo nuevo):
 - Bajar por la página sigue funcionando igual: solo cuenta como cambio de
   día un gesto rápido y claramente de lado.
 
-## 0.14.1
-
+## 0.14.1 · 29-10-2026
 - **Todos los días a la vista, sin deslizar.** En algunos móviles la tira de
   días no se movía con el dedo y no había forma de llegar a los últimos
   (por ejemplo, al miércoles). Ahora salen en filas de cuatro, todos a la
@@ -494,8 +499,7 @@ Correcciones en los vuelos planificados (una revisión a fondo de lo nuevo):
   profesional, si no caben en una línea bajan a la siguiente en vez de
   esconderse por la derecha.
 
-## 0.14.0
-
+## 0.14.0 · 29-10-2026
 **Elegir el punto de vuelo en el mapa**, como en UAV Forecast.
 
 - En el buscador de lugares, **Elegir en el mapa** abre un mapa de
@@ -507,8 +511,7 @@ Correcciones en los vuelos planificados (una revisión a fondo de lo nuevo):
   nombre, y afina la consulta de ENAIRE, que depende del punto exacto.
 - Se puede guardar en favoritos como cualquier otro lugar.
 
-## 0.13.0
-
+## 0.13.0 · 29-10-2026
 - **Compartir:** botón nuevo junto a «He volado». Abre el menú del móvil
   (WhatsApp, correo…) con un resumen listo para mandar: lugar, dron y
   altura, si se puede volar ahora (y por qué no, si no), el viento y las
@@ -519,8 +522,7 @@ Correcciones en los vuelos planificados (una revisión a fondo de lo nuevo):
 - «Mejor ventana hoy» ya no se parte en dos líneas cuando no hay ventana:
   dice «Ninguna».
 
-## 0.12.0
-
+## 0.12.0 · 29-10-2026
 **Más como UAV Forecast.**
 
 - **La semana de un vistazo:** cada día de la tira lleva debajo una raya por
@@ -529,8 +531,7 @@ Correcciones en los vuelos planificados (una revisión a fondo de lo nuevo):
 - **El cielo en el cartel:** debajo del veredicto, cómo está el cielo y la
   temperatura, por ejemplo «☀️ Despejado · 18 °C» (de noche, con luna).
 
-## 0.11.0
-
+## 0.11.0 · 29-10-2026
 **Aviso de ventana:** la app te avisa cuando mañana haya horas en verde en
 alguno de tus favoritos.
 
@@ -549,8 +550,7 @@ alguno de tus favoritos.
 - El botón Diagnóstico dice si el aviso está activo y qué día avisó por
   última vez.
 
-## 0.10.0
-
+## 0.10.0 · 29-10-2026
 **La previsión se lee como en UAV Forecast.**
 
 - **Cartel arriba del todo** con el veredicto en grande y del color del
@@ -570,8 +570,7 @@ alguno de tus favoritos.
   debajo de la tabla.
 - Fuera el indicador circular.
 
-## 0.9.0
-
+## 0.9.0 · 29-10-2026
 **Pantalla nueva, pensada como un instrumento de vuelo:** se mira y se
 decide en un segundo, a pleno sol.
 
@@ -591,8 +590,7 @@ decide en un segundo, a pleno sol.
   cifras son grandes y no bailan al cambiar.
 - **Modo oscuro en azul noche**, como una cabina.
 
-## 0.8.0
-
+## 0.8.0 · 28-10-2026
 - **Diseño nuevo al estilo de las apps de Apple:**
   - Fondo gris agrupado de iOS y tarjetas redondeadas sin bordes.
   - Letra San Francisco y títulos grandes.
@@ -609,8 +607,7 @@ decide en un segundo, a pleno sol.
   cumplen el contraste recomendado (AA), en claro y en oscuro, y una prueba
   automática lo vigila.
 
-## 0.7.1
-
+## 0.7.1 · 28-10-2026
 Correcciones tras una revisión completa de la app:
 
 - **Una hora sin dato de viento ya no sale en verde.** Si el modelo no da
@@ -640,8 +637,7 @@ Correcciones tras una revisión completa de la app:
 - El modo sin cobertura se instala nada más abrir la app, y una actualización
   ya no puede mezclar ficheros de dos versiones.
 
-## 0.7.0
-
+## 0.7.0 · 28-10-2026
 - **Gráfica del día**, encima de la lista de horas: el viento (línea azul) y
   las rachas (discontinua) a tu altura de vuelo, con las rayas de «cómodo» y
   «límite» de tu dron. Debajo va una franja con el color del semáforo de cada
@@ -658,22 +654,19 @@ Correcciones tras una revisión completa de la app:
 - **Acuerdo entre modelos con detalle**: además de si coinciden, dice el
   viento que da cada modelo (ECMWF, GFS, ICON y Météo-France).
 
-## 0.6.0
-
+## 0.6.0 · 28-10-2026
 - **Perfil de viento.** Al tocar una hora, antes de los factores, sale el
   viento a 180, 120, 80 y 10 m, con tu altura de vuelo marcada. Cada altura
   lleva una barra verde, ámbar o roja con los mismos límites que el
   semáforo, así ves de un vistazo si bajando un poco el viento te deja volar.
 
-## 0.5.0
-
+## 0.5.0 · 28-10-2026
 - **Resumen de favoritos.** Al abrir «Lugar de vuelo», cada favorito enseña
   su mejor ventana de hoy y de mañana, en verde o ámbar, calculada con tu
   dron, tu misión y tu altura. Así eliges dónde volar sin abrirlos uno a uno.
   La previsión de cada favorito se guarda 30 minutos.
 
-## 0.4.0
-
+## 0.4.0 · 28-10-2026
 - **Zonas UAS de ENAIRE en la tarjeta principal.** La app pregunta a
   ENAIRE si el lugar cae en alguna zona geográfica UAS: aeronáutica,
   infraestructuras, urbana o medioambiental.
@@ -686,8 +679,7 @@ Correcciones tras una revisión completa de la app:
     mapa de ENAIRE Drones.
 - El Diagnóstico incluye lo que respondió ENAIRE.
 
-## 0.3.0
-
+## 0.3.0 · 28-10-2026
 - **Drones de la gama actual**, agrupados por marca en el selector:
   - **DJI:** Neo, Flip, Mini 4K, Mini 5 Pro, Air 3S, Mavic 4 Pro y Avata 360.
   - **DJI Enterprise:** Matrice 4E/4T, 4D/4TD, 5TD y 400.
@@ -703,8 +695,7 @@ Correcciones tras una revisión completa de la app:
   y el IP53 del ANAFI UKR protegen de salpicaduras, no de lluvia, y la app los
   trata como drones sin protección.
 
-## 0.2.1
-
+## 0.2.1 · 28-10-2026
 - **El botón de ubicación ya no dice siempre «no hay permiso».** Ahora
   distingue qué pasa y te dice qué tocar: si Chrome no tiene permiso (y
   dónde dárselo), si la ubicación del móvil está apagada o si el GPS ha
@@ -715,8 +706,7 @@ Correcciones tras una revisión completa de la app:
   aquí?», que abre el mapa de zonas UAS de ENAIRE. Antes solo estaba al
   final de la página.
 
-## 0.2.0
-
+## 0.2.0 · 23-10-2026
 - **Botón Diagnóstico**, al final de la página. Copia de un toque un texto
   corto con lo que la app sabe: versión, lugar, ajustes, de dónde y de cuándo
   es cada dato (previsión, Kp, órbitas), los factores de la hora actual, la
@@ -725,8 +715,7 @@ Correcciones tras una revisión completa de la app:
 - Los fallos internos de la app quedan apuntados para el Diagnóstico, aunque
   en pantalla no se vean.
 
-## 0.1.1
-
+## 0.1.1 · 23-10-2026
 - **Satélites aunque el servidor no pueda bajar las órbitas.** CelesTrak no
   deja entrar a los servidores de GitHub, así que la primera versión salió sin
   órbitas y el recuento de satélites decía «sin dato». Ahora, si pasa eso, el
@@ -734,8 +723,7 @@ Correcciones tras una revisión completa de la app:
 - El pie dice cuántas órbitas hay y de dónde salieron (del despliegue,
   de CelesTrak o guardadas), para saber desde el móvil que funciona.
 
-## 0.1.0
-
+## 0.1.0 · 23-10-2026
 Primera versión.
 
 - **¿Se puede volar ahora?** Un semáforo (verde, ámbar, rojo) con el motivo,

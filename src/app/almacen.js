@@ -44,6 +44,9 @@ export const almacen = {
   planes: () => leer('planes', []),
   guardarPlanes: (l) => escribir('planes', l),
   trabajos: () => leer('trabajos', []),
+  // La última versión de la que se enseñaron las novedades.
+  versionVista: () => leer('version-vista', null),
+  guardarVersionVista: (v) => escribir('version-vista', v),
   guardarTrabajos: (l) => escribir('trabajos', l),
   guardarDiario: (d) => escribir('diario', d),
   checklist: () => leer('checklist', { dia: '', hechos: [] }),

@@ -303,6 +303,36 @@ try {
   await page.locator('[data-vista="ajustes"]').click();
   assert.equal(await page.locator('#vista-prevision').isHidden(), true);
   assert.equal(await page.locator('[data-vista="ajustes"]').getAttribute('aria-selected'), 'true');
+  // Novedades: la primera vez no hay aviso (no hay «antes»); la versión del
+  // pie abre el historial entero, con lo más importante y cada versión.
+  assert.equal(await page.locator('#aviso-novedades').isVisible(), false);
+  const versionApp = JSON.parse(await readFile(join(raiz, 'package.json'), 'utf8')).version;
+  assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('drone-forecast:version-vista'))), versionApp, 'se apunta la versión vista');
+  await page.locator('#btn-novedades').click();
+  await page.locator('#novedades-cuerpo details').first().waitFor();
+  assert.match(await page.textContent('#novedades-cuerpo h3:first-child'), /^Lo más importante hasta ahora$/);
+  assert.match(await page.textContent('#novedades-cuerpo'), /Todas las versiones \(\d+\)/);
+  assert.match(await page.textContent('#novedades-cuerpo details[open] summary'), new RegExp(`^v${versionApp.replace(/\./g, '\\.')}\\d{2}-\\d{2}-\\d{4}$`), 'la última, abierta y con su fecha');
+  assert.match(await page.textContent('#novedades-cuerpo details:last-of-type summary'), /^v0\.1\.0/);
+  await page.locator('#dlg-novedades button[value="cerrar"]').click();
+  // Tras una actualización (venía de la 0.40.0): un aviso, una sola vez, que
+  // abre lo nuevo desde esa versión.
+  await page.evaluate(() => localStorage.setItem('drone-forecast:version-vista', JSON.stringify('0.40.0')));
+  await page.reload();
+  await page.locator('#aviso-novedades').filter({ hasText: `Actualizada a la v${versionApp}.` }).waitFor();
+  if (process.env.CAPTURA_NOVEDADES) await page.screenshot({ path: process.env.CAPTURA_NOVEDADES.replace('.png', '-aviso.png') });
+  await page.locator('#aviso-novedades [data-accion="novedades"]').click();
+  await page.locator('#novedades-cuerpo details').first().waitFor();
+  assert.equal(await page.textContent('#novedades-cuerpo h3:first-child'), 'Desde tu última versión (v0.40.0)');
+  if (process.env.CAPTURA_NOVEDADES) await page.locator('#dlg-novedades').screenshot({ path: process.env.CAPTURA_NOVEDADES });
+  const nuevas = await page.locator('#novedades-cuerpo h3:first-child ~ details[open] summary').allTextContents();
+  assert.ok(nuevas.some((t) => t.startsWith('v0.41.0')) && !nuevas.some((t) => t.startsWith('v0.40.0')), nuevas.join(' | '));
+  await page.locator('#dlg-novedades button[value="cerrar"]').click();
+  assert.equal(await page.locator('#aviso-novedades').isVisible(), false);
+  await page.reload();
+  await page.locator('#ahora .cartel').waitFor();
+  assert.equal(await page.locator('#aviso-novedades').isVisible(), false, 'visto, no vuelve a salir');
+  await page.locator('[data-vista="ajustes"]').click();
   // Instalar: sin invitación del navegador la tarjeta no sale; con ella, el
   // botón lanza la ventana de instalación del navegador.
   assert.ok(await page.locator('#instalar').isHidden(), 'sin invitación, nada que instalar');

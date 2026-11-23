@@ -41,17 +41,13 @@ jobs:
       - run: npm install --no-save --ignore-scripts playwright-core@1.56.1
       - run: PLAYWRIGHT_CHROME="$(command -v google-chrome)" npm run test:ui
 
-  publicar:
+  # Preparar y publicar van en trabajos separados: con los dos pasos seguidos
+  # en el mismo, deploy-pages buscaba el paquete medio segundo después de
+  # subirlo y GitHub aún no lo tenía («No artifacts named github-pages»).
+  preparar:
     needs: pruebas
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.despliegue.outputs.page_url }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -61,13 +57,26 @@ jobs:
         env:
           PREVIO_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/data
         run: npm run datos
+      # La lista la vigila pruebas/estructura.test.mjs: sw-modulo.js faltaba
+      # y el aviso en segundo plano nunca llegó a publicarse.
       - name: Preparar lo que se publica
         run: |
           mkdir -p _site
-          cp -r index.html styles.css sw.js manifest.webmanifest icons src data _site/
-      - uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5.0.0
+          cp -r index.html styles.css sw.js sw-modulo.js manifest.webmanifest icons src data _site/
       - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
         with:
           path: _site
+
+  publicar:
+    needs: preparar
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.despliegue.outputs.page_url }}
+    steps:
+      - uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5.0.0
       - id: despliegue
         uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4.0.5

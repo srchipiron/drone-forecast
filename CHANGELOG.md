@@ -3,6 +3,16 @@
 Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
 `0.0.X` para correcciones. La versión sale en el pie de la app.
 
+## 0.40.1
+
+- **El aviso en segundo plano y la app sin conexión, arreglados.** El fichero
+  del instalador con aviso (`sw-modulo.js`) no se subía a la web: desde la
+  0.11.0 el aviso de ventana y de vuelos planificados nunca llegó a funcionar,
+  y en Chrome la app tampoco quedaba guardada para usarla sin cobertura (el
+  error «Instalador: … 404» del diagnóstico). Ahora se publica, y una prueba
+  falla si algo que la app pide se queda fuera.
+- Publicar ya no falla a ratos con «No artifacts named github-pages».
+
 ## 0.40.0
 
 - **Planificador de trabajos** (pestaña nueva, **Trabajos**). Para cada

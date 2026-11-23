@@ -145,6 +145,9 @@ try {
   assert.equal(await page.locator('nav[aria-label="Secciones"] > [role="tablist"] [role="tab"]').count(), 3);
   assert.deepEqual(await page.locator('[aria-checked]').evaluateAll((xs) => xs.map((x) => x.dataset.modo)), ['recreativo', 'profesional']);
   assert.match(await page.textContent('#ahora .ventana-hoy strong'), /^Ninguna en [78] días$/, 'sin nada volable en la semana, lo dice');
+  // Y cada día sin ventana dice por qué, en una palabra (también al lector de pantalla).
+  assert.match(await page.textContent('#dias .dia:nth-child(2) .d-motivo'), /^[A-ZÑÁÉÍÓÚ][a-zñáéíóú ]+$/);
+  assert.match(await page.locator('#dias .dia').nth(1).getAttribute('aria-label'), /sin ventana por [a-zñáéíóú ]+$/);
   // Icono de día o de noche según la hora a la que corra la prueba.
   assert.match(await page.textContent('#ahora .cartel .cielo'), /^(🌤️|🌙) Poco nuboso · 18 °C$/, 'el cielo, como en UAV Forecast');
   // La semana de un vistazo: cada día con una raya por hora de su color.

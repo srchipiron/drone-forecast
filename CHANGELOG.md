@@ -3,6 +3,16 @@
 Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
 `0.0.X` para correcciones. La versión sale en el pie de la app.
 
+## 0.39.0
+
+- **Los días sin vuelo dicen por qué.** Debajo de «Sin vuelo», cada tarjeta
+  de la semana lleva la razón en una palabra: **Viento**, **Rachas**,
+  **Lluvia**, **Tormenta**, **Hielo**, **Frío**, **Nubes bajas**… Es lo que
+  más horas con luz tumba ese día (de noche siempre está la luz en rojo y no
+  cuenta). Si a hoy ya solo le quedan horas de noche, pone **Noche**. Así
+  sabes de un vistazo si merece la pena mirar el día o si no hay nada que
+  hacer.
+
 ## 0.38.0
 
 - **«Mis drones» más fácil.** En Ajustes, tus drones salen ahora como

@@ -484,10 +484,10 @@ function pintarDias(p) {
       // Compacto para que quepan cuatro por fila: «10–14 h» (las ventanas van por horas enteras).
       const corta = v ? `${hora(v.inicio, p.zona).slice(0, 2)}–${hora(v.fin, p.zona).slice(0, 2).replace(/^00$/, '24')} h` : 'Sin vuelo';
       const larga = v ? `${hora(v.inicio, p.zona)}–${hora(v.fin, p.zona)}` : 'Sin ventana';
-      const detalle = v ? `${larga}, ${v.horas} h${v.estado === 'precaucion' ? ' con precaución' : ''}` : 'sin ventana';
+      const detalle = v ? `${larga}, ${v.horas} h${v.estado === 'precaucion' ? ' con precaución' : ''}` : `sin ventana${d.porQue ? ` por ${d.porQue}` : ''}`;
       return `<button type="button" class="dia ${e}${d.clave === estado.dia ? ' activo' : ''}" data-dia="${esc(d.clave)}" data-ventana="${esc(larga)}" aria-pressed="${d.clave === estado.dia}" aria-label="${esc(etiquetaDia(d.clave, k))}: ${esc(detalle)}">
         <span class="d-nombre">${esc(etiquetaDia(d.clave, k))}</span>
-        <span class="d-ventana">${esc(corta)}</span>
+        <span class="d-ventana">${esc(corta)}</span>${!v && d.porQue ? `<span class="d-motivo">${esc(d.porQue[0].toUpperCase() + d.porQue.slice(1))}</span>` : ''}
         <span class="d-barra" aria-hidden="true">${d.horas.map((h) => `<i class="${esc(h.estado)}${h.ms + 3600000 <= ahora ? ' pasada' : ''}"></i>`).join('')}</span>
       </button>`;
     })

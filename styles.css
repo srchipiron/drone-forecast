@@ -445,6 +445,9 @@ details[open] > summary::before { transform: rotate(45deg); }
 
 .dia.no .d-ventana { font-weight: 500; color: var(--suave); }
 
+/* Sin ventana: por qué, en una palabra («Viento»). */
+.d-motivo { font-size: 0.75rem; line-height: 1.2; color: var(--suave); }
+
 /* La semana de un vistazo: una raya por hora con el color de su semáforo. */
 .d-barra { display: flex; gap: 1px; height: 6px; margin-top: 0.3rem; }
 

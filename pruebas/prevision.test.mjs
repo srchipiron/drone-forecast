@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { leerPrevision } from '../src/motor/meteo.js';
 import { construirPrevision, normalizarAjustes, resumenDias } from '../src/motor/prevision.js';
-import { mejorVentana } from '../src/motor/ventanas.js';
+import { mejorVentana, porQueNo } from '../src/motor/ventanas.js';
 import { AHORA, LUGAR, constelacionSintetica, respuestaOpenMeteo } from './fixtures/sinteticos.mjs';
 
 const sats = [...constelacionSintetica(AHORA, 'GPS'), ...constelacionSintetica(AHORA, 'Galileo', 3, 8)];
@@ -119,6 +119,28 @@ test('mejor ventana: el tramo verde más largo; si no hay verde, el ámbar', () 
   const amb = ['no', 'precaucion', 'precaucion', 'no'].map((estado, k) => ({ ms: k * H, estado }));
   assert.equal(mejorVentana(amb).estado, 'precaucion');
   assert.equal(mejorVentana([{ ms: 0, estado: 'no' }]), null);
+});
+
+test('sin ventana, el día dice por qué: el factor en rojo que más horas con luz tumba', () => {
+  const fac = (id, estado, nombre = id) => ({ id, nombre, estado });
+  const noche = { factores: [fac('luz', 'no'), fac('viento', 'ok')] };
+  const ventoso = { temp: 20, factores: [fac('luz', 'ok'), fac('viento', 'no'), fac('rachas', 'no')] };
+  const lluvioso = { temp: 20, factores: [fac('luz', 'ok'), fac('lluvia', 'no'), fac('rachas', 'no')] };
+  // Las rachas tumban tres horas; el viento y la lluvia, una o dos.
+  assert.equal(porQueNo([noche, noche, noche, ventoso, lluvioso, ventoso]), 'rachas');
+  // De noche la luz siempre está en rojo: no cuenta si hay horas con luz.
+  assert.equal(porQueNo([noche, noche, noche, noche, { temp: 20, factores: [fac('luz', 'ok'), fac('lluvia', 'no')] }]), 'lluvia');
+  assert.equal(porQueNo([noche, noche]), 'noche', 'sin una hora con luz, la razón es la noche');
+  assert.equal(porQueNo([{ temp: -5, factores: [fac('temperatura', 'no')] }]), 'frío');
+  assert.equal(porQueNo([{ temp: 44, factores: [fac('temperatura', 'no')] }]), 'calor');
+  assert.equal(porQueNo([{ factores: [fac('raro', 'no', 'Factor Raro')] }]), 'factor raro', 'sin palabra corta, el nombre');
+  assert.equal(porQueNo([]), null);
+
+  // En la previsión: un día de vendaval lo explica; uno volable no lleva porqué.
+  const p = prev({ viento: 25, racha: 30 });
+  assert.equal(p.dias[1].ventana, null);
+  assert.match(p.dias[1].porQue, /^(viento|rachas)$/);
+  assert.equal(prev().dias[1].porQue, null);
 });
 
 test('ajustes absurdos se acotan', () => {

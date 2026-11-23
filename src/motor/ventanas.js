@@ -46,3 +46,43 @@ export function proximaVentana(dias) {
   }
   return null;
 }
+
+// La palabra corta de cada factor para la tarjeta del día (cabe en la
+// tarjeta a 320 px: ninguna palabra más larga que «visibilidad»).
+const CORTO = {
+  viento: 'viento',
+  rachas: 'rachas',
+  lluvia: 'lluvia',
+  tormenta: 'tormenta',
+  hielo: 'hielo',
+  visibilidad: 'visibilidad',
+  techo: 'nubes bajas', // en dos líneas
+  satelites: 'satélites',
+  turbulencia: 'aire revuelto',
+  consenso: 'dudas',
+  luz: 'noche',
+};
+
+/**
+ * Por qué un día no tiene ventana: el factor en rojo que más horas tumba.
+ * Cuenta solo las horas con luz (o con vuelo nocturno permitido): de noche
+ * siempre está la luz en rojo y taparía lo que de verdad estropea el día.
+ * Si no queda ninguna hora con luz, la razón es «noche».
+ * @param {Array<{temp?: number, factores: Array<{id: string, nombre: string, estado: string}>}>} horas
+ * @returns {string|null}  la palabra, o null si no hay horas o nada en rojo
+ */
+export function porQueNo(horas) {
+  if (!horas.length) return null;
+  const conLuz = horas.filter((h) => !h.factores.some((f) => f.id === 'luz' && f.estado === 'no'));
+  if (!conLuz.length) return CORTO.luz;
+  const cuenta = new Map();
+  for (const h of conLuz)
+    for (const f of h.factores) {
+      if (f.estado !== 'no') continue;
+      const palabra = f.id === 'temperatura' ? (h.temp < 15 ? 'frío' : 'calor') : (CORTO[f.id] ?? f.nombre.toLowerCase());
+      cuenta.set(palabra, (cuenta.get(palabra) ?? 0) + 1);
+    }
+  let mejor = null;
+  for (const [palabra, n] of cuenta) if (!mejor || n > mejor[1]) mejor = [palabra, n];
+  return mejor?.[0] ?? null;
+}

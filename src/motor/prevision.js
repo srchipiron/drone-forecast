@@ -9,7 +9,7 @@ import { techoNubes } from './meteo.js';
 import { misionActiva } from './misiones.js';
 import { antiguedadDias, contarVisibles } from './satelites.js';
 import { evaluarHora } from './veredicto.js';
-import { mejorVentana, proximaVentana } from './ventanas.js';
+import { mejorVentana, porQueNo, proximaVentana } from './ventanas.js';
 import { rachaEnAltura, vientoEnAltura } from './viento.js';
 
 export const AJUSTES_INICIALES = {
@@ -132,7 +132,9 @@ export function construirPrevision({ meteo, consenso = new Map(), kp = [], satel
     .map(([clave, hs]) => {
       // Para hoy, la ventana se busca desde la hora en curso: una pasada no sirve.
       const futuras = hs.filter((h) => h.ms + 3600000 > ahora);
-      return { clave, horas: hs, ventana: mejorVentana(futuras), sol: eventosSol(hs[0].ms, lugar.lat, lugar.lon) };
+      const ventana = mejorVentana(futuras);
+      // Sin ventana, el porqué en una palabra para la tarjeta del día.
+      return { clave, horas: hs, ventana, porQue: ventana ? null : porQueNo(futuras), sol: eventosSol(hs[0].ms, lugar.lat, lugar.lon) };
     });
 
   const actual = horas.find((h) => ahora >= h.ms && ahora < h.ms + 3600000) ?? null;

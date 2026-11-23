@@ -75,3 +75,21 @@ test('todos los módulos que se publican tienen la sintaxis bien', async () => {
     }
   }
 });
+
+// sw-modulo.js no se copiaba al publicar: el aviso en segundo plano daba 404
+// desde 0.11.0 y en Chrome ni siquiera se instalaba la app sin conexión.
+test('se publica todo lo que la página y los instaladores piden', () => {
+  const flujo = leer('.github/workflows/desplegar.yml');
+  const cp = flujo.match(/^\s*cp -r (.+) _site\/$/m);
+  assert.ok(cp, 'no encuentro la línea cp -r … _site/ del despliegue');
+  const publicado = cp[1].split(/\s+/);
+  const raiz = (ruta) => ruta.replace(/^\.\//, '').split('/')[0];
+  const pedidos = new Set(['index.html']);
+  // Lo que index.html carga de la propia app (href/src relativos).
+  for (const m of leer('index.html').matchAll(/(?:href|src)="(?!https?:|data:|#)([^"]+)"/g)) pedidos.add(raiz(m[1]));
+  // Los instaladores que registra la app y lo que precarga sw.js.
+  for (const m of leer('src/app/main.js').matchAll(/register\(([^)]*)\)/g)) for (const f of m[1].matchAll(/'([^']+\.js)'/g)) pedidos.add(raiz(f[1]));
+  for (const m of leer('sw.js').matchAll(/^\s+'([^']+)',$/gm)) if (m[1] !== './') pedidos.add(raiz(m[1]));
+  assert.ok(pedidos.has('sw-modulo.js') && pedidos.has('sw.js'), `la prueba no ve los instaladores: ${[...pedidos]}`);
+  for (const f of pedidos) assert.ok(publicado.includes(f), `${f} no se copia a _site en el despliegue`);
+});

@@ -70,7 +70,7 @@ export function ampliarCaja(c, f = 0.5) {
  * rectángulo (mismo centro y zoom que las teselas). Se redondea a medio píxel
  * y se saltan los puntos que caen en el mismo sitio.
  */
-export function rutaAnillos(anillos, cx, cy, z, ancho, alto) {
+export function rutaAnillos(anillos, cx, cy, z, ancho, alto, cerrar = true) {
   const partes = [];
   for (const r of anillos) {
     let previo = '';
@@ -84,7 +84,7 @@ export function rutaAnillos(anillos, cx, cy, z, ancho, alto) {
       trozo += `${trozo ? 'L' : 'M'}${p}`;
       previo = p;
     }
-    if (trozo) partes.push(`${trozo}Z`);
+    if (trozo) partes.push(cerrar ? `${trozo}Z` : trozo);
   }
   return partes.join('');
 }

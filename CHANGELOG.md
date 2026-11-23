@@ -3,6 +3,38 @@
 Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
 `0.0.X` para correcciones. La versión sale en el pie de la app.
 
+## 0.41.0
+
+- **Trabajos en una traza o en varios puntos.** En «Zona de trabajo» eliges
+  **Un punto** (como hasta ahora), **Varios puntos** o **Traza**. Los puntos
+  se marcan tocando el mapa del formulario (con «Quitar el último» y «Borrar
+  todo»), o se **importan de un fichero KML, KMZ o GPX**: Google Earth, una
+  ruta de GPS o una misión de **DJI Pilot 2** (el KMZ tal cual).
+- El tiempo se mira a lo largo de la traza (un punto cada 3 km, hasta 12) o
+  en cada sitio, en una sola descarga, y **cada hora manda el punto peor**:
+  si en un tramo hace viento, ese rato el trabajo no se puede. La tarjeta
+  dice la longitud de la traza y en cuántos puntos se ha mirado.
+- Los vuelos que apuntes en «Vuelos planificados» se vigilan en el primer
+  punto de la zona.
+- **Trabajos va por su cuenta**: el sitio se elige en el propio formulario
+  (buscar un sitio o unas coordenadas, tu ubicación, tocar el mapa o importar
+  un fichero), sin pasar por el lugar de la pantalla de Previsión.
+- **No solapar con otros trabajos.** Marca un trabajo así cuando salís los
+  dos (o todo el equipo): sus horas no se reparten a ningún otro trabajo, y
+  él tampoco pisa a los demás ni a tus vuelos planificados a mano. Se
+  reparte primero el permiso que antes acaba; los días que pierde un trabajo
+  por eso dicen «Otro trabajo».
+
+## 0.40.1
+
+- **El aviso en segundo plano y la app sin conexión, arreglados.** El fichero
+  del instalador con aviso (`sw-modulo.js`) no se subía a la web: desde la
+  0.11.0 el aviso de ventana y de vuelos planificados nunca llegó a funcionar,
+  y en Chrome la app tampoco quedaba guardada para usarla sin cobertura (el
+  error «Instalador: … 404» del diagnóstico). Ahora se publica, y una prueba
+  falla si algo que la app pide se queda fuera.
+- Publicar ya no falla a ratos con «No artifacts named github-pages».
+
 ## 0.40.0
 
 - **Planificador de trabajos** (pestaña nueva, **Trabajos**). Para cada

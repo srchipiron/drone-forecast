@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { MAXIMO_PLANES, anadirPlan, crearPlan, cuandoPlan, empeora, planesValidos, textoEmpeora, valorarPlan } from '../src/motor/planificado.js';
+import { MAXIMO_PLANES, anadirPlan, crearPlan, cuandoPlan, empeora, planesValidos, puntosPlan, textoEmpeora, valorarPlan } from '../src/motor/planificado.js';
 import { leerPrevision } from '../src/motor/meteo.js';
 import { construirPrevision } from '../src/motor/prevision.js';
 import { AHORA, LUGAR, respuestaOpenMeteo } from './fixtures/sinteticos.mjs';
@@ -163,4 +163,15 @@ test('fases: pendiente, en marcha y terminado; el terminado se queda 12 h en la 
   assert.deepEqual(planesValidos([p], fin + H, MARGEN_DIARIO), [p], 'con margen (la tarjeta) sigue');
   assert.deepEqual(planesValidos([p], fin + MARGEN_DIARIO, MARGEN_DIARIO), [], 'a las 12 h se va');
   assert.equal(anadirPlan([p], plan({ ms: MANANA_10 + 24 * H }), fin + H, MARGEN_DIARIO).length, 2, 'guardar otro no tira el terminado');
+});
+
+test('plan de una traza: guarda sus puntos de tiempo (hasta 12, válidos) y se mira en todos', () => {
+  const puntos = Array.from({ length: 15 }, (_, i) => ({ lat: 40 + i / 100, lon: -3.7, sobra: 1 }));
+  const p = plan({ lugar: { ...lugar, puntos: [{ lat: 'x', lon: 0 }, ...puntos] } });
+  assert.equal(p.lugar.puntos.length, 12);
+  assert.deepEqual(p.lugar.puntos[0], { lat: 40, lon: -3.7 }, 'sin lo que sobra y sin los rotos');
+  assert.deepEqual(puntosPlan(p), p.lugar.puntos);
+  // Con uno solo (o ninguno) es un plan de siempre: su lugar.
+  assert.equal(plan({ lugar: { ...lugar, puntos: [puntos[0]] } }).lugar.puntos, undefined);
+  assert.deepEqual(puntosPlan(plan()), [{ lat: lugar.lat, lon: lugar.lon }]);
 });

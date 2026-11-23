@@ -56,7 +56,13 @@ globalThis.fetch = async (url) => {
   if (alPedir && u.includes('api.open-meteo.com')) await alPedir(u);
   const de = (l) => u.includes(`latitude=${l.lat}`);
   let cuerpo = null;
-  if (u.includes('api.open-meteo.com')) cuerpo = de(BUENO) ? meteo.bueno : de(MALO) ? meteo.malo : null;
+  // Varios puntos en una petición (la traza de un trabajo): una respuesta por punto.
+  const lats = new URL(u).searchParams.get('latitude')?.split(',') ?? [];
+  if (u.includes('api.open-meteo.com') && lats.length > 1) {
+    const una = (lat) => (Number(lat) === BUENO.lat ? meteo.bueno : Number(lat) === MALO.lat ? meteo.malo : null);
+    cuerpo = lats.map(una);
+    if (cuerpo.some((x) => !x)) cuerpo = null;
+  } else if (u.includes('api.open-meteo.com')) cuerpo = de(BUENO) ? meteo.bueno : de(MALO) ? meteo.malo : null;
   if (!cuerpo || [...caida].some((l) => de(l))) return { ok: false, status: 503, json: async () => ({}) };
   return { ok: true, status: 200, json: async () => cuerpo };
 };
@@ -215,4 +221,20 @@ test('planes: se juzgan con el dron del plan, no con el que esté puesto ahora',
   await comprobarAvisos(r, { ahora: AHORA });
   assert.equal(r.avisos.length, 1);
   assert.match(r.avisos[0].body, /de verde a (ámbar|rojo)/);
+});
+
+test('planes de una traza: avisa si empeora en cualquiera de sus puntos, no solo en el primero', async () => {
+  cache.clear();
+  caida = new Set();
+  pedidas.length = 0;
+  // Empieza en Getafe (bien), pero la traza pasa por un punto con vendaval.
+  const traza = crearPlan({ ms: MANANA_10, horas: 2, lugar: { ...BUENO, puntos: [BUENO, MALO] }, zona: 'Europe/Madrid', estado: 'ok', nota: 'Línea' });
+  await almacen.guardarConfigAviso({ activo: true, ajustes: {}, favoritos: [], planes: [traza] });
+  const r = registro();
+  await comprobarAvisos(r, { ahora: AHORA });
+  assert.equal(r.avisos.length, 1, 'el punto malo de la traza manda');
+  assert.match(r.avisos[0].body, /de verde a rojo/);
+  const multi = pedidas.filter((u) => u.includes('api.open-meteo.com'));
+  assert.equal(multi.length, 1, 'una sola descarga con los dos puntos');
+  assert.match(multi[0], /latitude=40\.3000,36\.0100/);
 });

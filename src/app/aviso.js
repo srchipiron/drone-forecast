@@ -4,10 +4,11 @@
 // está en almacen.configAviso().
 
 import { textoAviso, ventanasManana } from '../motor/aviso.js';
-import { empeora, planesValidos, textoEmpeora, valorarPlan } from '../motor/planificado.js';
+import { empeora, planesValidos, puntosPlan, textoEmpeora, valorarPlan } from '../motor/planificado.js';
+import { combinarPrevisiones } from '../motor/trabajos.js';
 import { construirPrevision } from '../motor/prevision.js';
 import { almacen } from './almacen.js';
-import { cargarKp, cargarSatelites, cargarSoloPrevision } from './datos.js';
+import { cargarKp, cargarPrevisionVarios, cargarSatelites, cargarSoloPrevision } from './datos.js';
 
 export const ETIQUETA = 'aviso-ventana';
 // Lo mínimo que acepta Chrome; luego despierta cuando él decide (suele ser 1-2 veces al día).
@@ -70,17 +71,17 @@ export async function revisarPlanes(registro, cfg, contexto, ahora = Date.now())
   }
   const vistos = { ...(cfg.vistos ?? {}) };
   const [kp, gnss] = await contexto();
-  // Una previsión por lugar, aunque haya varios planes en él.
+  // Una descarga por sitio (o por juego de puntos de una traza), aunque haya varios planes en él.
+  const clave = (plan) => puntosPlan(plan).map((q) => `${q.lat},${q.lon}`).join(';');
   const porLugar = new Map();
+  for (const plan of planes) if (!porLugar.has(clave(plan))) porLugar.set(clave(plan), cargarPrevisionVarios(puntosPlan(plan)).catch(() => null));
   for (const plan of planes) {
-    const clave = `${plan.lugar.lat},${plan.lugar.lon}`;
-    if (!porLugar.has(clave)) porLugar.set(clave, cargarSoloPrevision(plan.lugar.lat, plan.lugar.lon).catch(() => null));
-  }
-  for (const plan of planes) {
-    const meteo = await porLugar.get(`${plan.lugar.lat},${plan.lugar.lon}`);
-    if (!meteo) continue;
-    // Con el dron y la altura del plan (los de cuando se planificó), no los de ahora.
-    const p = construirPrevision({ meteo, kp, satelites: gnss.satelites, lugar: plan.lugar, ajustes: plan.ajustes ?? cfg.ajustes ?? {}, ahora });
+    const lista = await porLugar.get(clave(plan));
+    if (!lista) continue;
+    // Con el dron y la altura del plan (los de cuando se planificó), no los
+    // de ahora; en una traza, cada hora la del peor punto.
+    const puntos = puntosPlan(plan);
+    const p = combinarPrevisiones(lista.map((meteo, i) => construirPrevision({ meteo, kp, satelites: gnss.satelites, lugar: { ...plan.lugar, ...puntos[i] }, ajustes: plan.ajustes ?? cfg.ajustes ?? {}, ahora })));
     const val = valorarPlan(plan, p);
     if (val.estado === 'sin-prevision') continue;
     const antes = vistos[plan.id] ?? plan.estado;

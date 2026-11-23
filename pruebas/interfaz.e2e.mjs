@@ -615,7 +615,7 @@ try {
   const tarjetaTrab = await page.textContent('#lista-trabajos .trabajo');
   assert.match(tarjetaTrab, /Orto <i>parcela<\/i> · Getafe<img/, tarjetaTrab);
   assert.match(tarjetaTrab, /Fotogrametría \/ ortofoto · permiso del [^]* · de 0 a 24 h · 2 jornadas de 1 h, se pueden partir/);
-  assert.match(await page.textContent('#lista-trabajos .t-propuesta'), /^Lo mejor(, con precaución[^:]*)?: \w+, \d{1,2} \w+ de \d\d:00 a \d\d:00 y \w+, \d{1,2} \w+ de \d\d:00 a \d\d:00\.$/);
+  assert.match(await page.textContent('#lista-trabajos .t-propuesta'), /^Lo mejor(, con precaución[^:]*)?: [^\s,]+, \d{1,2} [^\s,]+ de \d\d:00 a \d\d:00 y [^\s,]+, \d{1,2} [^\s,]+ de \d\d:00 a \d\d:00\.$/u);
   assert.equal(await page.locator('#lista-trabajos .t-dia').count(), 7, 'un día por cada día del permiso');
   assert.deepEqual(await page.locator('#lista-trabajos .t-dia em').allTextContents(), ['Jornada 1', 'Jornada 2']);
   assert.equal(await page.evaluate(() => window.__xss), undefined);
@@ -714,7 +714,7 @@ try {
   assert.equal(await page.locator('#lista-trabajos .trabajo').count(), 0);
   assert.match(await page.textContent('#anuncio-trabajos'), /^Trabajo borrado/);
   // Dos trabajos en el mismo sitio y con el mismo horario; uno «sin solapar»
-  // (vais los dos): sus horas propuestas no coinciden con las del otro.
+  // (vais los dos): su día de vuelo no se da a ningún otro.
   assert.equal(await page.isChecked('#trab-exclusivo'), false);
   await page.evaluate(() => {
     const hoy = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
@@ -729,12 +729,12 @@ try {
   assert.match(await page.textContent('#lista-trabajos .trabajo:nth-child(2)'), /1 jornada de 3 h, sin solapar con otros trabajos/);
   const tramo = async (n) => {
     const t = await page.textContent(`#lista-trabajos .trabajo:nth-child(${n}) .t-propuesta`);
-    const m = t.match(/(\w+, \d{1,2} \w+) de (\d\d):00 a (\d\d):00/);
+    const m = t.match(/([^\s,:]+, \d{1,2} [^\s,]+) de (\d\d):00 a (\d\d):00/u); // «mié», «sáb»: con tilde
     assert.ok(m, t);
     return { dia: m[1], de: Number(m[2]), a: Number(m[3]) || 24 };
   };
   const [normal, exclusivo] = [await tramo(1), await tramo(2)];
-  assert.ok(normal.dia !== exclusivo.dia || normal.a <= exclusivo.de || exclusivo.a <= normal.de, `se solapan: ${JSON.stringify([normal, exclusivo])}`);
+  assert.notEqual(normal.dia, exclusivo.dia, `el día del vuelo «sin solapar» queda reservado entero: ${JSON.stringify([normal, exclusivo])}`);
   await page.locator('#lista-trabajos .trabajo:nth-child(2) [data-editar-trabajo]').click();
   assert.equal(await page.isChecked('#trab-exclusivo'), true, 'el formulario lo trae marcado');
   await page.locator('[data-accion="cerrar-trabajo"]').click();

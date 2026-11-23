@@ -4,6 +4,7 @@
 // seguidos si el trabajo no se puede partir; sueltos (martes y jueves) si sí.
 
 import { MODOS } from './misiones.js';
+import { limpiarPuntos } from './traza.js';
 import { porQueNo } from './ventanas.js';
 
 const HORA = 3600000;
@@ -38,7 +39,14 @@ export function crearTrabajo(d, ahora = Date.now()) {
   const nombre = String(d.nombre ?? '').trim().slice(0, 80);
   if (!nombre) return { error: 'Ponle un nombre al trabajo (cliente u obra).' };
   const l = d.lugar;
-  if (!l || !Number.isFinite(l.lat) || !Number.isFinite(l.lon) || Math.abs(l.lat) > 90 || Math.abs(l.lon) > 180) return { error: 'Elige el lugar del trabajo.' };
+  // Un punto, varios puntos o una traza: los dos últimos llevan su lista y
+  // el lugar (para los vuelos planificados) es el primero.
+  const forma = ['puntos', 'traza'].includes(l?.forma) ? l.forma : 'punto';
+  const puntos = forma === 'punto' ? [] : limpiarPuntos(l.puntos);
+  if (forma === 'puntos' && puntos.length < 2) return { error: 'Marca al menos dos puntos en el mapa (o elige «Un punto»).' };
+  if (forma === 'traza' && puntos.length < 2) return { error: 'La traza necesita al menos dos puntos.' };
+  const centro = puntos[0] ?? l;
+  if (!centro || !Number.isFinite(centro.lat) || !Number.isFinite(centro.lon) || Math.abs(centro.lat) > 90 || Math.abs(centro.lon) > 180) return { error: 'Elige el lugar del trabajo.' };
   if (!TIPOS_TRABAJO.includes(d.tipo)) return { error: 'Elige el tipo de trabajo.' };
   if (!esFecha(d.desde) || !esFecha(d.hasta)) return { error: 'Pon las fechas del permiso.' };
   if (d.hasta < d.desde) return { error: 'El permiso termina antes de empezar: revisa las fechas.' };
@@ -60,7 +68,7 @@ export function crearTrabajo(d, ahora = Date.now()) {
     trabajo: {
       id: typeof d.id === 'string' && d.id ? d.id.slice(0, 40) : `t${ahora.toString(36)}`,
       nombre,
-      lugar: { nombre: String(l.nombre ?? '').slice(0, 120), lat: l.lat, lon: l.lon },
+      lugar: { nombre: String(l.nombre ?? '').slice(0, 120), lat: centro.lat, lon: centro.lon, ...(forma === 'punto' ? {} : { forma, puntos }) },
       tipo: d.tipo,
       desde: d.desde,
       hasta: d.hasta,
@@ -171,6 +179,38 @@ export function organizarTrabajo(trabajo, p, ahora = Date.now()) {
   const faltan = n - elegidos.length;
   const estado = !faltan ? peorDe(elegidos) : sinPrevision ? (elegidos.length ? 'incompleto' : 'pendiente') : 'imposible';
   return { estado, dias, elegidos, faltan, hastaPrevision };
+}
+
+const GRAVEDAD = { ok: 0, 'sin-dato': 1, precaucion: 2, no: 3 };
+
+/**
+ * La previsión de una traza o de varios puntos: cada hora, la del punto
+ * peor (si en un tramo no se puede, el trabajo ese rato no se puede). Cada
+ * factor, el peor de todos los puntos; la temperatura, la más baja.
+ * Solo las horas que tienen todos los puntos.
+ * @param {Array<{zona: string, dias: object[]}>} lista  una construirPrevision() por punto
+ */
+export function combinarPrevisiones(lista) {
+  if (lista.length === 1) return lista[0];
+  const [primera, ...resto] = lista;
+  const porMs = resto.map((p) => new Map(p.horas.map((h) => [h.ms, h])));
+  const combinar = (h) => {
+    const todas = [h, ...porMs.map((m) => m.get(h.ms))];
+    if (todas.some((x) => !x)) return null;
+    const peor = todas.reduce((a, b) => (GRAVEDAD[b.estado] > GRAVEDAD[a.estado] ? b : a));
+    const factores = new Map();
+    for (const x of todas)
+      for (const f of x.factores) {
+        const ya = factores.get(f.id);
+        if (!ya || GRAVEDAD[f.estado] > GRAVEDAD[ya.estado]) factores.set(f.id, f);
+      }
+    const temps = todas.map((x) => x.temp).filter(Number.isFinite);
+    return { ...peor, ms: h.ms, estado: peor.estado, factores: [...factores.values()], temp: temps.length ? Math.min(...temps) : peor.temp, puntoPeor: todas.indexOf(peor) };
+  };
+  const dias = primera.dias
+    .map((d) => ({ ...d, horas: d.horas.map(combinar).filter(Boolean) }))
+    .filter((d) => d.horas.length);
+  return { ...primera, horas: dias.flatMap((d) => d.horas), dias, puntos: lista.length };
 }
 
 /** Los vuelos planificados de una propuesta: uno por jornada. */

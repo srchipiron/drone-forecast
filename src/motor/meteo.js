@@ -50,6 +50,11 @@ export function urlPrevision(lat, lon) {
   return `${BASE}?latitude=${coord(lat)}&longitude=${coord(lon)}&hourly=${VARIABLES.join(',')}&${COMUNES}`;
 }
 
+/** Lo mismo para varios puntos en una sola petición (la respuesta es una lista, en orden). */
+export function urlPrevisionVarios(puntos) {
+  return `${BASE}?latitude=${puntos.map((p) => coord(p.lat)).join(',')}&longitude=${puntos.map((p) => coord(p.lon)).join(',')}&hourly=${VARIABLES.join(',')}&${COMUNES}`;
+}
+
 export function urlConsenso(lat, lon) {
   return `${BASE}?latitude=${coord(lat)}&longitude=${coord(lon)}&hourly=wind_speed_10m,wind_gusts_10m&models=${MODELOS_CONSENSO.join(',')}&${COMUNES}`;
 }

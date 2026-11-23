@@ -3,6 +3,20 @@
 Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
 `0.0.X` para correcciones. La versión sale en el pie de la app.
 
+## 0.41.0
+
+- **Trabajos en una traza o en varios puntos.** En «Zona de trabajo» eliges
+  **Un punto** (como hasta ahora), **Varios puntos** o **Traza**. Los puntos
+  se marcan tocando el mapa del formulario (con «Quitar el último» y «Borrar
+  todo»), o se **importan de un fichero KML, KMZ o GPX**: Google Earth, una
+  ruta de GPS o una misión de **DJI Pilot 2** (el KMZ tal cual).
+- El tiempo se mira a lo largo de la traza (un punto cada 3 km, hasta 12) o
+  en cada sitio, en una sola descarga, y **cada hora manda el punto peor**:
+  si en un tramo hace viento, ese rato el trabajo no se puede. La tarjeta
+  dice la longitud de la traza y en cuántos puntos se ha mirado.
+- Los vuelos que apuntes en «Vuelos planificados» se vigilan en el primer
+  punto de la zona.
+
 ## 0.40.1
 
 - **El aviso en segundo plano y la app sin conexión, arreglados.** El fichero

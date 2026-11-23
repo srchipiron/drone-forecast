@@ -13,7 +13,9 @@ import { DRONES } from '../motor/drones.js';
 import { MISIONES, MODOS } from '../motor/misiones.js';
 import { MARGEN_DIARIO, MAXIMO_PLANES, NOMBRE_ESTADO, anadirPlan, crearPlan, cuandoPlan, empeora, fasePlan, fijarAjustesPlanes, huecosPlan, icsPlan, planesValidos, valorarPlan } from '../motor/planificado.js';
 import { construirPrevision, normalizarAjustes, resumenDias } from '../motor/prevision.js';
-import { MAXIMO_TRABAJOS, TIPOS_TRABAJO, crearTrabajo, organizarTrabajo, planesDeTrabajo, trabajosValidos } from '../motor/trabajos.js';
+import { MAXIMO_TRABAJOS, TIPOS_TRABAJO, combinarPrevisiones, crearTrabajo, organizarTrabajo, planesDeTrabajo, trabajosValidos } from '../motor/trabajos.js';
+import { MAX_PUNTOS, centroDe, leerTraza, limpiarPuntos, longitudKm, puntosTiempo, zoomParaVer } from '../motor/traza.js';
+import { leerFicheroTraza } from './ficheros.js';
 import { fmtHora as hora, fmtViento } from '../motor/unidades.js';
 import { umbralesViento } from '../motor/veredicto.js';
 import { perfilViento } from '../motor/viento.js';
@@ -22,7 +24,7 @@ import { almacen } from './almacen.js';
 import { ETIQUETA, INTERVALO, comprobarAvisos } from './aviso.js';
 import { crearMapa } from './mapa.js';
 import { ampliarCaja, cajaDentro } from '../motor/mapa.js';
-import { buscarLugar, cargarKp, cargarPrevision, cargarSatelites, cargarFormasEnaire, cargarNubesAltura, cargarNubesRejilla, cargarRejillaVuelo, cargarSoloPrevision, consultarEnaire, leerDescarga } from './datos.js';
+import { buscarLugar, cargarKp, cargarPrevision, cargarSatelites, cargarFormasEnaire, cargarNubesAltura, cargarNubesRejilla, cargarRejillaVuelo, cargarPrevisionVarios, cargarSoloPrevision, consultarEnaire, leerDescarga } from './datos.js';
 import { mensajeUbicacion, pedirUbicacion } from './ubicacion.js';
 
 const $ = (s) => document.querySelector(s);
@@ -114,6 +116,8 @@ const estado = {
   // Trabajos: el que se edita en el formulario y los lugares que ofrece.
   trabajoEditando: null,
   lugaresTrabajo: [],
+  // Los puntos que se van marcando en el mapa del formulario (varios puntos o traza).
+  dibujo: [],
 };
 
 export function esc(s) {
@@ -1279,17 +1283,47 @@ function textoOrganizado(t, org, zona) {
   }
 }
 
+// La previsión de un trabajo. De un punto, como un vuelo planificado; de una
+// traza o de varios puntos, una descarga con todos sus puntos de tiempo y,
+// cada hora, la del punto peor.
+const meteoTrabajos = new Map();
+function previsionTrabajo(t) {
+  if (!t.lugar.forma) return previsionPlan(t);
+  const puntos = puntosTiempo(t.lugar);
+  const clave = puntos.map((p) => `${p.lat},${p.lon}`).join(';');
+  const m = meteoTrabajos.get(clave);
+  if (!m || (m.estado !== 'cargando' && Date.now() - m.ms > REFRESCO)) {
+    if (meteoTrabajos.size > 20) meteoTrabajos.clear();
+    meteoTrabajos.set(clave, { estado: 'cargando', lista: m?.lista ?? null, ms: Date.now() });
+    cargarPrevisionVarios(puntos)
+      .then((lista) => meteoTrabajos.set(clave, { estado: 'listo', lista, ms: Date.now() }))
+      .catch(() => meteoTrabajos.set(clave, { estado: 'error', lista: null, ms: Date.now() }))
+      .finally(() => pintarTrabajos());
+  }
+  const actual = meteoTrabajos.get(clave);
+  if (actual.lista) return combinarPrevisiones(actual.lista.map((meteo, i) => previsionParaPlan(meteo, puntos[i], t.ajustes)));
+  return actual.estado === 'error' ? 'error' : null;
+}
+
+const km = (x) => `${x.toLocaleString('es-ES', { maximumFractionDigits: x < 10 ? 1 : 0 })} km`;
+function textoZona(lugar) {
+  if (!lugar.forma) return '';
+  const n = puntosTiempo(lugar).length;
+  const zona = lugar.forma === 'traza' ? `traza de ${km(longitudKm(lugar.puntos))}` : `${lugar.puntos.length} puntos`;
+  return `${zona}, el tiempo mirado en ${n} ${n === 1 ? 'punto' : 'puntos'}`;
+}
+
 function pintarTrabajos() {
   if (estado.vista !== 'trabajos') return;
   const lista = trabajosGuardados();
   const planes = planesGuardados();
   $('#lista-trabajos').innerHTML = lista
     .map((t) => {
-      const pp = previsionPlan(t);
+      const pp = previsionTrabajo(t);
       const org = pp && pp !== 'error' ? organizarTrabajo(t, pp) : null;
       const tipo = MISIONES[t.tipo]?.nombre ?? t.tipo;
       const jornadas = t.jornadas === 1 ? `1 jornada de ${t.horasJornada} h` : `${t.jornadas} jornadas de ${t.horasJornada} h, ${t.fraccionable ? 'se pueden partir' : 'seguidas'}`;
-      const cabecera = `<div><strong>${esc(t.nombre)}</strong> · ${esc(t.lugar.nombre)}</div>
+      const cabecera = `<div><strong>${esc(t.nombre)}</strong> · ${esc(t.lugar.nombre)}${t.lugar.forma ? ` <span class="nota">(${esc(textoZona(t.lugar))})</span>` : ''}</div>
         <div class="nota">${esc(tipo)} · permiso del ${esc(fechaLarga(t.desde))} al ${esc(fechaLarga(t.hasta))} · de ${esc(t.horaInicio)} a ${esc(t.horaFin)} h · ${esc(jornadas)}</div>`;
       const borrar = `<button type="button" class="icono" data-borrar-trabajo="${esc(t.id)}" aria-label="Borrar el trabajo ${esc(t.nombre)}">✕</button>`;
       if (!org) {
@@ -1354,11 +1388,76 @@ function abrirTrabajo(id = null) {
   $('#trab-jornadas').value = String(t?.jornadas ?? 1);
   $('#trab-horas').value = String(t?.horasJornada ?? 2);
   $('#trab-fraccionable').checked = Boolean(t?.fraccionable);
+  const forma = t?.lugar.forma ?? 'punto';
+  document.querySelector(`input[name="trab-forma"][value="${forma}"]`).checked = true;
+  estado.dibujo = t?.lugar.puntos ? [...t.lugar.puntos] : [];
+  $('#trab-nombre-zona').value = t?.lugar.forma ? t.lugar.nombre : '';
   const dron = DRONES.find((d) => d.id === ajustes.dron)?.nombre ?? (ajustes.dron === 'personalizado' ? 'tu dron personalizado' : 'tu dron');
   $('#trab-dron').textContent = `Se juzga con ${dron} a ${ajustes.altitud ?? estado.ajustes.altitud} m${t ? ' (los de cuando lo creaste)' : ' (los que tienes puestos ahora)'}.`;
   $('#trab-error').textContent = '';
   pintarFraccionable();
   $('#dlg-trabajo').showModal();
+  pintarFormaTrabajo(true);
+}
+
+// Un punto: el desplegable de lugares. Varios puntos o traza: el mapa.
+let mapaTrabajo = null;
+function pintarFormaTrabajo(centrar = false) {
+  const forma = new FormData($('#form-trabajo')).get('trab-forma');
+  const dibujo = forma !== 'punto';
+  $('#trab-un-punto').hidden = dibujo;
+  $('#trab-dibujo').hidden = !dibujo;
+  if (!dibujo) return;
+  const caja = $('#trab-mapa');
+  const ver = () => {
+    const pts = estado.dibujo.length ? estado.dibujo : [estado.lugaresTrabajo[0] ?? { lat: 40.2, lon: -3.7 }];
+    const { width, height } = caja.getBoundingClientRect();
+    const c = centroDe(pts);
+    return { lat: c.lat, lon: c.lon, z: estado.dibujo.length > 1 ? zoomParaVer(pts, width, height) : 13 };
+  };
+  if (!mapaTrabajo) {
+    const v = ver();
+    mapaTrabajo = crearMapa(caja, {
+      ...v,
+      alMarcar: (p) => {
+        mapaTrabajo.quitarMarca();
+        if (estado.dibujo.length >= MAX_PUNTOS) return;
+        estado.dibujo.push({ lat: Number(p.lat.toFixed(5)), lon: Number(p.lon.toFixed(5)) });
+        pintarDibujo();
+      },
+    });
+  } else if (centrar) {
+    const v = ver();
+    mapaTrabajo.centrar(v.lat, v.lon, v.z);
+  }
+  pintarDibujo();
+}
+
+function pintarDibujo() {
+  const forma = new FormData($('#form-trabajo')).get('trab-forma');
+  const n = estado.dibujo.length;
+  mapaTrabajo?.ponerRuta(estado.dibujo, forma === 'traza');
+  $('#trab-error').textContent = '';
+  if (!n) return void ($('#trab-puntos').textContent = 'Aún sin puntos.');
+  const lugar = { forma, puntos: estado.dibujo };
+  $('#trab-puntos').textContent = n < 2 ? '1 punto: añade al menos otro.' : `${forma === 'traza' ? `Traza de ${n} puntos, ${km(longitudKm(estado.dibujo))}` : `${n} puntos`}; el tiempo se mirará en ${puntosTiempo(lugar).length}.`;
+}
+
+async function importarTraza(fichero) {
+  if (!fichero) return;
+  try {
+    const r = leerTraza(await leerFicheroTraza(fichero));
+    if (r.error) throw new Error(r.error);
+    document.querySelector(`input[name="trab-forma"][value="${r.forma}"]`).checked = true;
+    estado.dibujo = r.puntos;
+    if (!$('#trab-nombre-zona').value) $('#trab-nombre-zona').value = (r.nombre || fichero.name.replace(/\.[^.]+$/, '')).slice(0, 80);
+    pintarFormaTrabajo(true);
+    $('#trab-puntos').textContent = `Importado: ${$('#trab-puntos').textContent}`;
+  } catch (e) {
+    $('#trab-error').textContent = `No se pudo leer «${fichero.name}»: ${e.message}`;
+  } finally {
+    $('#trab-fichero').value = '';
+  }
 }
 
 // Partir solo tiene sentido con más de una jornada.
@@ -1366,6 +1465,14 @@ function pintarFraccionable() {
   const varias = Number($('#trab-jornadas').value) > 1;
   $('#trab-fraccionable').disabled = !varias;
   if (!varias) $('#trab-fraccionable').checked = false;
+}
+
+function lugarDelFormulario() {
+  const forma = new FormData($('#form-trabajo')).get('trab-forma');
+  if (forma === 'punto') return estado.lugaresTrabajo[Number($('#trab-lugar').value)];
+  const puntos = limpiarPuntos(estado.dibujo);
+  const nombre = $('#trab-nombre-zona').value.trim() || (forma === 'traza' && puntos.length > 1 ? `Traza de ${km(longitudKm(puntos))}` : `${puntos.length} puntos`);
+  return { nombre, forma, puntos };
 }
 
 function guardarTrabajo(e) {
@@ -1379,7 +1486,7 @@ function guardarTrabajo(e) {
   const r = crearTrabajo({
     id: antes?.id,
     nombre: $('#trab-nombre').value,
-    lugar: estado.lugaresTrabajo[Number($('#trab-lugar').value)],
+    lugar: lugarDelFormulario(),
     tipo: $('#trab-tipo').value,
     desde: $('#trab-desde').value,
     hasta: $('#trab-hasta').value,
@@ -1410,7 +1517,7 @@ function guardarTrabajo(e) {
 function apuntarTrabajo(id) {
   const lista = trabajosGuardados();
   const t = lista.find((x) => x.id === id);
-  const pp = t && previsionPlan(t);
+  const pp = t && previsionTrabajo(t);
   if (!pp || pp === 'error') return;
   const org = organizarTrabajo(t, pp);
   if (!org.elegidos.length) return;
@@ -2115,6 +2222,8 @@ function enlazar() {
     else if (b.dataset.hueco) elegirHueco(b);
     else if (b.dataset.accion === 'nuevo-trabajo') abrirTrabajo();
     else if (b.dataset.accion === 'cerrar-trabajo') $('#dlg-trabajo').close();
+    else if (b.dataset.accion === 'trab-deshacer') (estado.dibujo.pop(), pintarDibujo());
+    else if (b.dataset.accion === 'trab-vaciar') ((estado.dibujo = []), pintarDibujo());
     else if (b.dataset.editarTrabajo) abrirTrabajo(b.dataset.editarTrabajo);
     else if (b.dataset.apuntarTrabajo) apuntarTrabajo(b.dataset.apuntarTrabajo);
     else if (b.dataset.borrarTrabajo) borrarTrabajo(b.dataset.borrarTrabajo);
@@ -2177,6 +2286,8 @@ function enlazar() {
   $('#form-plan').addEventListener('submit', guardarPlan);
   $('#form-trabajo').addEventListener('submit', guardarTrabajo);
   $('#trab-jornadas').addEventListener('change', pintarFraccionable);
+  for (const r of document.querySelectorAll('input[name="trab-forma"]')) r.addEventListener('change', () => pintarFormaTrabajo(true));
+  $('#trab-fichero').addEventListener('change', (e) => importarTraza(e.target.files?.[0]));
   $('#form-trabajo').addEventListener('input', () => ($('#trab-error').textContent = ''));
   $('#mapa-nubes').addEventListener('change', () => verNubesMapa());
   $('#mapa-nubes-capa').addEventListener('change', () => verNubesMapa());

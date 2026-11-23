@@ -17,7 +17,7 @@ export const URL_TESELAS = 'https://tile.openstreetmap.org';
  *   acercar), con el rectángulo que se ve: quien lo usa decide qué pedir.
  */
 export function crearMapa(caja, { lat, lon, z = 12, alMarcar, alVer = () => {} }) {
-  caja.innerHTML = `<div class="mapa-teselas"></div><svg class="mapa-nubes" aria-hidden="true"></svg><svg class="mapa-zonas" aria-hidden="true"></svg><svg class="mapa-flechas" aria-hidden="true"></svg><div class="mapa-marca" hidden></div>
+  caja.innerHTML = `<div class="mapa-teselas"></div><svg class="mapa-nubes" aria-hidden="true"></svg><svg class="mapa-zonas" aria-hidden="true"></svg><svg class="mapa-flechas" aria-hidden="true"></svg><svg class="mapa-ruta" aria-hidden="true"></svg><div class="mapa-marca" hidden></div>
     <div class="mapa-zoom"><button type="button" data-zoom="1" aria-label="Acercar">+</button><button type="button" data-zoom="-1" aria-label="Alejar">−</button></div>
     <p class="mapa-credito">© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a></p>`;
   const capa = caja.querySelector('.mapa-teselas');
@@ -25,6 +25,9 @@ export function crearMapa(caja, { lat, lon, z = 12, alMarcar, alVer = () => {} }
   const svg = caja.querySelector('.mapa-zonas');
   const svgNubes = caja.querySelector('.mapa-nubes');
   const svgFlechas = caja.querySelector('.mapa-flechas');
+  const svgRuta = caja.querySelector('.mapa-ruta');
+  /** @type {{puntos: {lat: number, lon: number}[], linea: boolean}} */
+  let ruta = { puntos: [], linea: false };
   /** @type {{lat: number, lon: number, rumbo: number, texto: string, clase: string}[]} */
   let flechas = [];
   /** @type {{oeste: number, este: number, sur: number, norte: number, opacidad: number}[]} */
@@ -59,6 +62,7 @@ export function crearMapa(caja, { lat, lon, z = 12, alMarcar, alVer = () => {} }
     pintarFormas(ancho, alto);
     pintarCeldas(ancho, alto);
     pintarFlechas(ancho, alto);
+    pintarRuta(ancho, alto);
     marca.hidden = !marcado;
     if (marcado) {
       const m = aTesela(marcado.lat, marcado.lon, zoom);
@@ -142,6 +146,31 @@ export function crearMapa(caja, { lat, lon, z = 12, alMarcar, alVer = () => {} }
     );
   }
 
+  // Una traza (línea) o varios puntos de un trabajo: los puntos numerados.
+  function pintarRuta(ancho, alto) {
+    svgRuta.setAttribute('width', String(Math.round(ancho)));
+    svgRuta.setAttribute('height', String(Math.round(alto)));
+    const hijos = [];
+    if (ruta.linea && ruta.puntos.length > 1) {
+      const linea = document.createElementNS(SVG, 'path');
+      linea.setAttribute('class', 'ruta-linea');
+      linea.setAttribute('d', rutaAnillos([ruta.puntos.map((p) => [p.lon, p.lat])], c.x, c.y, zoom, ancho, alto, false));
+      hijos.push(linea);
+    }
+    // Con muchos (una traza importada), solo el primero y el último.
+    const marcas = ruta.puntos.length > 30 ? [ruta.puntos[0], ruta.puntos.at(-1)] : ruta.puntos;
+    marcas.forEach((p) => {
+      const t = aTesela(p.lat, p.lon, zoom);
+      const punto = document.createElementNS(SVG, 'circle');
+      punto.setAttribute('class', 'ruta-punto');
+      punto.setAttribute('cx', ((t.x - c.x) * TAM + ancho / 2).toFixed(1));
+      punto.setAttribute('cy', ((t.y - c.y) * TAM + alto / 2).toFixed(1));
+      punto.setAttribute('r', '6');
+      hijos.push(punto);
+    });
+    svgRuta.replaceChildren(...hijos);
+  }
+
   function avisarVista() {
     clearTimeout(espera);
     espera = setTimeout(() => {
@@ -213,6 +242,25 @@ export function crearMapa(caja, { lat, lon, z = 12, alMarcar, alVer = () => {} }
     /** Pinta las flechas de viento (sustituye a las anteriores). */
     ponerFlechas(nuevas) {
       flechas = nuevas;
+      pintar();
+    },
+    /** Pinta una traza (linea) o varios puntos (sustituye a lo anterior). */
+    ponerRuta(puntos, linea) {
+      ruta = { puntos, linea };
+      pintar();
+    },
+    /** Lleva la vista a este punto con este zoom. */
+    centrar(lat, lon, z = zoom) {
+      zoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z));
+      c = aTesela(lat, lon, zoom);
+      for (const img of imgs.values()) img.remove();
+      imgs.clear();
+      pintar();
+      avisarVista();
+    },
+    /** Quita la marca del último toque. */
+    quitarMarca() {
+      marcado = null;
       pintar();
     },
     /** Pinta las celdas de nubes (sustituye a las anteriores). */

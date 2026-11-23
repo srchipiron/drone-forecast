@@ -7,6 +7,7 @@ import { createRequire } from 'node:module';
 import { extname, join, normalize } from 'node:path';
 import { execSync } from 'node:child_process';
 import assert from 'node:assert/strict';
+import { crc32, deflateRawSync } from 'node:zlib';
 
 function cargarPlaywright() {
   const require = createRequire(import.meta.url);
@@ -18,6 +19,23 @@ function cargarPlaywright() {
     }
   }
   return require('playwright-core');
+}
+
+// Un KMZ como los de DJI Pilot 2: un ZIP con wpmz/waylines.wpml comprimido.
+function kmz(nombre, texto) {
+  const datos = Buffer.from(texto, 'utf8');
+  const comp = deflateRawSync(datos);
+  const n = Buffer.from(nombre);
+  const local = Buffer.alloc(30);
+  local.writeUInt32LE(0x04034b50, 0); local.writeUInt16LE(20, 4); local.writeUInt16LE(8, 8);
+  local.writeUInt32LE(crc32(datos), 14); local.writeUInt32LE(comp.length, 18); local.writeUInt32LE(datos.length, 22); local.writeUInt16LE(n.length, 26);
+  const central = Buffer.alloc(46);
+  central.writeUInt32LE(0x02014b50, 0); central.writeUInt16LE(20, 4); central.writeUInt16LE(20, 6); central.writeUInt16LE(8, 10);
+  central.writeUInt32LE(crc32(datos), 16); central.writeUInt32LE(comp.length, 20); central.writeUInt32LE(datos.length, 24); central.writeUInt16LE(n.length, 28);
+  const inicioCentral = 30 + n.length + comp.length;
+  const fin = Buffer.alloc(22);
+  fin.writeUInt32LE(0x06054b50, 0); fin.writeUInt16LE(1, 8); fin.writeUInt16LE(1, 10); fin.writeUInt32LE(46 + n.length, 12); fin.writeUInt32LE(inicioCentral, 16);
+  return Buffer.concat([local, n, comp, central, n, fin]);
 }
 
 const TIPOS = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.webmanifest': 'application/manifest+json' };
@@ -76,6 +94,8 @@ try {
     // El mapa de nubes: varias coordenadas en una petición → una respuesta por punto.
     const lats = new URL(u).searchParams.get('latitude').split(',');
     // El mapa de «dónde volar»: el tiempo de cada punto; las celdas impares con viento fuerte.
+    // Una traza o varios puntos de un trabajo (la previsión de 7 días de cada uno): calma en todos.
+    if (lats.length > 1 && new URL(u).searchParams.get('forecast_days') === '7') return r.fulfill({ json: lats.map(() => meteo()) });
     if (lats.length > 1 && new URL(u).searchParams.get('hourly').includes('wind_speed_10m'))
       return r.fulfill({ json: lats.map((_, i) => {
         const m = meteo();
@@ -620,6 +640,59 @@ try {
   await page.locator('#form-trabajo button[type="submit"]').click();
   await page.locator('#lista-trabajos .trabajo').filter({ hasText: 'Orto Getafe ·' }).waitFor();
   assert.equal(await page.locator('#lista-trabajos .trabajo').count(), 1, 'editado, no duplicado');
+  // Otro trabajo en varios puntos marcados en el mapa, que pasa a traza; y
+  // luego una traza importada de un GPX y una misión de DJI (KMZ).
+  await page.locator('[data-accion="nuevo-trabajo"]').click();
+  await page.fill('#trab-nombre', 'Inspección línea');
+  assert.equal(await page.locator('#trab-dibujo').isVisible(), false, 'un punto: sin mapa');
+  await page.check('input[name="trab-forma"][value="puntos"]');
+  assert.equal(await page.locator('#trab-un-punto').isVisible(), false);
+  await page.locator('#trab-mapa .mapa-zoom').waitFor();
+  await page.locator('#trab-mapa').click({ position: { x: 80, y: 80 } });
+  assert.equal(await page.textContent('#trab-puntos'), '1 punto: añade al menos otro.');
+  await page.locator('#trab-mapa').click({ position: { x: 260, y: 180 } });
+  assert.match(await page.textContent('#trab-puntos'), /^2 puntos; el tiempo se mirará en [12]\.$/);
+  assert.equal(await page.locator('#trab-mapa .ruta-punto').count(), 2);
+  assert.equal(await page.locator('#trab-mapa .ruta-linea').count(), 0, 'puntos sueltos: sin línea');
+  await page.check('input[name="trab-forma"][value="traza"]');
+  assert.match(await page.textContent('#trab-puntos'), /^Traza de 2 puntos, [\d,]+ km; el tiempo se mirará en \d+\.$/);
+  assert.equal(await page.locator('#trab-mapa .ruta-linea').count(), 1, 'traza: con línea');
+  await page.locator('[data-accion="trab-deshacer"]').click();
+  assert.equal(await page.locator('#trab-mapa .ruta-punto').count(), 1);
+  await page.locator('[data-accion="trab-vaciar"]').click();
+  await page.locator('#form-trabajo button[type="submit"]').click();
+  assert.match(await page.textContent('#trab-error'), /al menos dos puntos/);
+  // Un fichero que no es una traza: lo dice.
+  await page.setInputFiles('#trab-fichero', { name: 'foto.kml', mimeType: 'application/vnd.google-earth.kml+xml', buffer: Buffer.from('<html>nada</html>') });
+  await page.locator('#trab-error').filter({ hasText: 'No se pudo leer «foto.kml»' }).waitFor();
+  // GPX: una traza de 3 puntos (unos 8 km), con su nombre.
+  await page.setInputFiles('#trab-fichero', { name: 'ruta.gpx', mimeType: 'application/gpx+xml', buffer: Buffer.from('<gpx><trk><name>Línea <b>3</b></name><trkseg><trkpt lat="40.30" lon="-3.75"/><trkpt lat="40.33" lon="-3.72"/><trkpt lat="40.35" lon="-3.68"/></trkseg></trk></gpx>') });
+  await page.locator('#trab-puntos').filter({ hasText: 'Importado' }).waitFor();
+  assert.match(await page.textContent('#trab-puntos'), /^Importado: Traza de 3 puntos, [\d,]+ km; el tiempo se mirará en \d\.$/);
+  assert.equal(await page.inputValue('#trab-nombre-zona'), 'Línea <b>3</b>');
+  // KMZ de DJI Pilot 2 (comprimido): sustituye a lo anterior y no pisa el nombre ya puesto.
+  const wpml = '<kml xmlns:wpml="http://www.dji.com/wpmz/1.0.2"><Document><Placemark><Point><coordinates>-3.7329,40.3057</coordinates></Point></Placemark><Placemark><Point><coordinates>-3.7200,40.3100</coordinates></Point></Placemark><Placemark><Point><coordinates>-3.7100,40.3200</coordinates></Point></Placemark><Placemark><Point><coordinates>-3.7000,40.3300</coordinates></Point></Placemark></Document></kml>';
+  await page.setInputFiles('#trab-fichero', { name: 'mision.kmz', mimeType: 'application/vnd.google-earth.kmz', buffer: kmz('wpmz/waylines.wpml', wpml) });
+  await page.locator('#trab-puntos').filter({ hasText: 'Traza de 4 puntos' }).waitFor();
+  assert.equal(await page.isChecked('input[name="trab-forma"][value="traza"]'), true);
+  assert.equal(await page.inputValue('#trab-nombre-zona'), 'Línea <b>3</b>');
+  if (process.env.CAPTURA_TRABAJOS) await page.locator('#dlg-trabajo').screenshot({ path: process.env.CAPTURA_TRABAJOS.replace('.png', '-traza.png') });
+  const pedidasTraza = pedidasMeteo.length;
+  await page.locator('#form-trabajo button[type="submit"]').click();
+  const tarjetaTraza = page.locator('#lista-trabajos .trabajo').filter({ hasText: 'Inspección línea' });
+  await tarjetaTraza.locator('.t-dias').waitFor();
+  assert.match(await tarjetaTraza.textContent(), /Línea <b>3<\/b> \(traza de [\d,]+ km, el tiempo mirado en \d puntos\)/);
+  assert.match(await tarjetaTraza.locator('.t-propuesta').textContent(), /^Lo mejor/);
+  const pedidaTraza = pedidasMeteo.slice(pedidasTraza).find((u) => new URL(u).searchParams.get('latitude').includes(','));
+  assert.ok(pedidaTraza, 'una sola petición con todos los puntos de la traza');
+  assert.equal(new URL(pedidaTraza).searchParams.get('forecast_days'), '7');
+  assert.equal(await page.evaluate(() => window.__xss), undefined);
+  // Editar: vuelve con su forma y sus puntos.
+  await tarjetaTraza.locator('[data-editar-trabajo]').click();
+  assert.equal(await page.isChecked('input[name="trab-forma"][value="traza"]'), true);
+  assert.equal(await page.locator('#trab-mapa .ruta-punto').count(), 4);
+  await page.locator('[data-accion="cerrar-trabajo"]').click();
+  await tarjetaTraza.locator('[data-borrar-trabajo]').click();
   await page.locator('[data-borrar-trabajo]').click();
   assert.equal(await page.locator('#lista-trabajos .trabajo').count(), 0);
   assert.match(await page.textContent('#anuncio-trabajos'), /^Trabajo borrado/);
@@ -804,7 +877,8 @@ try {
   await page.locator('#mapa-nubes-hora').fill('12');
   await page.selectOption('#mapa-nubes-capa', 'volar');
   assert.match(await page.textContent('#mapa-nubes-texto'), /^Dónde se puede volar/);
-  const multi = pedidasMeteo.filter((u) => new URL(u).searchParams.get('latitude').includes(','));
+  // (Las de 7 días con varios puntos son las de las trazas de los trabajos, más arriba.)
+  const multi = pedidasMeteo.filter((u) => new URL(u).searchParams.get('latitude').includes(',') && new URL(u).searchParams.get('forecast_days') !== '7');
   assert.equal(multi.length, 2, `una petición por tipo de mapa; cambiar capa u hora no vuelve a pedir: ${multi.map((u) => `${new URL(u).searchParams.get('hourly').slice(0, 20)} lat0=${new URL(u).searchParams.get('latitude').split(',')[0]}`).join(' | ')}`);
   await page.locator('#mapa-nubes').uncheck();
   assert.equal(await page.locator('#mapa .mapa-nubes rect.celda-nube').count(), 0);

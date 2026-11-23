@@ -5,7 +5,7 @@ import { CAPAS, leerFormas, leerZonas, resumenZonas, urlConsultaEnaire, urlForma
 import { URL_KP, leerKp } from '../motor/kp.js';
 import { leerNubesAltura, leerNubesRejilla, rejillaNubes, urlNubesAltura, urlNubesRejilla } from '../motor/nubes.js';
 import { urlRejillaTiempo, veredictosRejilla } from '../motor/rejilla.js';
-import { leerBusqueda, leerConsenso, leerPrevision, urlBusqueda, urlConsenso, urlPrevision } from '../motor/meteo.js';
+import { leerBusqueda, leerConsenso, leerPrevision, urlBusqueda, urlConsenso, urlPrevision, urlPrevisionVarios } from '../motor/meteo.js';
 import { antiguedadDias, desdeOMM, satValido } from '../motor/satelites.js';
 import { almacen } from './almacen.js';
 
@@ -27,6 +27,15 @@ export async function cargarPrevision(lat, lon) {
 // favoritos basta y es la mitad de peticiones.
 export async function cargarSoloPrevision(lat, lon) {
   return leerPrevision(await pedir(urlPrevision(lat, lon)));
+}
+
+// La previsión de varios puntos (una traza, varios sitios) en una petición.
+export async function cargarPrevisionVarios(puntos) {
+  if (puntos.length === 1) return [await cargarSoloPrevision(puntos[0].lat, puntos[0].lon)];
+  const json = await pedir(urlPrevisionVarios(puntos), 25000);
+  const lista = Array.isArray(json) ? json : [json];
+  if (lista.length !== puntos.length) throw new Error('La previsión no cuadra con los puntos pedidos');
+  return lista.map((r) => leerPrevision(r));
 }
 
 export function leerDescarga({ meteo, consenso }) {

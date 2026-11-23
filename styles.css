@@ -992,6 +992,32 @@ dialog h3 { font-size: 0.75rem; font-weight: 700; color: var(--suave); text-tran
 
 .error-form { color: var(--no); font-weight: 650; min-height: 1em; margin: 0 0 0.4rem; }
 
+.forma-trabajo { display: flex; flex-wrap: wrap; gap: 0.2rem 1rem; border: 0; padding: 0; margin: 0 0 0.6rem; }
+
+.forma-trabajo legend { font-size: 0.8rem; color: var(--suave); padding: 0; margin-bottom: 0.3rem; }
+
+.form-plan .forma-trabajo label { display: flex; align-items: center; gap: 0.35rem; color: var(--texto); font-size: 0.95rem; margin: 0; min-height: 40px; }
+
+.form-plan .forma-trabajo input { width: auto; }
+
+.mapa-trabajo { height: 260px; margin: 0.3rem 0; }
+
+.mapa-ruta { position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible; }
+
+.ruta-linea { fill: none; stroke: #1d4ed8; stroke-width: 4; stroke-linejoin: round; stroke-linecap: round; paint-order: stroke; }
+
+.ruta-punto { fill: #1d4ed8; stroke: #ffffff; stroke-width: 2.5; }
+
+.acciones-dibujo { display: flex; flex-wrap: wrap; gap: 0 1.2rem; margin-bottom: 0.4rem; }
+
+.acciones-dibujo .enlace { padding: 0.3rem 0; min-height: 40px; color: var(--acento); }
+
+.form-plan .boton-fichero { display: inline-flex; align-items: center; margin: 0; font-size: 1rem; font-weight: 650; text-decoration: underline; cursor: pointer; }
+
+.boton-fichero input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+
+.boton-fichero:focus-within { outline: 2px solid var(--acento); outline-offset: 2px; }
+
 /* ── Informe para el cliente: solo existe al imprimir ────────────── */
 #informe { display: none; }
 

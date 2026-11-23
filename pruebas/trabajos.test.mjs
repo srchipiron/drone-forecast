@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { leerPrevision } from '../src/motor/meteo.js';
 import { construirPrevision } from '../src/motor/prevision.js';
-import { crearTrabajo, fechasEntre, organizarTrabajo, planesDeTrabajo, trabajosValidos, valorarDia } from '../src/motor/trabajos.js';
+import { combinarPrevisiones, crearTrabajo, fechasEntre, organizarTrabajo, planesDeTrabajo, trabajosValidos, valorarDia } from '../src/motor/trabajos.js';
 import { AHORA, LUGAR, constelacionSintetica, respuestaOpenMeteo } from './fixtures/sinteticos.mjs';
 
 // La previsión sintética empieza a las 00:00 del 21-06-2026 (Madrid) y trae
@@ -99,4 +99,31 @@ test('trabajo: más allá de la previsión, lo que aún no se sabe; y lo pasado'
   const hoy = organizarTrabajo(trabajo({ desde: '2026-06-20', hasta: '2026-06-21', jornadas: 1, horaInicio: 8, horaFin: 10, horasJornada: 1 }), p, AHORA);
   assert.deepEqual(hoy.dias.map((d) => [d.clave, d.porQue]), [['2026-06-21', 'ya pasó']], 'los días antes de hoy ni salen');
   assert.equal(organizarTrabajo(trabajo({ desde: '2026-06-19', hasta: '2026-06-20', jornadas: 1 }), p, AHORA).estado, 'caducado');
+});
+
+test('trabajo en una traza o en varios puntos: se guarda su forma y cada hora manda el punto peor', () => {
+  const linea = [{ lat: 40.4, lon: -3.7 }, { lat: 40.4, lon: -3.6 }];
+  const t = trabajo({ lugar: { nombre: 'Línea 3', forma: 'traza', puntos: linea }, fraccionable: true });
+  assert.deepEqual(t.lugar, { nombre: 'Línea 3', lat: 40.4, lon: -3.7, forma: 'traza', puntos: linea }, 'el lugar de los vuelos planificados es el primer punto');
+  assert.equal(trabajo({ lugar: { ...LUGAR, forma: 'raro', puntos: linea } }).lugar.forma, undefined, 'una forma desconocida es un punto');
+  assert.match(crearTrabajo({ ...base, lugar: { forma: 'puntos', puntos: [linea[0]] } }).error, /al menos dos puntos/);
+  assert.match(crearTrabajo({ ...base, lugar: { forma: 'traza', puntos: [] } }).error, /al menos dos puntos/);
+  assert.equal(trabajosValidos([t])[0].lugar.puntos.length, 2, 'sobrevive a guardarse y leerse');
+
+  // Un segundo punto con vendaval el 25: la traza entera no se puede ese día.
+  const otro = prev((k) => (dia(k) === 4 ? 20 : 2));
+  const juntos = combinarPrevisiones([p, otro]);
+  assert.equal(juntos.puntos, 2);
+  assert.equal(combinarPrevisiones([p]), p, 'con un punto, tal cual');
+  const h = juntos.dias.find((d) => d.clave === '2026-06-25').horas[10];
+  assert.equal(h.estado, 'no');
+  assert.equal(h.puntoPeor, 1, 'dice qué punto la estropea');
+  assert.equal(h.factores.find((f) => f.id === 'viento').estado, 'no', 'cada factor, el peor de los puntos');
+  assert.equal(juntos.dias.find((d) => d.clave === '2026-06-23').horas[10].estado, 'ok', 'donde los dos están bien, bien');
+  const org = organizarTrabajo(t, juntos, AHORA);
+  assert.deepEqual(org.elegidos.map((d) => d.clave), ['2026-06-23', '2026-06-26'], 'el 22 y el 24 por el primer punto, el 25 por el segundo');
+  assert.equal(organizarTrabajo({ ...t, fraccionable: false }, juntos, AHORA).estado, 'imposible', 'no quedan dos días seguidos');
+  // Las horas que no tiene uno de los puntos no cuentan.
+  const corto = { ...otro, horas: otro.horas.slice(0, 48) };
+  assert.equal(combinarPrevisiones([p, corto]).horas.length, 48 - p.horas.indexOf(p.horas.find((x) => x.ms === corto.horas[0].ms)));
 });

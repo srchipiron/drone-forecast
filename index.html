@@ -258,8 +258,27 @@
         <button type="button" class="icono" data-accion="cerrar-trabajo" aria-label="Cerrar">✕</button>
       </div>
       <label>Nombre (cliente u obra) <input id="trab-nombre" type="text" maxlength="80" required placeholder="Orto parcela Getafe"></label>
-      <label>Lugar <select id="trab-lugar"></select></label>
-      <p class="nota">¿Otro sitio? Búscalo arriba (o guárdalo en favoritos) y vuelve aquí.</p>
+      <fieldset class="forma-trabajo">
+        <legend>Zona de trabajo</legend>
+        <label><input type="radio" name="trab-forma" value="punto" checked> Un punto</label>
+        <label><input type="radio" name="trab-forma" value="puntos"> Varios puntos</label>
+        <label><input type="radio" name="trab-forma" value="traza"> Traza</label>
+      </fieldset>
+      <div id="trab-un-punto">
+        <label>Lugar <select id="trab-lugar"></select></label>
+        <p class="nota">¿Otro sitio? Búscalo arriba (o guárdalo en favoritos) y vuelve aquí.</p>
+      </div>
+      <div id="trab-dibujo" hidden>
+        <p id="trab-ayuda-dibujo" class="nota">Toca el mapa para añadir puntos, o importa un KML, KMZ (Google Earth, DJI Pilot) o GPX.</p>
+        <div id="trab-mapa" class="mapa mapa-trabajo" role="application" aria-label="Mapa: arrastra para moverte y toca para añadir un punto"></div>
+        <p id="trab-puntos" class="nota" aria-live="polite"></p>
+        <div class="acciones-dibujo">
+          <button type="button" class="enlace" data-accion="trab-deshacer">Quitar el último</button>
+          <button type="button" class="enlace" data-accion="trab-vaciar">Borrar todo</button>
+          <label class="enlace boton-fichero">Importar KML / KMZ / GPX<input id="trab-fichero" type="file" accept=".kml,.kmz,.gpx,.wpml,application/vnd.google-earth.kml+xml,application/vnd.google-earth.kmz,application/gpx+xml"></label>
+        </div>
+        <label>Nombre de la zona (opcional) <input id="trab-nombre-zona" type="text" maxlength="80" placeholder="Línea 3, parcelas del norte…"></label>
+      </div>
       <label>Tipo de trabajo <select id="trab-tipo"></select></label>
       <div class="dos-campos">
         <label>Permiso desde <input id="trab-desde" type="date" required></label>

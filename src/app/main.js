@@ -798,13 +798,24 @@ function ponerOpciones(sel, html) {
 }
 
 // Ajustes → Mis drones: una casilla por dron de la lista (y el personalizado).
+// Mis drones: los tuyos como etiquetas (con ✕ para quitarlos) y un
+// desplegable por marcas para añadir otro. Con toda la gama de DJI, 50
+// casillas eran una lista imposible de recorrer en el móvil.
 function pintarMisDrones() {
-  const el = $('#lista-mis-drones');
-  if (el.contains(document.activeElement)) return; // no se repinta bajo el dedo
-  const mios = new Set(estado.ajustes.misDrones);
-  el.innerHTML = [...DRONES, { id: 'personalizado', nombre: 'Personalizado' }]
-    .map((d) => `<label class="casilla"><input type="checkbox" data-mi-dron="${esc(d.id)}"${mios.has(d.id) ? ' checked' : ''}> ${esc(d.nombre)}</label>`)
-    .join('');
+  const todos = [...DRONES, { id: 'personalizado', nombre: 'Personalizado', marca: 'Otros' }];
+  const mios = estado.ajustes.misDrones;
+  const nombre = (id) => todos.find((d) => d.id === id)?.nombre ?? id;
+  $('#lista-mis-drones').innerHTML = mios.length
+    ? mios.map((id) => `<li class="mi-dron"><span>${esc(nombre(id))}</span><button type="button" class="icono" data-quitar-dron="${esc(id)}" aria-label="Quitar ${esc(nombre(id))}">✕</button></li>`).join('')
+    : '<li class="nota">Aún no has añadido ninguno.</li>';
+  const sel = $('#mi-dron-nuevo');
+  if (sel === document.activeElement) return; // no se repinta bajo el dedo
+  const libres = todos.filter((d) => !mios.includes(d.id));
+  const marcas = [...new Set(libres.map((d) => d.marca))];
+  sel.innerHTML = `<option value="">Añadir un dron…</option>${marcas
+    .map((m) => `<optgroup label="${esc(m)}">${libres.filter((d) => d.marca === m).map((d) => `<option value="${esc(d.id)}">${esc(d.nombre)}</option>`).join('')}</optgroup>`)
+    .join('')}`;
+  sel.value = '';
 }
 
 // En el cartel: el veredicto de ahora con cada uno de tus otros drones.
@@ -1860,13 +1871,16 @@ function enlazar() {
   numero('#aj-kp', 'maxKp');
   numero('#aj-interior', 'tempInterior');
   $('#aj-noche').addEventListener('change', (e) => cambiarAjustes({ permitirNoche: e.target.checked }));
-  $('#lista-mis-drones').addEventListener('change', (e) => {
-    const id = e.target.dataset.miDron;
+  $('#mi-dron-nuevo').addEventListener('change', (e) => {
+    const id = e.target.value;
     if (!id) return;
-    const mios = new Set(estado.ajustes.misDrones);
-    if (e.target.checked) mios.add(id);
-    else mios.delete(id);
-    cambiarAjustes({ misDrones: [...mios] });
+    e.target.blur();
+    cambiarAjustes({ misDrones: [...new Set([...estado.ajustes.misDrones, id])] });
+  });
+  $('#lista-mis-drones').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-quitar-dron]');
+    if (!b) return;
+    cambiarAjustes({ misDrones: estado.ajustes.misDrones.filter((x) => x !== b.dataset.quitarDron) });
   });
   const pz = (id, clave, leer = (t) => Number(t.value)) =>
     $(id).addEventListener('change', (e) =>

@@ -329,9 +329,14 @@ try {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.selectOption('#aj-pantalla', 'auto');
   assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), undefined);
-  // Mis drones: marcar uno en Ajustes lo compara en el cartel; el elegido no se repite.
-  await page.locator('[data-mi-dron="neo"]').check();
-  await page.locator('[data-mi-dron="mini5pro"]').check();
+  // Mis drones: se añaden desde el desplegable (por marcas) y salen como etiquetas; el elegido no se repite en el cartel.
+  assert.match(await page.textContent('#lista-mis-drones'), /Aún no has añadido ninguno/);
+  assert.ok((await page.locator('#mi-dron-nuevo optgroup').count()) >= 5, 'agrupado por marcas');
+  await page.selectOption('#mi-dron-nuevo', 'neo');
+  await page.selectOption('#mi-dron-nuevo', 'mini5pro');
+  assert.deepEqual(await page.locator('#lista-mis-drones .mi-dron span').allTextContents(), ['DJI Neo', 'DJI Mini 5 Pro']);
+  assert.equal(await page.locator('#mi-dron-nuevo option[value="neo"]').count(), 0, 'el que ya tienes no se ofrece otra vez');
+  assert.equal(await page.inputValue('#mi-dron-nuevo'), '', 'el desplegable vuelve a «Añadir un dron…»');
   assert.deepEqual(await page.evaluate(() => JSON.parse(localStorage.getItem('drone-forecast:ajustes')).misDrones), ['neo', 'mini5pro'], 'se guarda');
   const otros = page.locator('#ahora .otros-drones li');
   assert.equal(await otros.count(), 1, 'solo el Neo: el Mini 5 Pro es el que ya está elegido');
@@ -349,7 +354,8 @@ try {
   assert.equal(await page.locator('#dias .dia').nth(2).getAttribute('aria-pressed'), 'true', 'el día tocado se abre');
   await page.locator('#dias .dia').first().click();
   await page.locator('[data-vista="ajustes"]').click();
-  await page.locator('[data-mi-dron="neo"]').uncheck();
+  await page.locator('[data-quitar-dron="neo"]').click();
+  assert.deepEqual(await page.locator('#lista-mis-drones .mi-dron span').allTextContents(), ['DJI Mini 5 Pro']);
   assert.equal(await page.locator('#dias-drones').isVisible(), false, 'sin otros drones, no sale la tarjeta');
   assert.equal(await page.locator('#ahora .otros-drones').count(), 0, 'sin otros drones, no sale');
   await page.getByRole('button', { name: 'Diagnóstico' }).click();

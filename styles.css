@@ -966,7 +966,9 @@ dialog h3 { font-size: 0.75rem; font-weight: 700; color: var(--suave); text-tran
 
 .t-dias { grid-column: 1 / -1; list-style: none; margin: 0.2rem 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(4.4rem, 1fr)); gap: 0.3rem; }
 
-.t-dia { display: grid; gap: 0.05rem; padding: 0.3rem 0.4rem; border-radius: 10px; border: 2px solid transparent; background: var(--tarjeta); font-size: 0.75rem; line-height: 1.2; }
+.t-dias li { display: grid; }
+
+.t-dia { width: 100%; text-align: left; font: inherit; color: var(--texto); cursor: pointer; min-height: 44px; display: grid; gap: 0.05rem; padding: 0.3rem 0.4rem; border-radius: 10px; border: 2px solid transparent; background: var(--tarjeta); font-size: 0.75rem; line-height: 1.2; }
 
 .t-dia b { font-size: 0.8rem; text-transform: capitalize; }
 
@@ -977,6 +979,16 @@ dialog h3 { font-size: 0.75rem; font-weight: 700; color: var(--suave); text-tran
 .t-dia.no span, .t-dia.sin-prevision span { color: var(--suave); }
 
 .t-dia.elegido { border-color: var(--acento); }
+
+.t-dia.abierto { box-shadow: 0 0 0 2px var(--texto); }
+
+.t-prevision { grid-column: 1 / -1; margin-top: 0.3rem; padding-top: 0.4rem; border-top: 1px solid var(--separador); }
+
+.t-prevision-cabecera { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+
+.t-tabla tr.fuera-horario th, .t-tabla tr.fuera-horario td { opacity: 0.55; }
+
+.t-tabla tr.en-horario th { font-weight: 800; }
 
 .t-dia em { color: var(--acento); font-style: normal; font-weight: 700; font-size: 0.7rem; }
 

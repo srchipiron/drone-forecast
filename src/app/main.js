@@ -116,6 +116,8 @@ const estado = {
   avisoUltimo: '',
   // Trabajos: el que se edita en el formulario y los lugares que ofrece.
   trabajoEditando: null,
+  // El día de un trabajo cuya previsión está abierta: { id, clave }.
+  trabajoDia: null,
   resultadosTrabajo: [],
   // Los puntos que se van marcando en el mapa del formulario (varios puntos o traza).
   dibujo: [],
@@ -1388,7 +1390,8 @@ function pintarTrabajos() {
         .map((d) => {
           const k = jornadaDe.get(d.clave);
           const texto = d.inicio ? `${horaCorta(d.inicio, pp.zona)}–${horaCorta(d.fin, pp.zona).replace(/^00$/, '24')} h` : d.estado === 'sin-prevision' ? 'Sin previsión' : (d.porQue ?? 'Sin vuelo');
-          return `<li class="t-dia ${esc(d.estado)}${k ? ' elegido' : ''}"><b>${esc(diaCorto(d.clave))}</b><span>${esc(texto[0].toUpperCase() + texto.slice(1))}</span>${k ? `<em>Jornada ${k}</em>` : ''}</li>`;
+          const abierto = estado.trabajoDia?.id === t.id && estado.trabajoDia.clave === d.clave;
+          return `<li><button type="button" class="t-dia ${esc(d.estado)}${k ? ' elegido' : ''}${abierto ? ' abierto' : ''}" data-trabajo-dia="${esc(t.id)}" data-clave="${esc(d.clave)}" aria-expanded="${abierto}" aria-label="${esc(diaCorto(d.clave))}: ${esc(texto)}${k ? `, jornada ${k}` : ''}. Ver su previsión"><b>${esc(diaCorto(d.clave))}</b><span>${esc(texto[0].toUpperCase() + texto.slice(1))}</span>${k ? `<em>Jornada ${k}</em>` : ''}</button></li>`;
         })
         .join('');
       // Lo apuntado en «Vuelos planificados» desde este trabajo, y si la
@@ -1403,12 +1406,49 @@ function pintarTrabajos() {
         <div class="t-propuesta">${esc(textoOrganizado(t, org, pp.zona))}</div>
         ${apuntados.length ? `<div class="nota">Apuntado en vuelos planificados: ${esc(listaY(apuntados.map((x) => cuandoPlan(x))))}.</div>` : ''}
         ${cambiado ? '<div class="t-cambio">La previsión ha cambiado: ahora hay mejores días.</div>' : ''}
-        ${dias ? `<ul class="t-dias" aria-label="Días del permiso">${dias}</ul>` : ''}
+        ${dias ? `<ul class="t-dias" aria-label="Días del permiso: toca uno para ver su previsión">${dias}</ul>` : ''}
+        ${estado.trabajoDia?.id === t.id ? previsionDiaTrabajo(t, pp, org, estado.trabajoDia.clave) : ''}
         <div class="acciones-plan">${apuntar}<button type="button" class="enlace" data-editar-trabajo="${esc(t.id)}">Editar</button></div>
       </li>`;
     })
     .join('');
   if (!lista.length) $('#lista-trabajos').innerHTML = '<li class="nota sin-trabajos">Aún no tienes trabajos.</li>';
+}
+
+// La previsión hora a hora de un día del permiso, dentro de la tarjeta del
+// trabajo: con su dron, su altura y su tipo de trabajo, y en una traza la
+// del peor punto. Resaltadas las horas del horario; con raya, la jornada.
+function previsionDiaTrabajo(t, pp, org, clave) {
+  const dia = pp.dias.find((d) => d.clave === clave);
+  const elegido = org.elegidos.find((d) => d.clave === clave);
+  const u = pp.ajustes.unidades;
+  const ahora = Date.now();
+  const horas = dia ? dia.horas.filter((h) => h.ms + 3600000 > ahora) : [];
+  const titulo = `Previsión del ${fechaLarga(clave)}`;
+  if (!horas.length)
+    return `<div class="t-prevision" role="region" aria-label="${esc(titulo)}"><p class="nota">${dia ? 'Ese día ya ha pasado.' : `Aún no hay previsión para ese día: llega hasta el ${esc(fechaLarga(pp.dias.at(-1)?.clave ?? clave))}.`}</p></div>`;
+  const enHorario = (h) => {
+    const hh = Number(hora(h.ms, pp.zona).slice(0, 2));
+    return hh >= t.horaInicio && hh < t.horaFin;
+  };
+  const filas = horas
+    .map((h) => {
+      const porId = Object.fromEntries(h.factores.map((f) => [f.id, f.estado]));
+      const enJornada = elegido && h.ms >= elegido.inicio && h.ms < elegido.fin;
+      const clases = ['hora', h.estado, porId.luz !== 'ok' ? 'noche' : '', enHorario(h) ? 'en-horario' : 'fuera-horario', enJornada ? `en-ventana v-${elegido.estado}` : ''].filter(Boolean).join(' ');
+      const motivos = h.estado === 'ok' ? '' : h.factores.filter((f) => f.estado === h.estado).map((f) => f.nombre).join(', ');
+      return `<tr class="${clases}"><th scope="row">${esc(hora(h.ms, pp.zona))}</th><td class="t-estado"><span role="img" aria-label="${esc(ESTADOS[h.estado].texto)}${motivos ? `: ${esc(motivos)}` : ''}" title="${esc(motivos)}">${SIMBOLO[h.estado]}</span></td>${COLUMNAS.map((c) => `<td class="e-${esc(porId[c.id] ?? 'sin-dato')}">${c.celda(h, u)}</td>`).join('')}</tr>`;
+    })
+    .join('');
+  return `<div class="t-prevision" role="region" aria-label="${esc(titulo)}">
+      <div class="t-prevision-cabecera"><strong>${esc(titulo)}</strong><button type="button" class="icono" data-trabajo-dia="${esc(t.id)}" data-clave="${esc(clave)}" aria-label="Cerrar la previsión del día">✕</button></div>
+      ${org.dias.find((d) => d.clave === clave)?.estado === 'sin-prevision' ? '<p class="nota">La previsión de este día aún no llega a todo tu horario: lo que falta se verá en los próximos días.</p>' : ''}
+      <p class="nota">Viento a ${esc(pp.ajustes.altitud)} m en ${esc(partesViento(0, u)[1])}${pp.puntos ? `; cada hora, la del peor de los ${esc(pp.puntos)} puntos` : ''}. En negrita, tu horario (${esc(t.horaInicio)}–${esc(t.horaFin)} h)${elegido ? '; con raya, la jornada propuesta' : ''}.</p>
+      <div class="tabla-horas-marco"><table class="tabla-horas t-tabla">
+        <thead><tr><th scope="col">Hora</th><th scope="col"><span class="visualmente-oculto">Volar</span></th>${COLUMNAS.map((c) => `<th scope="col">${c.titulo}</th>`).join('')}</tr></thead>
+        <tbody>${filas}</tbody>
+      </table></div>
+    </div>`;
 }
 
 function abrirTrabajo(id = null) {
@@ -2337,6 +2377,13 @@ function enlazar() {
     else if (b.dataset.accion === 'trab-gps') ubicacionTrabajo(b);
     else if (b.dataset.trabRes) elegirResultadoTrabajo(Number(b.dataset.trabRes));
     else if (b.dataset.editarTrabajo) abrirTrabajo(b.dataset.editarTrabajo);
+    else if (b.dataset.trabajoDia) {
+      // Tocar un día abre su previsión; tocarlo otra vez (o la ✕), la cierra.
+      const mismo = estado.trabajoDia?.id === b.dataset.trabajoDia && estado.trabajoDia.clave === b.dataset.clave;
+      estado.trabajoDia = mismo ? null : { id: b.dataset.trabajoDia, clave: b.dataset.clave };
+      pintarTrabajos();
+      if (!mismo) document.querySelector(`#lista-trabajos .t-prevision`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
     else if (b.dataset.apuntarTrabajo) apuntarTrabajo(b.dataset.apuntarTrabajo);
     else if (b.dataset.borrarTrabajo) borrarTrabajo(b.dataset.borrarTrabajo);
     else if (b.dataset.calendarioPlan) planAlCalendario(b.dataset.calendarioPlan);

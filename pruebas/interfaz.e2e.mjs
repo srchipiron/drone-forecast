@@ -648,6 +648,26 @@ try {
   assert.match(await page.textContent('#lista-trabajos .t-propuesta'), /^Lo mejor(, con precaución[^:]*)?: [^\s,]+, \d{1,2} [^\s,]+ de \d\d:00 a \d\d:00 y [^\s,]+, \d{1,2} [^\s,]+ de \d\d:00 a \d\d:00\.$/u);
   assert.equal(await page.locator('#lista-trabajos .t-dia').count(), 7, 'un día por cada día del permiso');
   assert.deepEqual(await page.locator('#lista-trabajos .t-dia em').allTextContents(), ['Jornada 1', 'Jornada 2']);
+  // Tocar un día abre su previsión hora a hora dentro de la tarjeta, con la jornada marcada.
+  const diaJornada = page.locator('#lista-trabajos .t-dia.elegido').first();
+  await diaJornada.click();
+  await page.locator('#lista-trabajos .t-prevision').waitFor();
+  assert.equal(await diaJornada.getAttribute('aria-expanded'), 'true');
+  assert.match(await page.textContent('#lista-trabajos .t-prevision strong'), /^Previsión del [^\s,]+, \d{1,2} [^\s,]+$/u);
+  assert.ok((await page.locator('#lista-trabajos .t-prevision tbody tr').count()) >= 1);
+  assert.equal(await page.locator('#lista-trabajos .t-prevision tr.en-ventana').count(), 1, 'la jornada de 1 h, marcada');
+  assert.match(await page.textContent('#lista-trabajos .t-prevision .nota:last-of-type'), /^Viento a 120 m en km\/h\. En negrita, tu horario \(0–24 h\); con raya, la jornada propuesta\.$/);
+  if (process.env.CAPTURA_TRABAJOS) await page.locator('#lista-trabajos .trabajo').screenshot({ path: process.env.CAPTURA_TRABAJOS.replace('.png', '-dia.png') });
+  await diaJornada.click();
+  assert.equal(await page.locator('#lista-trabajos .t-prevision').count(), 0, 'tocarlo otra vez la cierra');
+  // Un día sin previsión todavía lo dice.
+  const sinPrev = page.locator('#lista-trabajos .t-dia.sin-prevision');
+  if (await sinPrev.count()) {
+    await sinPrev.first().click();
+    assert.match(await page.textContent('#lista-trabajos .t-prevision'), /Aún no hay previsión para ese día|aún no llega a todo tu horario/);
+    await page.locator('#lista-trabajos .t-prevision [aria-label="Cerrar la previsión del día"]').click();
+    assert.equal(await page.locator('#lista-trabajos .t-prevision').count(), 0);
+  }
   assert.equal(await page.evaluate(() => window.__xss), undefined);
   if (process.env.CAPTURA_TRABAJOS) await page.screenshot({ path: process.env.CAPTURA_TRABAJOS, fullPage: true });
   // Apuntar: dos vuelos planificados con su nota; el botón desaparece (ya coincide).

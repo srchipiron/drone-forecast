@@ -33,6 +33,16 @@ Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
   jornadas; elige los mejores días; trazas y varios puntos (KML, KMZ de DJI
   Pilot, GPX) y trabajos que no se solapan.
 
+## 0.44.0 · 23-11-2026
+
+- **La previsión de cada día del trabajo, con un toque.** En la tarjeta de
+  un trabajo, toca cualquier día del permiso y se abre debajo su previsión
+  hora a hora (viento a tu altura, rachas, temperatura, lluvia, cielo,
+  satélites y Kp), con el dron, la altura y el tipo de trabajo de ese
+  trabajo. Tu horario va en negrita y la jornada propuesta, con raya; en una
+  traza, cada hora es la del peor punto. Tocar el día otra vez (o la ✕) la
+  cierra.
+
 ## 0.43.0 · 23-11-2026
 
 - **Novedades dentro de la app.** Toca la versión del pie (en Ajustes) y ves

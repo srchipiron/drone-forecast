@@ -3,6 +3,15 @@
 Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
 `0.0.X` para correcciones. La versión sale en el pie de la app.
 
+## 0.42.0
+
+- **El aviso de los vuelos de una traza mira la traza entera.** Los vuelos
+  que apuntas desde un trabajo en una traza o en varios sitios llevan sus
+  puntos de tiempo: el aviso en segundo plano y la tarjeta de «Vuelos
+  planificados» juzgan cada hora con el peor de ellos, no solo con el
+  primero. Si a mitad de la traza se pone a soplar, te avisa. La tarjeta
+  dice en cuántos puntos se mira.
+
 ## 0.41.1
 
 - **«No solapar con otros trabajos» reserva el día del vuelo, entero, y solo

@@ -11,7 +11,7 @@ import { VALORACIONES, anadirEntrada, crearEntrada, diarioCSV, diarioValido, res
 import { graficaDia } from '../motor/grafica.js';
 import { DRONES } from '../motor/drones.js';
 import { MISIONES, MODOS } from '../motor/misiones.js';
-import { MARGEN_DIARIO, MAXIMO_PLANES, NOMBRE_ESTADO, anadirPlan, crearPlan, cuandoPlan, empeora, fasePlan, fijarAjustesPlanes, huecosPlan, icsPlan, planesValidos, valorarPlan } from '../motor/planificado.js';
+import { MARGEN_DIARIO, MAXIMO_PLANES, NOMBRE_ESTADO, anadirPlan, crearPlan, cuandoPlan, empeora, fasePlan, fijarAjustesPlanes, huecosPlan, icsPlan, planesValidos, puntosPlan, valorarPlan } from '../motor/planificado.js';
 import { construirPrevision, normalizarAjustes, resumenDias } from '../motor/prevision.js';
 import { MAXIMO_TRABAJOS, TIPOS_TRABAJO, combinarPrevisiones, crearTrabajo, organizarTodos, planesDeTrabajo, trabajosValidos } from '../motor/trabajos.js';
 import { MAX_PUNTOS, centroDe, leerTraza, limpiarPuntos, longitudKm, puntosTiempo, zoomParaVer } from '../motor/traza.js';
@@ -1056,6 +1056,7 @@ const meteoPlanes = new Map();
 
 function previsionPlan(plan) {
   const ajustes = plan.ajustes ?? estado.ajustes;
+  if (plan.lugar.puntos?.length > 1) return previsionPuntos(puntosPlan(plan), ajustes);
   if (mismoSitio(plan.lugar, estado.lugar)) return estado.meteo ? previsionParaPlan(estado.meteo, plan.lugar, ajustes) : null;
   const clave = `${plan.lugar.lat},${plan.lugar.lon}`;
   const m = meteoPlanes.get(clave);
@@ -1093,7 +1094,7 @@ function pintarPlanes() {
       fase === 'terminado' ? 'Terminado: ¿cómo ha ido?' : pp === 'error' ? 'No se pudo descargar la previsión' : val ? `${fase === 'en-marcha' ? 'En marcha · ' : ''}${textoValoracion(val)}` : 'Mirando la previsión…';
     const peor = val && empeora(plan.estado, val.estado);
     return `<li class="plan e-${esc(fase === 'terminado' ? 'terminado' : (val?.estado ?? 'sin-dato'))}">
-      <div><strong>${esc(cuandoPlan(plan))}</strong> · ${esc(plan.lugar.nombre)}${pp && pp !== 'error' ? ` · ${esc(pp.dron.nombre)} a ${esc(pp.ajustes.altitud)} m` : ''}${plan.nota ? ` · «${esc(plan.nota)}»` : ''}</div>
+      <div><strong>${esc(cuandoPlan(plan))}</strong> · ${esc(plan.lugar.nombre)}${plan.lugar.puntos ? ` (el tiempo en ${plan.lugar.puntos.length} puntos)` : ''}${pp && pp !== 'error' ? ` · ${esc(pp.dron.nombre)} a ${esc(pp.ajustes.altitud)} m` : ''}${plan.nota ? ` · «${esc(plan.nota)}»` : ''}</div>
       <div class="estado-plan">${esc(txt)}</div>
       ${peor ? `<div class="empeora">Ha empeorado: al planificarlo estaba en ${esc(NOMBRE_ESTADO[plan.estado])}.</div>` : ''}
       <button type="button" class="icono" data-borrar-plan="${esc(plan.id)}" aria-label="Borrar el plan del ${esc(cuandoPlan(plan))}">✕</button>
@@ -1288,8 +1289,13 @@ function textoOrganizado(t, org, zona) {
 // cada hora, la del punto peor.
 const meteoTrabajos = new Map();
 function previsionTrabajo(t) {
-  if (!t.lugar.forma) return previsionPlan(t);
-  const puntos = puntosTiempo(t.lugar);
+  return t.lugar.forma ? previsionPuntos(puntosTiempo(t.lugar), t.ajustes) : previsionPlan(t);
+}
+
+// La previsión de varios puntos (traza o sitios sueltos de un trabajo, y los
+// vuelos planificados que salen de él): una descarga para todos y, cada hora,
+// la del punto peor.
+function previsionPuntos(puntos, ajustes) {
   const clave = puntos.map((p) => `${p.lat},${p.lon}`).join(';');
   const m = meteoTrabajos.get(clave);
   if (!m || (m.estado !== 'cargando' && Date.now() - m.ms > REFRESCO)) {
@@ -1298,10 +1304,13 @@ function previsionTrabajo(t) {
     cargarPrevisionVarios(puntos)
       .then((lista) => meteoTrabajos.set(clave, { estado: 'listo', lista, ms: Date.now() }))
       .catch(() => meteoTrabajos.set(clave, { estado: 'error', lista: null, ms: Date.now() }))
-      .finally(() => pintarTrabajos());
+      .finally(() => {
+        pintarTrabajos();
+        pintarPlanes();
+      });
   }
   const actual = meteoTrabajos.get(clave);
-  if (actual.lista) return combinarPrevisiones(actual.lista.map((meteo, i) => previsionParaPlan(meteo, puntos[i], t.ajustes)));
+  if (actual.lista) return combinarPrevisiones(actual.lista.map((meteo, i) => previsionParaPlan(meteo, puntos[i], ajustes)));
   return actual.estado === 'error' ? 'error' : null;
 }
 
@@ -1592,7 +1601,8 @@ function apuntarTrabajo(id) {
     return;
   }
   const nuevos = planesDeTrabajo(t, org).map((x) => {
-    const borrador = crearPlan({ ...x, lugar: t.lugar, zona: pp.zona, ajustes: t.ajustes });
+    // Con sus puntos de tiempo si es una traza o varios sitios: el aviso los mira todos.
+    const borrador = crearPlan({ ...x, lugar: t.lugar.forma ? { ...t.lugar, puntos: puntosTiempo(t.lugar) } : t.lugar, zona: pp.zona, ajustes: t.ajustes });
     const val = valorarPlan(borrador, pp);
     return { ...borrador, estado: val.estado in NOMBRE_ESTADO ? val.estado : null };
   });

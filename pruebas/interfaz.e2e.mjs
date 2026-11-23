@@ -704,6 +704,17 @@ try {
   assert.ok(pedidaTraza, 'una sola petición con todos los puntos de la traza');
   assert.equal(new URL(pedidaTraza).searchParams.get('forecast_days'), '7');
   assert.equal(await page.evaluate(() => window.__xss), undefined);
+  // Apuntado, el vuelo planificado lleva los puntos de la traza: el aviso y su tarjeta los miran todos.
+  await tarjetaTraza.locator('[data-apuntar-trabajo]').click();
+  const planTraza = await page.evaluate(() => JSON.parse(localStorage.getItem('drone-forecast:planes')).find((x) => x.nota.startsWith('Inspección línea')));
+  const nPuntos = Number((await tarjetaTraza.textContent()).match(/el tiempo mirado en (\d+) puntos/)[1]);
+  assert.equal(planTraza.lugar.puntos.length, nPuntos);
+  await page.locator('[data-vista="prevision"]').click();
+  const tarjetaPlan = page.locator('#planes .plan').filter({ hasText: 'Inspección línea' });
+  assert.match(await tarjetaPlan.textContent(), new RegExp(`Línea norte \\(el tiempo en ${nPuntos} puntos\\)`));
+  await tarjetaPlan.locator('.estado-plan').filter({ hasText: /^(En marcha · )?(Verde|Ámbar|Rojo)/ }).waitFor();
+  await tarjetaPlan.locator('[data-borrar-plan]').click();
+  await page.locator('[data-vista="trabajos"]').click();
   // Editar: vuelve con su forma y sus puntos.
   await tarjetaTraza.locator('[data-editar-trabajo]').click();
   assert.equal(await page.isChecked('input[name="trab-forma"][value="traza"]'), true);

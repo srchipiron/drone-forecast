@@ -25,7 +25,7 @@ export function crearPlan({ ms, horas, lugar, zona, estado = null, nota = '', aj
     id: `${inicio}-${Math.round(lugar.lat * 1e4)}-${Math.round(lugar.lon * 1e4)}`,
     ms: inicio,
     horas: DURACIONES.includes(horas) ? horas : 1,
-    lugar: { nombre: String(lugar.nombre ?? '').slice(0, 120), lat: lugar.lat, lon: lugar.lon },
+    lugar: { nombre: String(lugar.nombre ?? '').slice(0, 120), lat: lugar.lat, lon: lugar.lon, ...puntosDe(lugar) },
     zona: String(zona ?? ''),
     estado: estado in RANGO ? estado : null,
     nota: String(nota).slice(0, 200),
@@ -33,6 +33,22 @@ export function crearPlan({ ms, horas, lugar, zona, estado = null, nota = '', aj
     // siempre con ellos, aunque luego cambies de dron para otro trabajo.
     ajustes: ajustes && typeof ajustes === 'object' ? ajustesDelPlan(ajustes) : null,
   };
+}
+
+// Un vuelo de un trabajo en una traza o en varios sitios lleva los puntos
+// donde se mira el tiempo (hasta 12): se juzga cada hora con el peor.
+const MAX_PUNTOS_PLAN = 12;
+function puntosDe(lugar) {
+  const puntos = (Array.isArray(lugar.puntos) ? lugar.puntos : [])
+    .filter((q) => Number.isFinite(q?.lat) && Number.isFinite(q?.lon) && Math.abs(q.lat) <= 90 && Math.abs(q.lon) <= 180)
+    .slice(0, MAX_PUNTOS_PLAN)
+    .map((q) => ({ lat: q.lat, lon: q.lon }));
+  return puntos.length > 1 ? { puntos } : {};
+}
+
+/** Dónde se mira el tiempo de un plan: sus puntos o, si no los lleva, su lugar. */
+export function puntosPlan(plan) {
+  return puntosDe(plan.lugar ?? {}).puntos ?? [{ lat: plan.lugar.lat, lon: plan.lugar.lon }];
 }
 
 // Lo que decide el veredicto; sin «Mis drones» (no cuenta para un plan).

@@ -142,7 +142,7 @@ try {
   // Accesibilidad (lo que encontró axe-core): un h1 para orientarse, la barra
   // de pestañas como zona de navegación y el aria-checked solo en los botones del modo.
   assert.equal(await page.locator('h1').count(), 1);
-  assert.equal(await page.locator('nav[aria-label="Secciones"] > [role="tablist"] [role="tab"]').count(), 3);
+  assert.equal(await page.locator('nav[aria-label="Secciones"] > [role="tablist"] [role="tab"]').count(), 4);
   assert.deepEqual(await page.locator('[aria-checked]').evaluateAll((xs) => xs.map((x) => x.dataset.modo)), ['recreativo', 'profesional']);
   assert.match(await page.textContent('#ahora .ventana-hoy strong'), /^Ninguna en [78] días$/, 'sin nada volable en la semana, lo dice');
   // Y cada día sin ventana dice por qué, en una palabra (también al lector de pantalla).
@@ -319,7 +319,7 @@ try {
   await page.reload();
   assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), 'sol', 'se guarda');
   await page.setViewportSize({ width: 360, height: 800 });
-  for (const v of ['prevision', 'ajustes']) {
+  for (const v of ['prevision', 'trabajos', 'ajustes']) {
     await page.locator(`[data-vista="${v}"]`).click();
     const fuera = await page.evaluate(() => [...document.querySelectorAll('body *')].filter((e) => e.getClientRects().length && e.getBoundingClientRect().right > document.documentElement.clientWidth + 1).slice(0, 5).map((e) => `${e.tagName}.${e.className}#${e.id} «${(e.textContent || '').trim().slice(0, 30)}»`));
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1), `al sol, nada se sale a 360 px (${v}): ${fuera.join(' | ')}`);
@@ -549,6 +549,83 @@ try {
   await page.locator('#planes .plan').first().waitFor();
   await page.locator('[data-borrar-plan]').click();
   assert.equal(await page.locator('#planes').isVisible(), false, 'borrado el único plan, la tarjeta se va');
+  // Trabajos: un encargo de 2 jornadas de 1 h que se pueden partir, en todo
+  // el día y con el permiso de hoy a dentro de 6 días. La app propone dos
+  // días, los apunta como vuelos planificados, se edita y se borra.
+  await page.locator('[data-vista="trabajos"]').click();
+  assert.equal(await page.textContent('#lista-trabajos'), 'Aún no tienes trabajos.');
+  await page.locator('[data-accion="nuevo-trabajo"]').click();
+  await page.locator('#dlg-trabajo').waitFor();
+  assert.equal(await page.isDisabled('#trab-fraccionable'), true, 'con una jornada no hay nada que partir');
+  assert.match(await page.textContent('#trab-dron'), /^Se juzga con DJI Mini 5 Pro a 120 m/);
+  assert.match(await page.textContent('#trab-lugar'), /Getafe<img/);
+  const hoyTrab = await page.inputValue('#trab-desde');
+  assert.match(hoyTrab, /^\d{4}-\d\d-\d\d$/, 'el permiso empieza hoy por defecto');
+  await page.locator('#form-trabajo button[type="submit"]').click();
+  assert.match(await page.textContent('#trab-error'), /nombre/, 'sin nombre no se guarda');
+  await page.fill('#trab-nombre', 'Orto <i>parcela</i>');
+  await page.fill('#trab-hasta', '2020-01-01');
+  await page.locator('#form-trabajo button[type="submit"]').click();
+  assert.match(await page.textContent('#trab-error'), /antes de empezar/);
+  await page.fill('#trab-hasta', await page.evaluate((d) => new Date(Date.parse(`${d}T12:00:00Z`) + 6 * 86400000).toISOString().slice(0, 10), hoyTrab));
+  assert.equal(await page.textContent('#trab-error'), '', 'al corregir, el error se va');
+  // Nada del diálogo se sale por la derecha (las fechas lo hacían).
+  assert.ok(await page.evaluate(() => { const d = document.querySelector('#dlg-trabajo').getBoundingClientRect(); return [...document.querySelectorAll('#dlg-trabajo input, #dlg-trabajo select')].every((x) => x.getBoundingClientRect().right <= d.right - 1); }), 'los campos caben en el diálogo');
+  await page.selectOption('#trab-tipo', 'fotogrametria');
+  await page.selectOption('#trab-hora-inicio', '0');
+  await page.selectOption('#trab-hora-fin', '24');
+  await page.selectOption('#trab-jornadas', '2');
+  await page.selectOption('#trab-horas', '1');
+  await page.check('#trab-fraccionable');
+  if (process.env.CAPTURA_TRABAJOS) await page.locator('#dlg-trabajo').screenshot({ path: process.env.CAPTURA_TRABAJOS.replace('.png', '-dialogo.png') });
+  await page.locator('#form-trabajo button[type="submit"]').click();
+  await page.locator('#lista-trabajos .trabajo .t-dias').waitFor();
+  assert.equal(await page.locator('#dlg-trabajo').isVisible(), false);
+  const tarjetaTrab = await page.textContent('#lista-trabajos .trabajo');
+  assert.match(tarjetaTrab, /Orto <i>parcela<\/i> · Getafe<img/, tarjetaTrab);
+  assert.match(tarjetaTrab, /Fotogrametría \/ ortofoto · permiso del [^]* · de 0 a 24 h · 2 jornadas de 1 h, se pueden partir/);
+  assert.match(await page.textContent('#lista-trabajos .t-propuesta'), /^Lo mejor(, con precaución[^:]*)?: \w+, \d{1,2} \w+ de \d\d:00 a \d\d:00 y \w+, \d{1,2} \w+ de \d\d:00 a \d\d:00\.$/);
+  assert.equal(await page.locator('#lista-trabajos .t-dia').count(), 7, 'un día por cada día del permiso');
+  assert.deepEqual(await page.locator('#lista-trabajos .t-dia em').allTextContents(), ['Jornada 1', 'Jornada 2']);
+  assert.equal(await page.evaluate(() => window.__xss), undefined);
+  if (process.env.CAPTURA_TRABAJOS) await page.screenshot({ path: process.env.CAPTURA_TRABAJOS, fullPage: true });
+  // Apuntar: dos vuelos planificados con su nota; el botón desaparece (ya coincide).
+  await page.locator('[data-apuntar-trabajo]').click();
+  assert.match(await page.textContent('#anuncio-trabajos'), /^Apuntados 2 vuelos en «Vuelos planificados»/);
+  assert.match(await page.textContent('#lista-trabajos .trabajo'), /Apuntado en vuelos planificados: /);
+  assert.equal(await page.locator('[data-apuntar-trabajo]').count(), 0);
+  const planesTrab = await page.evaluate(() => JSON.parse(localStorage.getItem('drone-forecast:planes')));
+  assert.deepEqual(planesTrab.map((x) => x.nota), ['Orto <i>parcela</i> · jornada 1 de 2', 'Orto <i>parcela</i> · jornada 2 de 2']);
+  assert.deepEqual([...new Set(planesTrab.map((x) => x.ajustes.mision))], ['fotogrametria'], 'los vuelos se juzgan como el trabajo');
+  // Si la propuesta cambia (aquí, se mueve a mano un vuelo apuntado), lo dice y ofrece moverlos.
+  await page.evaluate(() => {
+    const planes = JSON.parse(localStorage.getItem('drone-forecast:planes'));
+    planes[0].ms -= 3600000 * 24 * 30;
+    planes[0].ms = Date.now() + 3600000 * 24 * 6.5;
+    localStorage.setItem('drone-forecast:planes', JSON.stringify(planes));
+  });
+  await page.locator('[data-vista="prevision"]').click();
+  await page.locator('[data-vista="trabajos"]').click();
+  await page.locator('.t-cambio').waitFor();
+  await page.locator('[data-apuntar-trabajo]').filter({ hasText: 'Mover los vuelos a la propuesta nueva' }).click();
+  assert.equal(await page.locator('.t-cambio').count(), 0);
+  assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('drone-forecast:planes')).length), 2, 'se sustituyen, no se suman');
+  // Editar: el formulario trae lo guardado.
+  await page.locator('[data-editar-trabajo]').click();
+  assert.equal(await page.textContent('#titulo-trabajo'), 'Editar trabajo');
+  assert.equal(await page.inputValue('#trab-nombre'), 'Orto <i>parcela</i>');
+  assert.equal(await page.inputValue('#trab-jornadas'), '2');
+  assert.equal(await page.isChecked('#trab-fraccionable'), true);
+  await page.fill('#trab-nombre', 'Orto Getafe');
+  await page.locator('#form-trabajo button[type="submit"]').click();
+  await page.locator('#lista-trabajos .trabajo').filter({ hasText: 'Orto Getafe ·' }).waitFor();
+  assert.equal(await page.locator('#lista-trabajos .trabajo').count(), 1, 'editado, no duplicado');
+  await page.locator('[data-borrar-trabajo]').click();
+  assert.equal(await page.locator('#lista-trabajos .trabajo').count(), 0);
+  assert.match(await page.textContent('#anuncio-trabajos'), /^Trabajo borrado/);
+  await page.evaluate(() => localStorage.removeItem('drone-forecast:planes'));
+  await page.locator('[data-vista="prevision"]').click();
+
   // Con 20 planes (el tope) no se guarda otro a escondidas: lo dice y el diálogo sigue abierto.
   await page.evaluate(() => {
     const base = Math.ceil(Date.now() / 3600000) * 3600000 + 48 * 3600000;

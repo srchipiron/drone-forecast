@@ -3,6 +3,26 @@
 Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
 `0.0.X` para correcciones. La versión sale en el pie de la app.
 
+## 0.40.0
+
+- **Planificador de trabajos** (pestaña nueva, **Trabajos**). Para cada
+  encargo pones el nombre, el lugar (el de arriba o un favorito), el tipo de
+  trabajo (fotogrametría, termografía, inspección…), las **fechas del
+  permiso**, el **horario** en que se puede volar, cuántas **jornadas** lleva
+  y cuántas horas de vuelo por jornada, y si **se puede partir** en días
+  sueltos (un vuelo el martes y otro el jueves) o tienen que ser seguidos.
+- La app elige los mejores días dentro del permiso según la previsión: el
+  tramo de horas en verde dentro de tu horario (o en ámbar, si no hay verde),
+  y lo enseña con un día por casilla, cada uno con su hueco o con por qué no
+  se puede («Viento», «Lluvia», «Sin previsión»…).
+- Si el permiso va más allá de la previsión (7 días), te dice lo que ya se
+  sabe y lo que falta por ver.
+- **Apuntar los vuelos** los pasa a «Vuelos planificados», con el aviso si
+  empeoran. Si la previsión cambia y aparecen días mejores, te lo dice y los
+  mueves con un toque.
+- Se juzga con el dron y la altura que tienes puestos al crearlo, como
+  misión el tipo de trabajo.
+
 ## 0.39.0
 
 - **Los días sin vuelo dicen por qué.** Debajo de «Sin vuelo», cada tarjeta

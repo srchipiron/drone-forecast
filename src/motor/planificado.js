@@ -6,7 +6,7 @@
 
 import { fmtHora } from './unidades.js';
 
-export const DURACIONES = [1, 2, 3, 4];
+export const DURACIONES = [1, 2, 3, 4, 5, 6, 7, 8];
 export const MAXIMO_PLANES = 20;
 const HORA = 3600000;
 const RANGO = { ok: 0, precaucion: 1, no: 2 };

@@ -60,7 +60,7 @@ test('plan: empeora solo de verde a ámbar/rojo o de ámbar a rojo', () => {
 test('planes: lo guardado roto o pasado se descarta; ordenados, sin repetir y con tope', () => {
   const a = plan();
   const b = plan({ ms: MANANA_10 + 24 * H });
-  assert.deepEqual(planesValidos([b, null, { id: 'x' }, a, { ...a, id: 'roto', horas: 7 }], AHORA).map((p) => p.id), [a.id, b.id]);
+  assert.deepEqual(planesValidos([b, null, { id: 'x' }, a, { ...a, id: 'roto', horas: 9 }], AHORA).map((p) => p.id), [a.id, b.id]);
   assert.deepEqual(planesValidos([a], MANANA_10 + H), [a], 'en marcha todavía cuenta');
   assert.deepEqual(planesValidos([a], MANANA_10 + 2 * H), [], 'acabado, fuera');
   assert.deepEqual(planesValidos('basura'), []);

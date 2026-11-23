@@ -58,6 +58,17 @@
       <section id="checklist" class="tarjeta checklist" hidden></section>
     </div>
 
+    <!-- Trabajos: encargos con permiso, organizados según la previsión -->
+    <div id="vista-trabajos" class="vista" role="tabpanel" aria-labelledby="pestana-trabajos" hidden>
+      <section id="trabajos" class="tarjeta" aria-labelledby="titulo-trabajos">
+        <h2 id="titulo-trabajos">Trabajos</h2>
+        <p class="nota">Pon el lugar, las fechas del permiso, el horario y cuántas jornadas lleva: la app elige los mejores días según la previsión y los vuelve a mirar cada vez que la abres.</p>
+        <ul id="lista-trabajos" class="lista-trabajos"></ul>
+        <p id="anuncio-trabajos" class="nota" aria-live="polite"></p>
+        <div class="acciones"><button type="button" data-accion="nuevo-trabajo">Nuevo trabajo</button></div>
+      </section>
+    </div>
+
     <!-- Diario de vuelos -->
     <div id="vista-diario" class="vista" role="tabpanel" aria-labelledby="pestana-diario" hidden>
       <section id="diario" class="tarjeta">
@@ -150,6 +161,10 @@
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h3l3-8 4 16 3-8h5"/></svg>
       <span>Previsión</span>
     </button>
+    <button id="pestana-trabajos" type="button" role="tab" data-vista="trabajos" aria-controls="vista-trabajos">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 12h18"/></svg>
+      <span>Trabajos</span>
+    </button>
     <button id="pestana-diario" type="button" role="tab" data-vista="diario" aria-controls="vista-diario">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3Z"/><path d="M5 17a3 3 0 0 1 3-3h11M9 8h6"/></svg>
       <span>Diario</span>
@@ -233,6 +248,35 @@
       <p id="plan-previa" class="nota" aria-live="polite"></p>
       <div id="plan-huecos" class="plan-huecos"></div>
       <div class="acciones"><button type="submit">Guardar el plan</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="dlg-trabajo" aria-labelledby="titulo-trabajo">
+    <form id="form-trabajo" class="form-plan" novalidate>
+      <div class="dlg-cabecera">
+        <h2 id="titulo-trabajo">Nuevo trabajo</h2>
+        <button type="button" class="icono" data-accion="cerrar-trabajo" aria-label="Cerrar">✕</button>
+      </div>
+      <label>Nombre (cliente u obra) <input id="trab-nombre" type="text" maxlength="80" required placeholder="Orto parcela Getafe"></label>
+      <label>Lugar <select id="trab-lugar"></select></label>
+      <p class="nota">¿Otro sitio? Búscalo arriba (o guárdalo en favoritos) y vuelve aquí.</p>
+      <label>Tipo de trabajo <select id="trab-tipo"></select></label>
+      <div class="dos-campos">
+        <label>Permiso desde <input id="trab-desde" type="date" required></label>
+        <label>hasta <input id="trab-hasta" type="date" required></label>
+      </div>
+      <div class="dos-campos">
+        <label>Horario: de <select id="trab-hora-inicio"><option value="0">00:00</option><option value="1">01:00</option><option value="2">02:00</option><option value="3">03:00</option><option value="4">04:00</option><option value="5">05:00</option><option value="6">06:00</option><option value="7">07:00</option><option value="8">08:00</option><option value="9">09:00</option><option value="10">10:00</option><option value="11">11:00</option><option value="12">12:00</option><option value="13">13:00</option><option value="14">14:00</option><option value="15">15:00</option><option value="16">16:00</option><option value="17">17:00</option><option value="18">18:00</option><option value="19">19:00</option><option value="20">20:00</option><option value="21">21:00</option><option value="22">22:00</option><option value="23">23:00</option></select></label>
+        <label>a <select id="trab-hora-fin"><option value="1">01:00</option><option value="2">02:00</option><option value="3">03:00</option><option value="4">04:00</option><option value="5">05:00</option><option value="6">06:00</option><option value="7">07:00</option><option value="8">08:00</option><option value="9">09:00</option><option value="10">10:00</option><option value="11">11:00</option><option value="12">12:00</option><option value="13">13:00</option><option value="14">14:00</option><option value="15">15:00</option><option value="16">16:00</option><option value="17">17:00</option><option value="18">18:00</option><option value="19">19:00</option><option value="20">20:00</option><option value="21">21:00</option><option value="22">22:00</option><option value="23">23:00</option><option value="24">24:00</option></select></label>
+      </div>
+      <div class="dos-campos">
+        <label>Jornadas <select id="trab-jornadas"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option></select></label>
+        <label>Vuelo por jornada <select id="trab-horas"><option value="1">1 h</option><option value="2">2 h</option><option value="3">3 h</option><option value="4">4 h</option><option value="5">5 h</option><option value="6">6 h</option><option value="7">7 h</option><option value="8">8 h</option></select></label>
+      </div>
+      <label class="casilla"><input id="trab-fraccionable" type="checkbox"> Se puede partir en días sueltos (un vuelo el martes y otro el jueves)</label>
+      <p id="trab-dron" class="nota"></p>
+      <p id="trab-error" class="error-form" role="alert"></p>
+      <div class="acciones"><button type="submit">Guardar y organizar</button></div>
     </form>
   </dialog>
 

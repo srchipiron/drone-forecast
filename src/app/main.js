@@ -13,6 +13,7 @@ import { DRONES } from '../motor/drones.js';
 import { MISIONES, MODOS } from '../motor/misiones.js';
 import { MARGEN_DIARIO, MAXIMO_PLANES, NOMBRE_ESTADO, anadirPlan, crearPlan, cuandoPlan, empeora, fasePlan, fijarAjustesPlanes, huecosPlan, icsPlan, planesValidos, valorarPlan } from '../motor/planificado.js';
 import { construirPrevision, normalizarAjustes, resumenDias } from '../motor/prevision.js';
+import { MAXIMO_TRABAJOS, TIPOS_TRABAJO, crearTrabajo, organizarTrabajo, planesDeTrabajo, trabajosValidos } from '../motor/trabajos.js';
 import { fmtHora as hora, fmtViento } from '../motor/unidades.js';
 import { umbralesViento } from '../motor/veredicto.js';
 import { perfilViento } from '../motor/viento.js';
@@ -110,6 +111,9 @@ const estado = {
   favMeteo: new Map(),
   // Último día que el instalador miró los favoritos (aviso de ventana).
   avisoUltimo: '',
+  // Trabajos: el que se edita en el formulario y los lugares que ofrece.
+  trabajoEditando: null,
+  lugaresTrabajo: [],
 };
 
 export function esc(s) {
@@ -896,11 +900,12 @@ function pintarPie() {
 function cambiarVista(v) {
   estado.vista = v;
   pintarVistas();
+  if (v === 'trabajos') pintarTrabajos();
   window.scrollTo(0, 0);
 }
 
 function pintarVistas() {
-  for (const v of ['prevision', 'diario', 'ajustes']) {
+  for (const v of ['prevision', 'trabajos', 'diario', 'ajustes']) {
     $(`#vista-${v}`).hidden = estado.vista !== v;
     $(`#pestana-${v}`).setAttribute('aria-selected', String(estado.vista === v));
   }
@@ -921,6 +926,7 @@ function pintar() {
   pintarAhora(p);
   pintarZonas(p);
   pintarPlanes();
+  pintarTrabajos();
   pintarDias(p);
   pintarDiasDrones(p);
   pintarHoras(p);
@@ -1054,7 +1060,10 @@ function previsionPlan(plan) {
     cargarSoloPrevision(plan.lugar.lat, plan.lugar.lon)
       .then((meteo) => meteoPlanes.set(clave, { estado: 'listo', meteo, ms: Date.now() }))
       .catch(() => meteoPlanes.set(clave, { estado: 'error', meteo: null, ms: Date.now() }))
-      .finally(() => pintarPlanes());
+      .finally(() => {
+        pintarPlanes();
+        pintarTrabajos();
+      });
   }
   const actual = meteoPlanes.get(clave);
   if (actual.meteo) return previsionParaPlan(actual.meteo, plan.lugar, ajustes);
@@ -1233,6 +1242,201 @@ function guardarVuelo(e) {
   $('#dlg-vuelo').close();
   pintarDiario();
   cambiarVista('diario');
+}
+
+// ---------- Trabajos ----------
+
+const trabajosGuardados = () => trabajosValidos(almacen.trabajos());
+const fmtFecha = new Intl.DateTimeFormat('es-ES', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
+const fmtDiaCorto = new Intl.DateTimeFormat('es-ES', { weekday: 'short', day: 'numeric', timeZone: 'UTC' });
+const fechaLarga = (clave) => fmtFecha.format(new Date(`${clave}T12:00:00Z`));
+const diaCorto = (clave) => fmtDiaCorto.format(new Date(`${clave}T12:00:00Z`));
+const horaCorta = (ms, zona) => hora(ms, zona).slice(0, 2);
+const listaY = (xs) => (xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} y ${xs.at(-1)}`);
+
+function textoOrganizado(t, org, zona) {
+  const jornada = (d) => `${fechaLarga(d.clave)} de ${hora(d.inicio, zona)} a ${hora(d.fin, zona)}`;
+  const elegidos = listaY(org.elegidos.map(jornada));
+  const hasta = org.hastaPrevision ? ` (la previsión llega hasta el ${fechaLarga(org.hastaPrevision)})` : '';
+  const seguidas = t.jornadas > 1 && !t.fraccionable ? `${t.jornadas} días seguidos` : `${t.jornadas} ${t.jornadas === 1 ? 'día' : 'días'}`;
+  switch (org.estado) {
+    case 'ok':
+      return `Lo mejor: ${elegidos}.`;
+    case 'precaucion': {
+      const motivos = [...new Set(org.elegidos.flatMap((d) => d.motivos ?? []))].join(', ').toLowerCase();
+      return `Lo mejor, con precaución${motivos ? ` (${motivos})` : ''}: ${elegidos}.`;
+    }
+    case 'incompleto':
+      return `De momento: ${elegidos}. ${org.faltan === 1 ? 'Falta 1 jornada' : `Faltan ${org.faltan} jornadas`}: se verá cuando haya previsión${hasta}.`;
+    case 'pendiente':
+      return `Aún no se puede saber: no hay ${seguidas} volables con la previsión de hoy${hasta}.`;
+    case 'imposible':
+      return org.elegidos.length
+        ? `Con la previsión de hoy solo se puede volar ${org.elegidos.length} de ${t.jornadas} jornadas dentro del permiso: ${elegidos}.`
+        : `Con la previsión de hoy no hay ${seguidas} volables dentro del permiso.`;
+    default:
+      return 'El permiso ya terminó.';
+  }
+}
+
+function pintarTrabajos() {
+  if (estado.vista !== 'trabajos') return;
+  const lista = trabajosGuardados();
+  const planes = planesGuardados();
+  $('#lista-trabajos').innerHTML = lista
+    .map((t) => {
+      const pp = previsionPlan(t);
+      const org = pp && pp !== 'error' ? organizarTrabajo(t, pp) : null;
+      const tipo = MISIONES[t.tipo]?.nombre ?? t.tipo;
+      const jornadas = t.jornadas === 1 ? `1 jornada de ${t.horasJornada} h` : `${t.jornadas} jornadas de ${t.horasJornada} h, ${t.fraccionable ? 'se pueden partir' : 'seguidas'}`;
+      const cabecera = `<div><strong>${esc(t.nombre)}</strong> · ${esc(t.lugar.nombre)}</div>
+        <div class="nota">${esc(tipo)} · permiso del ${esc(fechaLarga(t.desde))} al ${esc(fechaLarga(t.hasta))} · de ${esc(t.horaInicio)} a ${esc(t.horaFin)} h · ${esc(jornadas)}</div>`;
+      const borrar = `<button type="button" class="icono" data-borrar-trabajo="${esc(t.id)}" aria-label="Borrar el trabajo ${esc(t.nombre)}">✕</button>`;
+      if (!org) {
+        return `<li class="trabajo">${cabecera}${borrar}<div class="t-propuesta">${pp === 'error' ? 'No se pudo descargar la previsión' : 'Mirando la previsión…'}</div></li>`;
+      }
+      const jornadaDe = new Map(org.elegidos.map((d, k) => [d.clave, k + 1]));
+      const dias = org.dias
+        .map((d) => {
+          const k = jornadaDe.get(d.clave);
+          const texto = d.inicio ? `${horaCorta(d.inicio, pp.zona)}–${horaCorta(d.fin, pp.zona).replace(/^00$/, '24')} h` : d.estado === 'sin-prevision' ? 'Sin previsión' : (d.porQue ?? 'Sin vuelo');
+          return `<li class="t-dia ${esc(d.estado)}${k ? ' elegido' : ''}"><b>${esc(diaCorto(d.clave))}</b><span>${esc(texto[0].toUpperCase() + texto.slice(1))}</span>${k ? `<em>Jornada ${k}</em>` : ''}</li>`;
+        })
+        .join('');
+      // Lo apuntado en «Vuelos planificados» desde este trabajo, y si la
+      // propuesta de hoy ya no coincide.
+      const apuntados = planes.filter((x) => t.planes.includes(x.id));
+      const propuestos = org.elegidos.map((d) => d.inicio).join();
+      const cambiado = apuntados.length > 0 && apuntados.map((x) => x.ms).sort((a, b) => a - b).join() !== propuestos;
+      const apuntar = org.elegidos.length && (!apuntados.length || cambiado)
+        ? `<button type="button" class="enlace" data-apuntar-trabajo="${esc(t.id)}">${cambiado ? 'Mover los vuelos a la propuesta nueva' : org.elegidos.length === 1 ? 'Apuntar el vuelo' : `Apuntar los ${org.elegidos.length} vuelos`}</button>`
+        : '';
+      return `<li class="trabajo e-${esc(org.estado)}">${cabecera}${borrar}
+        <div class="t-propuesta">${esc(textoOrganizado(t, org, pp.zona))}</div>
+        ${apuntados.length ? `<div class="nota">Apuntado en vuelos planificados: ${esc(listaY(apuntados.map((x) => cuandoPlan(x))))}.</div>` : ''}
+        ${cambiado ? '<div class="t-cambio">La previsión ha cambiado: ahora hay mejores días.</div>' : ''}
+        ${dias ? `<ul class="t-dias" aria-label="Días del permiso">${dias}</ul>` : ''}
+        <div class="acciones-plan">${apuntar}<button type="button" class="enlace" data-editar-trabajo="${esc(t.id)}">Editar</button></div>
+      </li>`;
+    })
+    .join('');
+  if (!lista.length) $('#lista-trabajos').innerHTML = '<li class="nota sin-trabajos">Aún no tienes trabajos.</li>';
+}
+
+// Los lugares que se pueden elegir: el de la pantalla y los favoritos (sin repetir).
+function lugaresTrabajo(actual) {
+  const salida = [];
+  for (const l of [actual, estado.lugar, ...estado.favoritos]) if (l && !salida.some((x) => mismoSitio(x, l))) salida.push(l);
+  return salida;
+}
+
+function abrirTrabajo(id = null) {
+  const t = id ? trabajosGuardados().find((x) => x.id === id) : null;
+  estado.trabajoEditando = t?.id ?? null;
+  estado.lugaresTrabajo = lugaresTrabajo(t?.lugar);
+  if (!estado.lugaresTrabajo.length) {
+    abrirLugar();
+    return;
+  }
+  $('#form-trabajo').reset();
+  $('#titulo-trabajo').textContent = t ? 'Editar trabajo' : 'Nuevo trabajo';
+  $('#trab-lugar').innerHTML = estado.lugaresTrabajo.map((l, i) => `<option value="${i}">${esc(l.nombre)}</option>`).join('');
+  $('#trab-tipo').innerHTML = TIPOS_TRABAJO.map((m) => `<option value="${esc(m)}">${esc(MISIONES[m].nombre)}</option>`).join('');
+  const hoy = hoyLocal();
+  const dentroDe = (n) => new Date(Date.parse(`${hoy}T12:00:00Z`) + n * 86400000).toISOString().slice(0, 10);
+  const ajustes = t?.ajustes ?? estado.ajustes;
+  $('#trab-nombre').value = t?.nombre ?? '';
+  $('#trab-tipo').value = t?.tipo ?? (TIPOS_TRABAJO.includes(estado.ajustes.mision) ? estado.ajustes.mision : 'general');
+  $('#trab-desde').value = t?.desde ?? hoy;
+  $('#trab-hasta').value = t?.hasta ?? dentroDe(6);
+  $('#trab-hora-inicio').value = String(t?.horaInicio ?? 9);
+  $('#trab-hora-fin').value = String(t?.horaFin ?? 14);
+  $('#trab-jornadas').value = String(t?.jornadas ?? 1);
+  $('#trab-horas').value = String(t?.horasJornada ?? 2);
+  $('#trab-fraccionable').checked = Boolean(t?.fraccionable);
+  const dron = DRONES.find((d) => d.id === ajustes.dron)?.nombre ?? (ajustes.dron === 'personalizado' ? 'tu dron personalizado' : 'tu dron');
+  $('#trab-dron').textContent = `Se juzga con ${dron} a ${ajustes.altitud ?? estado.ajustes.altitud} m${t ? ' (los de cuando lo creaste)' : ' (los que tienes puestos ahora)'}.`;
+  $('#trab-error').textContent = '';
+  pintarFraccionable();
+  $('#dlg-trabajo').showModal();
+}
+
+// Partir solo tiene sentido con más de una jornada.
+function pintarFraccionable() {
+  const varias = Number($('#trab-jornadas').value) > 1;
+  $('#trab-fraccionable').disabled = !varias;
+  if (!varias) $('#trab-fraccionable').checked = false;
+}
+
+function guardarTrabajo(e) {
+  e.preventDefault();
+  const lista = trabajosGuardados();
+  const antes = lista.find((x) => x.id === estado.trabajoEditando);
+  if (!antes && lista.length >= MAXIMO_TRABAJOS) {
+    $('#trab-error').textContent = `Ya tienes ${MAXIMO_TRABAJOS} trabajos: borra alguno para añadir otro.`;
+    return;
+  }
+  const r = crearTrabajo({
+    id: antes?.id,
+    nombre: $('#trab-nombre').value,
+    lugar: estado.lugaresTrabajo[Number($('#trab-lugar').value)],
+    tipo: $('#trab-tipo').value,
+    desde: $('#trab-desde').value,
+    hasta: $('#trab-hasta').value,
+    horaInicio: $('#trab-hora-inicio').value,
+    horaFin: $('#trab-hora-fin').value,
+    jornadas: $('#trab-jornadas').value,
+    horasJornada: $('#trab-horas').value,
+    fraccionable: $('#trab-fraccionable').checked,
+    ajustes: antes?.ajustes ?? estado.ajustes,
+    planes: antes?.planes,
+  });
+  if (r.error) {
+    $('#trab-error').textContent = r.error;
+    return;
+  }
+  if (r.trabajo.hasta < hoyLocal()) {
+    $('#trab-error').textContent = 'Ese permiso ya ha terminado: revisa las fechas.';
+    return;
+  }
+  almacen.guardarTrabajos(antes ? lista.map((x) => (x.id === antes.id ? r.trabajo : x)) : [...lista, r.trabajo]);
+  $('#dlg-trabajo').close();
+  pintarTrabajos();
+}
+
+// La propuesta pasa a «Vuelos planificados» (un plan por jornada): desde ahí
+// el aviso en segundo plano avisa si empeora. Si ya había vuelos apuntados
+// desde este trabajo, se sustituyen.
+function apuntarTrabajo(id) {
+  const lista = trabajosGuardados();
+  const t = lista.find((x) => x.id === id);
+  const pp = t && previsionPlan(t);
+  if (!pp || pp === 'error') return;
+  const org = organizarTrabajo(t, pp);
+  if (!org.elegidos.length) return;
+  let planes = planesGuardados().filter((x) => !t.planes.includes(x.id));
+  if (planes.length + org.elegidos.length > MAXIMO_PLANES) {
+    $('#anuncio-trabajos').textContent = `No caben: el máximo son ${MAXIMO_PLANES} vuelos planificados. Borra alguno.`;
+    return;
+  }
+  const nuevos = planesDeTrabajo(t, org).map((x) => {
+    const borrador = crearPlan({ ...x, lugar: t.lugar, zona: pp.zona, ajustes: t.ajustes });
+    const val = valorarPlan(borrador, pp);
+    return { ...borrador, estado: val.estado in NOMBRE_ESTADO ? val.estado : null };
+  });
+  for (const plan of nuevos) planes = anadirPlan(planes, plan, Date.now(), MARGEN_DIARIO);
+  almacen.guardarPlanes(planes);
+  almacen.guardarTrabajos(lista.map((x) => (x.id === id ? { ...x, planes: nuevos.map((n) => n.id) } : x)));
+  sincronizarAviso([...t.planes, ...nuevos.map((n) => n.id)]);
+  $('#anuncio-trabajos').textContent = `${nuevos.length === 1 ? 'Apuntado 1 vuelo' : `Apuntados ${nuevos.length} vuelos`} en «Vuelos planificados» (Previsión).${CON_AVISO && almacen.aviso() ? ' Si empeoran, te aviso.' : ''}`;
+  pintarPlanes();
+  pintarTrabajos();
+}
+
+function borrarTrabajo(id) {
+  almacen.guardarTrabajos(trabajosGuardados().filter((x) => x.id !== id));
+  $('#anuncio-trabajos').textContent = 'Trabajo borrado. Sus vuelos planificados, si los apuntaste, siguen en Previsión.';
+  pintarTrabajos();
 }
 
 function bajarFichero(datos, tipo, nombre) {
@@ -1909,6 +2113,11 @@ function enlazar() {
     else if (b.dataset.accion === 'planificar') abrirPlan();
     else if (b.dataset.accion === 'cerrar-plan') $('#dlg-plan').close();
     else if (b.dataset.hueco) elegirHueco(b);
+    else if (b.dataset.accion === 'nuevo-trabajo') abrirTrabajo();
+    else if (b.dataset.accion === 'cerrar-trabajo') $('#dlg-trabajo').close();
+    else if (b.dataset.editarTrabajo) abrirTrabajo(b.dataset.editarTrabajo);
+    else if (b.dataset.apuntarTrabajo) apuntarTrabajo(b.dataset.apuntarTrabajo);
+    else if (b.dataset.borrarTrabajo) borrarTrabajo(b.dataset.borrarTrabajo);
     else if (b.dataset.calendarioPlan) planAlCalendario(b.dataset.calendarioPlan);
     else if (b.dataset.voladoPlan) abrirVueloPlan(b.dataset.voladoPlan);
     else if (b.dataset.informePlan) informePlan(b.dataset.informePlan, b);
@@ -1966,6 +2175,9 @@ function enlazar() {
   });
   $('#form-vuelo').addEventListener('submit', guardarVuelo);
   $('#form-plan').addEventListener('submit', guardarPlan);
+  $('#form-trabajo').addEventListener('submit', guardarTrabajo);
+  $('#trab-jornadas').addEventListener('change', pintarFraccionable);
+  $('#form-trabajo').addEventListener('input', () => ($('#trab-error').textContent = ''));
   $('#mapa-nubes').addEventListener('change', () => verNubesMapa());
   $('#mapa-nubes-capa').addEventListener('change', () => verNubesMapa());
   $('#mapa-nubes-hora').addEventListener('input', pintarNubesMapa);

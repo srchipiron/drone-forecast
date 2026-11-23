@@ -3,6 +3,15 @@
 Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
 `0.0.X` para correcciones. La versión sale en el pie de la app.
 
+## 0.41.1
+
+- **«No solapar con otros trabajos» reserva el día del vuelo, entero, y solo
+  ese.** Antes guardaba solo las horas del vuelo y otro trabajo podía caer
+  esa misma tarde. Ahora el día que se elige para volarlo queda para él (y
+  tampoco cae en un día con un vuelo planificado a mano). Las fechas del
+  permiso nunca se reservan: los demás días siguen libres para otros
+  trabajos.
+
 ## 0.41.0
 
 - **Trabajos en una traza o en varios puntos.** En «Zona de trabajo» eliges

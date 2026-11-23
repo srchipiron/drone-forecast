@@ -221,7 +221,8 @@ export function combinarPrevisiones(lista) {
 
 /**
  * Organiza todos los trabajos a la vez para que los que no se pueden solapar
- * no compartan horas con ningún otro. Va primero el permiso que antes acaba
+ * no compartan día con ningún otro (se reserva el día de cada vuelo elegido,
+ * no las fechas del permiso). Va primero el permiso que antes acaba
  * (el más urgente); cada uno ve ocupadas las jornadas ya repartidas con las
  * que no puede coincidir (las de cualquiera si él es exclusivo; si no, las
  * de los exclusivos) y, si es exclusivo, también los vuelos planificados a
@@ -237,7 +238,13 @@ export function organizarTodos(lista, ahora = Date.now(), otros = []) {
   const repartidas = [];
   const salida = new Map();
   for (const { trabajo, p } of orden) {
-    const ocupado = trabajo.exclusivo ? [...repartidas, ...otros] : repartidas.filter((r) => r.exclusivo);
+    // Se reserva el DÍA entero de cada vuelo elegido (si salís los dos, ese
+    // día no hay otro trabajo), nunca las fechas del permiso.
+    const diaDe = (r) => {
+      const d = p.dias.find((x) => x.horas.length && r.inicio >= x.horas[0].ms && r.inicio < x.horas.at(-1).ms + HORA);
+      return d ? { inicio: d.horas[0].ms, fin: d.horas.at(-1).ms + HORA } : r;
+    };
+    const ocupado = (trabajo.exclusivo ? [...repartidas, ...otros] : repartidas.filter((r) => r.exclusivo)).map(diaDe);
     const org = organizarTrabajo(trabajo, p, ahora, ocupado);
     salida.set(trabajo.id, org);
     for (const d of org.elegidos) repartidas.push({ inicio: d.inicio, fin: d.fin, exclusivo: trabajo.exclusivo });

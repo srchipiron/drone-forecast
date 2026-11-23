@@ -60,3 +60,18 @@ test('sin estilos en línea (la CSP los bloquearía)', () => {
   assert.doesNotMatch(leer('index.html'), /style="/);
   for (const f of recorrer('src')) assert.doesNotMatch(leer(f), /style="/, f);
 });
+
+// Un error de sintaxis en main.js (dos `const` con el mismo nombre) pasaba
+// todas las pruebas de node y solo lo pillaba la del navegador: la app se
+// quedaba en blanco. Se comprueba la sintaxis de todo lo que se publica.
+test('todos los módulos que se publican tienen la sintaxis bien', async () => {
+  const { execFileSync } = await import('node:child_process');
+  const ficheros = [...recorrer('src').filter((f) => f.endsWith('.js')), ...readdirSync('.').filter((f) => /^sw.*\.js$/.test(f))];
+  for (const f of ficheros) {
+    try {
+      execFileSync(process.execPath, ['--check', f], { stdio: 'pipe' });
+    } catch (e) {
+      assert.fail(`${f}: ${String(e.stderr).split('\n').slice(0, 5).join(' ')}`);
+    }
+  }
+});

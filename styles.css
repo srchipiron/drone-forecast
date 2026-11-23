@@ -682,7 +682,7 @@ legend { font-weight: 700; padding: 0 0.3rem; font-size: 0.9rem; }
   border-top: 1px solid var(--borde);
 }
 
-.pestanas [role="tablist"] { display: grid; grid-template-columns: repeat(3, 1fr); }
+.pestanas [role="tablist"] { display: grid; grid-template-columns: repeat(4, 1fr); }
 
 .pestanas button { border: 0; background: transparent; color: var(--suave); display: grid; justify-items: center; gap: 0.1rem; padding: 0.3rem; min-height: 52px; font-size: 0.7rem; font-weight: 650; }
 
@@ -936,6 +936,61 @@ dialog h3 { font-size: 0.75rem; font-weight: 700; color: var(--suave); text-tran
 .nota-vuelo { display: grid; gap: 0.35rem; font-size: 0.8rem; color: var(--suave); margin-bottom: 0.85rem; }
 
 .nota-vuelo textarea { width: 100%; color: var(--texto); background: var(--tarjeta-2); border: 1px solid var(--borde); border-radius: var(--radio-pequeno); padding: 0.6rem; }
+
+/* ── Trabajos ────────────────────────────────────────────────────── */
+.lista-trabajos { list-style: none; margin: 0 0 0.6rem; padding: 0; display: grid; gap: 0.6rem; }
+
+.lista-trabajos:empty { display: none; }
+
+.sin-trabajos { padding: 0.4rem 0; }
+
+.trabajo { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.25rem 0.5rem; padding: 0.6rem 0.7rem; border-left: 4px solid var(--borde); background: var(--tarjeta-2); border-radius: var(--radio-pequeno); overflow-wrap: anywhere; }
+
+.trabajo > * { grid-column: 1; }
+
+.trabajo > .icono { grid-column: 2; grid-row: 1 / span 2; }
+
+.trabajo.e-ok { border-left-color: var(--ok); }
+
+.trabajo.e-precaucion { border-left-color: var(--precaucion); }
+
+.trabajo.e-imposible, .trabajo.e-caducado { border-left-color: var(--no); }
+
+.t-propuesta { font-weight: 650; }
+
+.trabajo.e-ok .t-propuesta { color: var(--ok); }
+
+.trabajo.e-precaucion .t-propuesta { color: var(--precaucion); }
+
+.trabajo.e-imposible .t-propuesta { color: var(--no); }
+
+.t-dias { grid-column: 1 / -1; list-style: none; margin: 0.2rem 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(4.4rem, 1fr)); gap: 0.3rem; }
+
+.t-dia { display: grid; gap: 0.05rem; padding: 0.3rem 0.4rem; border-radius: 10px; border: 2px solid transparent; background: var(--tarjeta); font-size: 0.75rem; line-height: 1.2; }
+
+.t-dia b { font-size: 0.8rem; text-transform: capitalize; }
+
+.t-dia.ok span { color: var(--ok); font-weight: 700; }
+
+.t-dia.precaucion span { color: var(--precaucion); font-weight: 700; }
+
+.t-dia.no span, .t-dia.sin-prevision span { color: var(--suave); }
+
+.t-dia.elegido { border-color: var(--acento); }
+
+.t-dia em { color: var(--acento); font-style: normal; font-weight: 700; font-size: 0.7rem; }
+
+.t-cambio { color: var(--precaucion); font-weight: 650; }
+
+.dos-campos { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 0.6rem; }
+
+.dos-campos label, .dos-campos input { min-width: 0; }
+
+.form-plan .casilla { display: flex; align-items: flex-start; gap: 0.5rem; font-size: 0.9rem; color: var(--texto); }
+
+.form-plan .casilla input { width: auto; margin-top: 0.2rem; }
+
+.error-form { color: var(--no); font-weight: 650; min-height: 1em; margin: 0 0 0.4rem; }
 
 /* ── Informe para el cliente: solo existe al imprimir ────────────── */
 #informe { display: none; }

@@ -12,6 +12,7 @@ import { graficaDia } from '../motor/grafica.js';
 import { DRONES } from '../motor/drones.js';
 import { MISIONES, MODOS } from '../motor/misiones.js';
 import { leerNovedades, novedadesDesde } from '../motor/novedades.js';
+import { crearCopia, leerCopia } from '../motor/copia.js';
 import { MARGEN_DIARIO, MAXIMO_PLANES, NOMBRE_ESTADO, anadirPlan, crearPlan, cuandoPlan, empeora, fasePlan, fijarAjustesPlanes, huecosPlan, icsPlan, planesValidos, puntosPlan, valorarPlan } from '../motor/planificado.js';
 import { construirPrevision, normalizarAjustes, resumenDias } from '../motor/prevision.js';
 import { MAXIMO_TRABAJOS, TIPOS_TRABAJO, combinarPrevisiones, crearTrabajo, organizarTodos, planesDeTrabajo, trabajosValidos } from '../motor/trabajos.js';
@@ -1705,6 +1706,34 @@ function exportarDiario() {
   bajarFichero(JSON.stringify(diarioValido(almacen.diario()), null, 2), 'application/json', `diario-vuelos-${hoyLocal()}.json`);
 }
 
+// ---------- Copia de seguridad ----------
+
+function exportarCopia() {
+  bajarFichero(crearCopia(almacen.todo(), { version: VERSION }), 'application/json', `drone-forecast-copia-${hoyLocal()}.json`);
+  $('#estado-copia').textContent = 'Copia descargada. Guárdala donde no se pierda (Drive, correo…).';
+}
+
+async function importarCopia(fichero) {
+  if (!fichero) return;
+  const aviso = $('#estado-copia');
+  try {
+    const r = leerCopia(await fichero.text());
+    if (r.error) throw new Error(r.error);
+    // Sustituye lo que hay: se pregunta antes (lo de ahora se perdería).
+    if (!window.confirm(`¿Cambiar todo lo de este móvil por la copia${r.creada ? ` del ${r.creada}` : ''}? Trae ${r.resumen}. Lo que tienes ahora se sustituye.`)) {
+      aviso.textContent = 'No se ha importado nada.';
+      return;
+    }
+    if (!almacen.restaurar(r.datos)) throw new Error('el navegador no deja guardar (¿modo privado o sin espacio?)');
+    aviso.textContent = `Copia importada: ${r.resumen}. Recargando…`;
+    setTimeout(() => location.reload(), 600);
+  } catch (e) {
+    aviso.textContent = `No se pudo importar «${fichero.name}»: ${e.message}`;
+  } finally {
+    $('#fichero-copia').value = '';
+  }
+}
+
 function exportarCSV() {
   bajarFichero(diarioCSV(diarioValido(almacen.diario())), 'text/csv;charset=utf-8', `diario-vuelos-${hoyLocal()}.csv`);
 }
@@ -2368,6 +2397,8 @@ function enlazar() {
     else if (b.dataset.accion === 'cerrar-plan') $('#dlg-plan').close();
     else if (b.dataset.hueco) elegirHueco(b);
     else if (b.dataset.accion === 'nuevo-trabajo') abrirTrabajo();
+    else if (b.dataset.accion === 'exportar-copia') exportarCopia();
+    else if (b.dataset.accion === 'privacidad') $('#dlg-privacidad').showModal();
     else if (b.dataset.accion === 'novedades') abrirNovedades(b.dataset.desde ?? null);
     else if (b.dataset.accion === 'cerrar-novedades') (almacen.guardarVersionVista(VERSION), ($('#aviso-novedades').hidden = true));
     else if (b.dataset.accion === 'cerrar-trabajo') $('#dlg-trabajo').close();
@@ -2444,6 +2475,7 @@ function enlazar() {
   $('#form-vuelo').addEventListener('submit', guardarVuelo);
   $('#form-plan').addEventListener('submit', guardarPlan);
   $('#form-trabajo').addEventListener('submit', guardarTrabajo);
+  $('#fichero-copia').addEventListener('change', (e) => importarCopia(e.target.files?.[0]));
   $('#trab-jornadas').addEventListener('change', pintarFraccionable);
   for (const r of document.querySelectorAll('input[name="trab-forma"]')) r.addEventListener('change', () => pintarFormaTrabajo(true));
   $('#trab-fichero').addEventListener('change', (e) => importarTraza(e.target.files?.[0]));
@@ -2556,6 +2588,8 @@ async function arrancar() {
   const migrados = fijarAjustesPlanes(almacen.planes(), estado.ajustes);
   if (migrados.cambiados) almacen.guardarPlanes(migrados.planes);
   pintarAvisoNovedades();
+  // Enlace directo a la privacidad (para ponerlo fuera de la app): …/#privacidad
+  if (location.hash === '#privacidad') $('#dlg-privacidad').showModal();
   // El instalador primero: si se cierra la app antes de que acabe todo lo
   // demás, que al menos quede para usarla sin cobertura.
   // Con aviso de ventana, el instalador de tipo módulo (lleva sw.js dentro);

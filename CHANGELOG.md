@@ -33,6 +33,21 @@ Criterio de versión: `0.X.0` cuando cambia cómo decide la app o qué hace;
   jornadas; elige los mejores días; trazas y varios puntos (KML, KMZ de DJI
   Pilot, GPX) y trabajos que no se solapan.
 
+## 0.45.0 · 25-11-2026
+
+Preparando la app para abrirla a más gente:
+
+- **Copia de seguridad.** En Ajustes, **Exportar todo** baja un fichero con
+  tus ajustes, lugar, favoritos, diario, vuelos planificados y trabajos; con
+  **Importar una copia** lo recuperas en otro móvil (o si la app cambia de
+  dirección, porque lo que guarda el navegador no viaja solo). Antes de
+  sustituir nada te dice qué trae y te pregunta. Un fichero roto o que no es
+  una copia no toca nada.
+- **Privacidad y aviso legal**, en el pie (Ajustes): qué guarda la app (todo
+  en tu móvil, sin cuentas ni estadísticas), a quién pregunta y qué le
+  envía, y que la decisión de volar es siempre del piloto. Tiene enlace
+  directo: la dirección de la app con `#privacidad` al final.
+
 ## 0.44.0 · 23-11-2026
 
 - **La previsión de cada día del trabajo, con un toque.** En la tarjeta de

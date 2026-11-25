@@ -1036,6 +1036,10 @@ dialog h3 { font-size: 0.75rem; font-weight: 700; color: var(--suave); text-tran
 
 .boton-fichero:focus-within { outline: 2px solid var(--acento); outline-offset: 2px; }
 
+.acciones-copia { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+
+.boton-secundario { display: inline-flex; align-items: center; min-height: 44px; padding: 0 1rem; border: 1px solid var(--borde); border-radius: 999px; color: var(--acento); font-weight: 650; cursor: pointer; position: relative; }
+
 /* ── Novedades ──────────────────────────────────────────────────── */
 .novedades-aviso { display: flex; flex-wrap: wrap; align-items: center; gap: 0.2rem 0.8rem; margin: 0 0 0.8rem; padding: 0.6rem 0.8rem; border-radius: var(--radio-pequeno); background: var(--tarjeta); border-left: 4px solid var(--acento); }
 

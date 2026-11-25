@@ -55,6 +55,30 @@ export const almacen = {
   guardarPantalla: (v) => escribir('pantalla', v),
   aviso: () => leer('aviso', false) === true,
   guardarAviso: (v) => escribir('aviso', Boolean(v)),
+  // La copia de seguridad: lo tuyo, sin cachés (previsión y órbitas se
+  // vuelven a bajar) ni lo que se rehace solo.
+  todo: () => ({
+    ajustes: leer('ajustes', {}),
+    lugar: leer('lugar', null),
+    favoritos: leer('favoritos', []),
+    diario: leer('diario', []),
+    planes: leer('planes', []),
+    trabajos: leer('trabajos', []),
+    pantalla: leer('pantalla', 'auto'),
+    aviso: leer('aviso', false) === true,
+  }),
+  /** Sustituye lo guardado por lo de una copia (ya validada). */
+  restaurar: (d) =>
+    [
+      escribir('ajustes', d.ajustes),
+      d.lugar ? escribir('lugar', d.lugar) : true,
+      escribir('favoritos', d.favoritos),
+      escribir('diario', d.diario),
+      escribir('planes', d.planes),
+      escribir('trabajos', d.trabajos),
+      escribir('pantalla', d.pantalla),
+      escribir('aviso', d.aviso),
+    ].every(Boolean),
   // El instalador no ve localStorage: lo que necesita el aviso de ventana
   // (ajustes, favoritos, último día avisado) va también en Cache Storage.
   configAviso: async () => {

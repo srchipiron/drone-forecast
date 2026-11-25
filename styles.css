@@ -966,7 +966,9 @@ dialog h3 { font-size: 0.75rem; font-weight: 700; color: var(--suave); text-tran
 
 .t-dias { grid-column: 1 / -1; list-style: none; margin: 0.2rem 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(4.4rem, 1fr)); gap: 0.3rem; }
 
-.t-dia { display: grid; gap: 0.05rem; padding: 0.3rem 0.4rem; border-radius: 10px; border: 2px solid transparent; background: var(--tarjeta); font-size: 0.75rem; line-height: 1.2; }
+.t-dias li { display: grid; }
+
+.t-dia { width: 100%; text-align: left; font: inherit; color: var(--texto); cursor: pointer; min-height: 44px; display: grid; gap: 0.05rem; padding: 0.3rem 0.4rem; border-radius: 10px; border: 2px solid transparent; background: var(--tarjeta); font-size: 0.75rem; line-height: 1.2; }
 
 .t-dia b { font-size: 0.8rem; text-transform: capitalize; }
 
@@ -977,6 +979,16 @@ dialog h3 { font-size: 0.75rem; font-weight: 700; color: var(--suave); text-tran
 .t-dia.no span, .t-dia.sin-prevision span { color: var(--suave); }
 
 .t-dia.elegido { border-color: var(--acento); }
+
+.t-dia.abierto { box-shadow: 0 0 0 2px var(--texto); }
+
+.t-prevision { grid-column: 1 / -1; margin-top: 0.3rem; padding-top: 0.4rem; border-top: 1px solid var(--separador); }
+
+.t-prevision-cabecera { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+
+.t-tabla tr.fuera-horario th, .t-tabla tr.fuera-horario td { opacity: 0.55; }
+
+.t-tabla tr.en-horario th { font-weight: 800; }
 
 .t-dia em { color: var(--acento); font-style: normal; font-weight: 700; font-size: 0.7rem; }
 
@@ -1023,6 +1035,33 @@ dialog h3 { font-size: 0.75rem; font-weight: 700; color: var(--suave); text-tran
 .boton-fichero input { position: absolute; width: 1px; height: 1px; opacity: 0; }
 
 .boton-fichero:focus-within { outline: 2px solid var(--acento); outline-offset: 2px; }
+
+.acciones-copia { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+
+.boton-secundario { display: inline-flex; align-items: center; min-height: 44px; padding: 0 1rem; border: 1px solid var(--borde); border-radius: 999px; color: var(--acento); font-weight: 650; cursor: pointer; position: relative; }
+
+/* ── Novedades ──────────────────────────────────────────────────── */
+.novedades-aviso { display: flex; flex-wrap: wrap; align-items: center; gap: 0.2rem 0.8rem; margin: 0 0 0.8rem; padding: 0.6rem 0.8rem; border-radius: var(--radio-pequeno); background: var(--tarjeta); border-left: 4px solid var(--acento); }
+
+.novedades-aviso p { margin: 0; flex: 1 1 12rem; }
+
+.novedades-aviso .enlace { color: var(--acento); text-align: left; }
+
+.novedades { font-size: 0.95rem; overflow-wrap: anywhere; }
+
+.novedades h3 { font-size: 1rem; margin: 1rem 0 0.3rem; }
+
+.novedades ul { padding-left: 1.2rem; margin: 0.3rem 0; }
+
+.novedades li { margin: 0.25rem 0; }
+
+.novedades details { border-top: 1px solid var(--separador); padding: 0.2rem 0; }
+
+.novedades summary { min-height: 44px; display: flex; align-items: center; font-weight: 700; }
+
+.novedades summary .nota { font-weight: 500; margin-left: 0.4rem; }
+
+.novedades code { font-size: 0.85em; background: var(--tarjeta-2); padding: 0 0.25rem; border-radius: 4px; }
 
 /* ── Informe para el cliente: solo existe al imprimir ────────────── */
 #informe { display: none; }

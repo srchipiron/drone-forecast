@@ -48,6 +48,7 @@
       </section>
 
       <section id="aviso" class="aviso" hidden></section>
+      <section id="aviso-novedades" class="novedades-aviso" hidden></section>
       <section id="ahora" class="tarjeta veredicto"></section>
       <section id="planes" class="tarjeta" aria-labelledby="titulo-planes" hidden></section>
       <p id="anuncio" class="visualmente-oculto" aria-live="polite"></p>
@@ -126,6 +127,16 @@
         </fieldset>
       </section>
 
+      <section id="copia" class="tarjeta" aria-labelledby="titulo-copia">
+        <h2 id="titulo-copia">Copia de seguridad</h2>
+        <p class="nota">Todo lo tuyo en un fichero: ajustes, lugar, favoritos, diario, vuelos planificados y trabajos. Guárdalo para cambiar de móvil o si la app cambia de dirección (lo que guarda el navegador no viaja solo).</p>
+        <div class="acciones acciones-copia">
+          <button type="button" data-accion="exportar-copia">Exportar todo</button>
+          <label class="boton-fichero boton-secundario">Importar una copia<input id="fichero-copia" type="file" accept=".json,application/json"></label>
+        </div>
+        <p id="estado-copia" class="nota" aria-live="polite"></p>
+      </section>
+
       <section id="instalar" class="tarjeta" hidden>
         <h2>Instalar la app</h2>
         <p id="estado-instalar" class="nota">Se abre desde la pantalla de inicio como una app más, sin la barra del navegador; funciona sin cobertura con la última previsión y permite el aviso de ventana.</p>
@@ -143,8 +154,8 @@
         <h2>Sobre los datos</h2>
         <p><a href="https://drones.enaire.es/" target="_blank" rel="noopener noreferrer">Consulta las zonas geográficas UAS en ENAIRE Drones</a> antes de cada vuelo.</p>
         <p id="fuentes" class="nota"></p>
-        <p class="nota">Orientativo: la decisión y la responsabilidad del vuelo son del piloto.</p>
-        <p class="nota">Drone Forecast <span id="version"></span></p>
+        <p class="nota">Orientativo: la decisión y la responsabilidad del vuelo son del piloto. <button type="button" class="enlace" data-accion="privacidad">Privacidad y aviso legal</button></p>
+        <p class="nota">Drone Forecast <button id="btn-novedades" type="button" class="enlace" data-accion="novedades"><span id="version"></span> · Novedades</button></p>
         <div class="acciones"><button id="btn-diagnostico" type="button">Diagnóstico</button></div>
       </footer>
     </div>
@@ -298,6 +309,36 @@
       <p id="trab-error" class="error-form" role="alert"></p>
       <div class="acciones"><button type="submit">Guardar y organizar</button></div>
     </form>
+  </dialog>
+
+  <dialog id="dlg-novedades" aria-labelledby="titulo-novedades">
+    <form method="dialog" class="dlg-cabecera">
+      <h2 id="titulo-novedades">Novedades</h2>
+      <button class="icono" value="cerrar" aria-label="Cerrar">✕</button>
+    </form>
+    <div id="novedades-cuerpo" class="novedades"><p class="nota">Cargando…</p></div>
+  </dialog>
+
+  <dialog id="dlg-privacidad" aria-labelledby="titulo-privacidad">
+    <form method="dialog" class="dlg-cabecera">
+      <h2 id="titulo-privacidad">Privacidad y aviso legal</h2>
+      <button class="icono" value="cerrar" aria-label="Cerrar">✕</button>
+    </form>
+    <div class="novedades">
+      <h3>Lo que la app guarda</h3>
+      <p>Nada sale de tu móvil salvo lo imprescindible para la previsión. No hay cuentas, ni registro, ni publicidad, ni estadísticas de uso, ni cookies. Tus ajustes, lugares, favoritos, diario, vuelos planificados y trabajos se guardan solo en este navegador; puedes borrarlos cuando quieras (borrando los datos del sitio) o llevártelos con la <strong>copia de seguridad</strong> de Ajustes.</p>
+      <h3>A quién se pregunta y qué se envía</h3>
+      <ul>
+        <li><strong>Open-Meteo</strong> (previsión y búsqueda de lugares): las coordenadas del punto que consultas, o el texto que buscas.</li>
+        <li><strong>ENAIRE</strong> (zonas geográficas UAS): las coordenadas del punto o la zona del mapa que miras.</li>
+        <li><strong>OpenStreetMap</strong> (teselas del mapa): qué trozo del mapa se está viendo.</li>
+        <li><strong>NOAA SWPC</strong> (índice Kp) y <strong>CelesTrak</strong> (órbitas de satélites): nada tuyo, datos generales.</li>
+      </ul>
+      <p>Como en cualquier web, esos servicios ven la dirección IP desde la que se pregunta. Tu ubicación (botón del punto de mira) solo se usa en el móvil para poner el lugar; no se guarda en ningún servidor.</p>
+      <h3>Aviso legal</h3>
+      <p>La previsión es orientativa y puede fallar: la decisión de volar y la responsabilidad del vuelo son siempre del piloto. Las zonas UAS se enseñan tal como las publica ENAIRE y no sustituyen a la consulta oficial en <a href="https://drones.enaire.es/" target="_blank" rel="noopener noreferrer">ENAIRE Drones</a>, ni a los NOTAM, ni a los permisos y coordinaciones que pida cada zona. Cumple siempre la normativa de UAS (UE 2019/947 y la normativa española).</p>
+      <p class="nota">Datos: Open-Meteo (CC BY 4.0), © colaboradores de OpenStreetMap (ODbL), ENAIRE, NOAA SWPC y CelesTrak.</p>
+    </div>
   </dialog>
 
   <dialog id="dlg-diagnostico" aria-labelledby="titulo-diagnostico">

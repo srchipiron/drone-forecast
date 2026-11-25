@@ -303,6 +303,73 @@ try {
   await page.locator('[data-vista="ajustes"]').click();
   assert.equal(await page.locator('#vista-prevision').isHidden(), true);
   assert.equal(await page.locator('[data-vista="ajustes"]').getAttribute('aria-selected'), 'true');
+  // Novedades: la primera vez no hay aviso (no hay «antes»); la versión del
+  // pie abre el historial entero, con lo más importante y cada versión.
+  assert.equal(await page.locator('#aviso-novedades').isVisible(), false);
+  const versionApp = JSON.parse(await readFile(join(raiz, 'package.json'), 'utf8')).version;
+  assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('drone-forecast:version-vista'))), versionApp, 'se apunta la versión vista');
+  await page.locator('#btn-novedades').click();
+  await page.locator('#novedades-cuerpo details').first().waitFor();
+  assert.match(await page.textContent('#novedades-cuerpo h3:first-child'), /^Lo más importante hasta ahora$/);
+  assert.match(await page.textContent('#novedades-cuerpo'), /Todas las versiones \(\d+\)/);
+  assert.match(await page.textContent('#novedades-cuerpo details[open] summary'), new RegExp(`^v${versionApp.replace(/\./g, '\\.')}\\d{2}-\\d{2}-\\d{4}$`), 'la última, abierta y con su fecha');
+  assert.match(await page.textContent('#novedades-cuerpo details:last-of-type summary'), /^v0\.1\.0/);
+  await page.locator('#dlg-novedades button[value="cerrar"]').click();
+  // Tras una actualización (venía de la 0.40.0): un aviso, una sola vez, que
+  // abre lo nuevo desde esa versión.
+  await page.evaluate(() => localStorage.setItem('drone-forecast:version-vista', JSON.stringify('0.40.0')));
+  await page.reload();
+  await page.locator('#aviso-novedades').filter({ hasText: `Actualizada a la v${versionApp}.` }).waitFor();
+  if (process.env.CAPTURA_NOVEDADES) await page.screenshot({ path: process.env.CAPTURA_NOVEDADES.replace('.png', '-aviso.png') });
+  await page.locator('#aviso-novedades [data-accion="novedades"]').click();
+  await page.locator('#novedades-cuerpo details').first().waitFor();
+  assert.equal(await page.textContent('#novedades-cuerpo h3:first-child'), 'Desde tu última versión (v0.40.0)');
+  if (process.env.CAPTURA_NOVEDADES) await page.locator('#dlg-novedades').screenshot({ path: process.env.CAPTURA_NOVEDADES });
+  const nuevas = await page.locator('#novedades-cuerpo h3:first-child ~ details[open] summary').allTextContents();
+  assert.ok(nuevas.some((t) => t.startsWith('v0.41.0')) && !nuevas.some((t) => t.startsWith('v0.40.0')), nuevas.join(' | '));
+  await page.locator('#dlg-novedades button[value="cerrar"]').click();
+  assert.equal(await page.locator('#aviso-novedades').isVisible(), false);
+  await page.reload();
+  await page.locator('#ahora .cartel').waitFor();
+  assert.equal(await page.locator('#aviso-novedades').isVisible(), false, 'visto, no vuelve a salir');
+  await page.locator('[data-vista="ajustes"]').click();
+  // Privacidad y aviso legal: desde el pie y con el enlace directo …/#privacidad.
+  await page.locator('[data-accion="privacidad"]').click();
+  assert.match(await page.textContent('#dlg-privacidad'), /No hay cuentas[^]*Open-Meteo[^]*ENAIRE Drones/);
+  await page.locator('#dlg-privacidad button[value="cerrar"]').click();
+  // Copia de seguridad: exportar todo y volver a importarlo (lo de ahora se sustituye, preguntando antes).
+  await page.evaluate(() => localStorage.setItem('drone-forecast:trabajos', JSON.stringify([{ id: 'tc', nombre: 'Copia <b>', lugar: { nombre: 'Getafe', lat: 40.3057, lon: -3.7329 }, tipo: 'general', desde: '2026-01-01', hasta: '2099-01-01', horaInicio: 9, horaFin: 14, jornadas: 1, horasJornada: 2, fraccionable: false, ajustes: {}, planes: [] }])));
+  const descargaCopia = page.waitForEvent('download');
+  await page.locator('[data-accion="exportar-copia"]').click();
+  const copia = await descargaCopia;
+  assert.match(copia.suggestedFilename(), /^drone-forecast-copia-\d{4}-\d\d-\d\d\.json$/);
+  const textoCopia = await readFile(await copia.path(), 'utf8');
+  const jCopia = JSON.parse(textoCopia);
+  assert.equal(jCopia.app, 'drone-forecast-copia');
+  assert.deepEqual(jCopia.datos.trabajos.map((t) => t.nombre), ['Copia <b>']);
+  assert.equal(jCopia.datos.lugar.nombre, 'Getafe<img src=x onerror="window.__xss=1">');
+  assert.match(await page.textContent('#estado-copia'), /^Copia descargada/);
+  // Se borra todo y se importa la copia: primero se cancela, luego se acepta.
+  await page.evaluate(() => {
+    localStorage.removeItem('drone-forecast:trabajos');
+    localStorage.setItem('drone-forecast:favoritos', '[]');
+  });
+  page.once('dialog', (d) => d.dismiss());
+  await page.setInputFiles('#fichero-copia', { name: 'copia.json', mimeType: 'application/json', buffer: Buffer.from(textoCopia) });
+  await page.locator('#estado-copia').filter({ hasText: 'No se ha importado nada.' }).waitFor();
+  assert.equal(await page.evaluate(() => localStorage.getItem('drone-forecast:trabajos')), null);
+  let preguntaCopia = '';
+  page.once('dialog', (d) => ((preguntaCopia = d.message()), d.accept()));
+  await page.setInputFiles('#fichero-copia', { name: 'copia.json', mimeType: 'application/json', buffer: Buffer.from(textoCopia) });
+  await page.waitForEvent('load');
+  assert.match(preguntaCopia, /^¿Cambiar todo lo de este móvil por la copia del \d{4}-\d\d-\d\d\? Trae \d+ favoritos?, \d+ vuelos? en el diario, \d+ vuelos? planificados?, 1 trabajo\./);
+  assert.deepEqual(await page.evaluate(() => JSON.parse(localStorage.getItem('drone-forecast:trabajos')).map((t) => t.nombre)), ['Copia <b>']);
+  assert.equal(await page.evaluate(() => window.__xss), undefined);
+  // Un fichero que no es una copia: lo dice y no toca nada.
+  await page.locator('[data-vista="ajustes"]').click();
+  await page.setInputFiles('#fichero-copia', { name: 'foto.json', mimeType: 'application/json', buffer: Buffer.from('{"hola":1}') });
+  await page.locator('#estado-copia').filter({ hasText: 'No se pudo importar «foto.json»: El fichero no es una copia de Drone Forecast.' }).waitFor();
+  await page.evaluate(() => localStorage.removeItem('drone-forecast:trabajos'));
   // Instalar: sin invitación del navegador la tarjeta no sale; con ella, el
   // botón lanza la ventana de instalación del navegador.
   assert.ok(await page.locator('#instalar').isHidden(), 'sin invitación, nada que instalar');
@@ -533,7 +600,7 @@ try {
   await page.locator('[data-informe-plan]').click();
   await page.waitForFunction(() => window.__impreso === 1);
   const informePlan = await page.textContent('#informe');
-  assert.match(informePlan, /^\s*Vuelo planificado\s*Getafe<img[^]*Vuelo\s*\w+ \d{1,2} \w+, 10:00–12:00 · Cliente <b>[^]*Previsión de esas horas\s*(Verde|Ámbar|Rojo)/);
+  assert.match(informePlan, /^\s*Vuelo planificado\s*Getafe<img[^]*Vuelo\s*[^\s\d]+ \d{1,2} [^\s,]+, 10:00–12:00 · Cliente <b>[^]*Previsión de esas horas\s*(Verde|Ámbar|Rojo)/);
   assert.match(informePlan, /CTR MADRID: requiere autorización/);
   assert.match(informePlan, /Las horas del vuelo/);
   assert.equal(await page.locator('#informe .horas-informe').first().locator('tr').count(), 3, 'cabecera y las dos horas del plan');
@@ -618,6 +685,26 @@ try {
   assert.match(await page.textContent('#lista-trabajos .t-propuesta'), /^Lo mejor(, con precaución[^:]*)?: [^\s,]+, \d{1,2} [^\s,]+ de \d\d:00 a \d\d:00 y [^\s,]+, \d{1,2} [^\s,]+ de \d\d:00 a \d\d:00\.$/u);
   assert.equal(await page.locator('#lista-trabajos .t-dia').count(), 7, 'un día por cada día del permiso');
   assert.deepEqual(await page.locator('#lista-trabajos .t-dia em').allTextContents(), ['Jornada 1', 'Jornada 2']);
+  // Tocar un día abre su previsión hora a hora dentro de la tarjeta, con la jornada marcada.
+  const diaJornada = page.locator('#lista-trabajos .t-dia.elegido').first();
+  await diaJornada.click();
+  await page.locator('#lista-trabajos .t-prevision').waitFor();
+  assert.equal(await diaJornada.getAttribute('aria-expanded'), 'true');
+  assert.match(await page.textContent('#lista-trabajos .t-prevision strong'), /^Previsión del [^\s,]+, \d{1,2} [^\s,]+$/u);
+  assert.ok((await page.locator('#lista-trabajos .t-prevision tbody tr').count()) >= 1);
+  assert.equal(await page.locator('#lista-trabajos .t-prevision tr.en-ventana').count(), 1, 'la jornada de 1 h, marcada');
+  assert.match(await page.textContent('#lista-trabajos .t-prevision .nota:last-of-type'), /^Viento a 120 m en km\/h\. En negrita, tu horario \(0–24 h\); con raya, la jornada propuesta\.$/);
+  if (process.env.CAPTURA_TRABAJOS) await page.locator('#lista-trabajos .trabajo').screenshot({ path: process.env.CAPTURA_TRABAJOS.replace('.png', '-dia.png') });
+  await diaJornada.click();
+  assert.equal(await page.locator('#lista-trabajos .t-prevision').count(), 0, 'tocarlo otra vez la cierra');
+  // Un día sin previsión todavía lo dice.
+  const sinPrev = page.locator('#lista-trabajos .t-dia.sin-prevision');
+  if (await sinPrev.count()) {
+    await sinPrev.first().click();
+    assert.match(await page.textContent('#lista-trabajos .t-prevision'), /Aún no hay previsión para ese día|aún no llega a todo tu horario/);
+    await page.locator('#lista-trabajos .t-prevision [aria-label="Cerrar la previsión del día"]').click();
+    assert.equal(await page.locator('#lista-trabajos .t-prevision').count(), 0);
+  }
   assert.equal(await page.evaluate(() => window.__xss), undefined);
   if (process.env.CAPTURA_TRABAJOS) await page.screenshot({ path: process.env.CAPTURA_TRABAJOS, fullPage: true });
   // Apuntar: dos vuelos planificados con su nota; el botón desaparece (ya coincide).
@@ -906,7 +993,7 @@ try {
   // Las de viento fuerte (las impares), siempre en rojo; las tranquilas, según la hora (de noche también rojas por la luz).
   const clases = await page.locator('#mapa .mapa-nubes rect.celda-nube').evaluateAll((rs) => rs.map((r) => r.getAttribute('class')));
   assert.ok(clases.filter((_, i) => i % 2).every((c) => c.includes('v-no')), 'las de viento fuerte, en rojo');
-  assert.match(await page.textContent('#mapa-nubes-texto'), /^Dónde se puede volar con tu DJI [^·]+ a 120 m · \w+ \d+ a las \d\d:00: \d+ en verde, \d+ en ámbar, \d+ en rojo \(el rojo, sobre todo por \S/);
+  assert.match(await page.textContent('#mapa-nubes-texto'), /^Dónde se puede volar con tu DJI [^·]+ a 120 m · [^\s\d]+ \d+ a las \d\d:00: \d+ en verde, \d+ en ámbar, \d+ en rojo \(el rojo, sobre todo por \S/);
   // Viento a tu altura: una flecha por celda, del mismo tiempo (sin pedir otra vez), con el color del semáforo.
   await page.selectOption('#mapa-nubes-capa', 'viento');
   await page.locator('#mapa-nubes-texto').filter({ hasText: 'Viento a 120 m' }).waitFor();
@@ -923,7 +1010,7 @@ try {
   assert.equal(await page.locator('#mapa .mapa-nubes rect.celda-nube').count(), 49);
   assert.equal(await page.locator('#mapa .mapa-nubes rect.celda-nube.v-no').count(), 0, 'ya no es el semáforo');
   assert.equal(await page.locator('#mapa .mapa-flechas .flecha').count(), 0, 'ni las flechas');
-  assert.match(await page.textContent('#mapa-nubes-texto'), /^Nubes bajas · \w+ \d+ a las \d\d:00 · cubren de media un \d+ %\. Más oscuro, más cubierto\.$/);
+  assert.match(await page.textContent('#mapa-nubes-texto'), /^Nubes bajas · [^\s\d]+ \d+ a las \d\d:00 · cubren de media un \d+ %\. Más oscuro, más cubierto\.$/);
   const opacidades = await page.locator('#mapa .mapa-nubes rect.celda-nube').evaluateAll((rs) => [...new Set(rs.map((r) => r.getAttribute('fill-opacity')))].sort());
   assert.deepEqual(opacidades, ['0.08', '0.68'], 'más oscuro donde más cubre (10 % y 90 %, × 0,75)');
   await page.selectOption('#mapa-nubes-capa', 'altas');

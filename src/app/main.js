@@ -11,6 +11,8 @@ import { VALORACIONES, anadirEntrada, crearEntrada, diarioCSV, diarioValido, res
 import { graficaDia } from '../motor/grafica.js';
 import { DRONES } from '../motor/drones.js';
 import { MISIONES, MODOS } from '../motor/misiones.js';
+import { leerNovedades, novedadesDesde } from '../motor/novedades.js';
+import { crearCopia, leerCopia } from '../motor/copia.js';
 import { MARGEN_DIARIO, MAXIMO_PLANES, NOMBRE_ESTADO, anadirPlan, crearPlan, cuandoPlan, empeora, fasePlan, fijarAjustesPlanes, huecosPlan, icsPlan, planesValidos, puntosPlan, valorarPlan } from '../motor/planificado.js';
 import { construirPrevision, normalizarAjustes, resumenDias } from '../motor/prevision.js';
 import { MAXIMO_TRABAJOS, TIPOS_TRABAJO, combinarPrevisiones, crearTrabajo, organizarTodos, planesDeTrabajo, trabajosValidos } from '../motor/trabajos.js';
@@ -24,7 +26,7 @@ import { almacen } from './almacen.js';
 import { ETIQUETA, INTERVALO, comprobarAvisos } from './aviso.js';
 import { crearMapa } from './mapa.js';
 import { ampliarCaja, cajaDentro } from '../motor/mapa.js';
-import { buscarLugar, cargarKp, cargarPrevision, cargarSatelites, cargarFormasEnaire, cargarNubesAltura, cargarNubesRejilla, cargarRejillaVuelo, cargarPrevisionVarios, cargarSoloPrevision, consultarEnaire, leerDescarga } from './datos.js';
+import { buscarLugar, cargarKp, cargarPrevision, cargarSatelites, cargarFormasEnaire, cargarNubesAltura, cargarNubesRejilla, cargarRejillaVuelo, cargarNovedades, cargarPrevisionVarios, cargarSoloPrevision, consultarEnaire, leerDescarga } from './datos.js';
 import { mensajeUbicacion, pedirUbicacion } from './ubicacion.js';
 
 const $ = (s) => document.querySelector(s);
@@ -115,6 +117,8 @@ const estado = {
   avisoUltimo: '',
   // Trabajos: el que se edita en el formulario y los lugares que ofrece.
   trabajoEditando: null,
+  // El día de un trabajo cuya previsión está abierta: { id, clave }.
+  trabajoDia: null,
   resultadosTrabajo: [],
   // Los puntos que se van marcando en el mapa del formulario (varios puntos o traza).
   dibujo: [],
@@ -890,6 +894,37 @@ function pintarAviso(p) {
   el.innerHTML = avisos.map((a) => `<p>${esc(a)}</p>`).join('');
 }
 
+// ---------- Novedades ----------
+
+// Tras actualizarse, una vez: «Actualizada a la 0.42.0 · ver novedades». La
+// primera vez que se abre la app no sale (no hay «antes»): solo se apunta.
+function pintarAvisoNovedades() {
+  const vista = almacen.versionVista();
+  const caja = $('#aviso-novedades');
+  if (!vista) almacen.guardarVersionVista(VERSION);
+  caja.hidden = !vista || vista === VERSION;
+  if (caja.hidden) return;
+  caja.innerHTML = `<p>Actualizada a la <strong>v${esc(VERSION)}</strong>.</p><button type="button" class="enlace" data-accion="novedades" data-desde="${esc(vista)}">Ver las novedades</button><button type="button" class="icono" data-accion="cerrar-novedades" aria-label="Cerrar el aviso de novedades">✕</button>`;
+}
+
+async function abrirNovedades(desde = null) {
+  almacen.guardarVersionVista(VERSION);
+  $('#aviso-novedades').hidden = true;
+  const cuerpo = $('#novedades-cuerpo');
+  cuerpo.innerHTML = '<p class="nota">Cargando…</p>';
+  $('#dlg-novedades').showModal();
+  try {
+    const { destacado, versiones } = leerNovedades(await cargarNovedades());
+    const nuevas = desde ? novedadesDesde(versiones, desde) : [];
+    const version = (v, abierta) => `<details${abierta ? ' open' : ''}><summary>v${esc(v.version)}${v.fecha ? `<span class="nota">${esc(v.fecha)}</span>` : ''}</summary>${v.html}</details>`;
+    cuerpo.innerHTML = `${nuevas.length ? `<h3>Desde tu última versión (v${esc(desde)})</h3>${nuevas.map((v) => version(v, true)).join('')}` : ''}
+      <h3>Lo más importante hasta ahora</h3>${destacado}
+      <h3>Todas las versiones (${versiones.length})</h3>${versiones.map((v, i) => version(v, !nuevas.length && i === 0)).join('')}`;
+  } catch (e) {
+    cuerpo.innerHTML = `<p class="nota">No se pudieron cargar las novedades (${esc(e.message)}).</p>`;
+  }
+}
+
 function pintarPie() {
   $('#version').textContent = `v${VERSION}`;
   const partes = ['Tiempo: Open-Meteo', 'Kp: NOAA SWPC', 'Órbitas: CelesTrak'];
@@ -1356,7 +1391,8 @@ function pintarTrabajos() {
         .map((d) => {
           const k = jornadaDe.get(d.clave);
           const texto = d.inicio ? `${horaCorta(d.inicio, pp.zona)}–${horaCorta(d.fin, pp.zona).replace(/^00$/, '24')} h` : d.estado === 'sin-prevision' ? 'Sin previsión' : (d.porQue ?? 'Sin vuelo');
-          return `<li class="t-dia ${esc(d.estado)}${k ? ' elegido' : ''}"><b>${esc(diaCorto(d.clave))}</b><span>${esc(texto[0].toUpperCase() + texto.slice(1))}</span>${k ? `<em>Jornada ${k}</em>` : ''}</li>`;
+          const abierto = estado.trabajoDia?.id === t.id && estado.trabajoDia.clave === d.clave;
+          return `<li><button type="button" class="t-dia ${esc(d.estado)}${k ? ' elegido' : ''}${abierto ? ' abierto' : ''}" data-trabajo-dia="${esc(t.id)}" data-clave="${esc(d.clave)}" aria-expanded="${abierto}" aria-label="${esc(diaCorto(d.clave))}: ${esc(texto)}${k ? `, jornada ${k}` : ''}. Ver su previsión"><b>${esc(diaCorto(d.clave))}</b><span>${esc(texto[0].toUpperCase() + texto.slice(1))}</span>${k ? `<em>Jornada ${k}</em>` : ''}</button></li>`;
         })
         .join('');
       // Lo apuntado en «Vuelos planificados» desde este trabajo, y si la
@@ -1371,12 +1407,49 @@ function pintarTrabajos() {
         <div class="t-propuesta">${esc(textoOrganizado(t, org, pp.zona))}</div>
         ${apuntados.length ? `<div class="nota">Apuntado en vuelos planificados: ${esc(listaY(apuntados.map((x) => cuandoPlan(x))))}.</div>` : ''}
         ${cambiado ? '<div class="t-cambio">La previsión ha cambiado: ahora hay mejores días.</div>' : ''}
-        ${dias ? `<ul class="t-dias" aria-label="Días del permiso">${dias}</ul>` : ''}
+        ${dias ? `<ul class="t-dias" aria-label="Días del permiso: toca uno para ver su previsión">${dias}</ul>` : ''}
+        ${estado.trabajoDia?.id === t.id ? previsionDiaTrabajo(t, pp, org, estado.trabajoDia.clave) : ''}
         <div class="acciones-plan">${apuntar}<button type="button" class="enlace" data-editar-trabajo="${esc(t.id)}">Editar</button></div>
       </li>`;
     })
     .join('');
   if (!lista.length) $('#lista-trabajos').innerHTML = '<li class="nota sin-trabajos">Aún no tienes trabajos.</li>';
+}
+
+// La previsión hora a hora de un día del permiso, dentro de la tarjeta del
+// trabajo: con su dron, su altura y su tipo de trabajo, y en una traza la
+// del peor punto. Resaltadas las horas del horario; con raya, la jornada.
+function previsionDiaTrabajo(t, pp, org, clave) {
+  const dia = pp.dias.find((d) => d.clave === clave);
+  const elegido = org.elegidos.find((d) => d.clave === clave);
+  const u = pp.ajustes.unidades;
+  const ahora = Date.now();
+  const horas = dia ? dia.horas.filter((h) => h.ms + 3600000 > ahora) : [];
+  const titulo = `Previsión del ${fechaLarga(clave)}`;
+  if (!horas.length)
+    return `<div class="t-prevision" role="region" aria-label="${esc(titulo)}"><p class="nota">${dia ? 'Ese día ya ha pasado.' : `Aún no hay previsión para ese día: llega hasta el ${esc(fechaLarga(pp.dias.at(-1)?.clave ?? clave))}.`}</p></div>`;
+  const enHorario = (h) => {
+    const hh = Number(hora(h.ms, pp.zona).slice(0, 2));
+    return hh >= t.horaInicio && hh < t.horaFin;
+  };
+  const filas = horas
+    .map((h) => {
+      const porId = Object.fromEntries(h.factores.map((f) => [f.id, f.estado]));
+      const enJornada = elegido && h.ms >= elegido.inicio && h.ms < elegido.fin;
+      const clases = ['hora', h.estado, porId.luz !== 'ok' ? 'noche' : '', enHorario(h) ? 'en-horario' : 'fuera-horario', enJornada ? `en-ventana v-${elegido.estado}` : ''].filter(Boolean).join(' ');
+      const motivos = h.estado === 'ok' ? '' : h.factores.filter((f) => f.estado === h.estado).map((f) => f.nombre).join(', ');
+      return `<tr class="${clases}"><th scope="row">${esc(hora(h.ms, pp.zona))}</th><td class="t-estado"><span role="img" aria-label="${esc(ESTADOS[h.estado].texto)}${motivos ? `: ${esc(motivos)}` : ''}" title="${esc(motivos)}">${SIMBOLO[h.estado]}</span></td>${COLUMNAS.map((c) => `<td class="e-${esc(porId[c.id] ?? 'sin-dato')}">${c.celda(h, u)}</td>`).join('')}</tr>`;
+    })
+    .join('');
+  return `<div class="t-prevision" role="region" aria-label="${esc(titulo)}">
+      <div class="t-prevision-cabecera"><strong>${esc(titulo)}</strong><button type="button" class="icono" data-trabajo-dia="${esc(t.id)}" data-clave="${esc(clave)}" aria-label="Cerrar la previsión del día">✕</button></div>
+      ${org.dias.find((d) => d.clave === clave)?.estado === 'sin-prevision' ? '<p class="nota">La previsión de este día aún no llega a todo tu horario: lo que falta se verá en los próximos días.</p>' : ''}
+      <p class="nota">Viento a ${esc(pp.ajustes.altitud)} m en ${esc(partesViento(0, u)[1])}${pp.puntos ? `; cada hora, la del peor de los ${esc(pp.puntos)} puntos` : ''}. En negrita, tu horario (${esc(t.horaInicio)}–${esc(t.horaFin)} h)${elegido ? '; con raya, la jornada propuesta' : ''}.</p>
+      <div class="tabla-horas-marco"><table class="tabla-horas t-tabla">
+        <thead><tr><th scope="col">Hora</th><th scope="col"><span class="visualmente-oculto">Volar</span></th>${COLUMNAS.map((c) => `<th scope="col">${c.titulo}</th>`).join('')}</tr></thead>
+        <tbody>${filas}</tbody>
+      </table></div>
+    </div>`;
 }
 
 function abrirTrabajo(id = null) {
@@ -1631,6 +1704,34 @@ function bajarFichero(datos, tipo, nombre) {
 
 function exportarDiario() {
   bajarFichero(JSON.stringify(diarioValido(almacen.diario()), null, 2), 'application/json', `diario-vuelos-${hoyLocal()}.json`);
+}
+
+// ---------- Copia de seguridad ----------
+
+function exportarCopia() {
+  bajarFichero(crearCopia(almacen.todo(), { version: VERSION }), 'application/json', `drone-forecast-copia-${hoyLocal()}.json`);
+  $('#estado-copia').textContent = 'Copia descargada. Guárdala donde no se pierda (Drive, correo…).';
+}
+
+async function importarCopia(fichero) {
+  if (!fichero) return;
+  const aviso = $('#estado-copia');
+  try {
+    const r = leerCopia(await fichero.text());
+    if (r.error) throw new Error(r.error);
+    // Sustituye lo que hay: se pregunta antes (lo de ahora se perdería).
+    if (!window.confirm(`¿Cambiar todo lo de este móvil por la copia${r.creada ? ` del ${r.creada}` : ''}? Trae ${r.resumen}. Lo que tienes ahora se sustituye.`)) {
+      aviso.textContent = 'No se ha importado nada.';
+      return;
+    }
+    if (!almacen.restaurar(r.datos)) throw new Error('el navegador no deja guardar (¿modo privado o sin espacio?)');
+    aviso.textContent = `Copia importada: ${r.resumen}. Recargando…`;
+    setTimeout(() => location.reload(), 600);
+  } catch (e) {
+    aviso.textContent = `No se pudo importar «${fichero.name}»: ${e.message}`;
+  } finally {
+    $('#fichero-copia').value = '';
+  }
 }
 
 function exportarCSV() {
@@ -2296,6 +2397,10 @@ function enlazar() {
     else if (b.dataset.accion === 'cerrar-plan') $('#dlg-plan').close();
     else if (b.dataset.hueco) elegirHueco(b);
     else if (b.dataset.accion === 'nuevo-trabajo') abrirTrabajo();
+    else if (b.dataset.accion === 'exportar-copia') exportarCopia();
+    else if (b.dataset.accion === 'privacidad') $('#dlg-privacidad').showModal();
+    else if (b.dataset.accion === 'novedades') abrirNovedades(b.dataset.desde ?? null);
+    else if (b.dataset.accion === 'cerrar-novedades') (almacen.guardarVersionVista(VERSION), ($('#aviso-novedades').hidden = true));
     else if (b.dataset.accion === 'cerrar-trabajo') $('#dlg-trabajo').close();
     else if (b.dataset.accion === 'trab-deshacer') (estado.dibujo.pop(), pintarDibujo());
     else if (b.dataset.accion === 'trab-vaciar') ((estado.dibujo = []), pintarDibujo());
@@ -2303,6 +2408,13 @@ function enlazar() {
     else if (b.dataset.accion === 'trab-gps') ubicacionTrabajo(b);
     else if (b.dataset.trabRes) elegirResultadoTrabajo(Number(b.dataset.trabRes));
     else if (b.dataset.editarTrabajo) abrirTrabajo(b.dataset.editarTrabajo);
+    else if (b.dataset.trabajoDia) {
+      // Tocar un día abre su previsión; tocarlo otra vez (o la ✕), la cierra.
+      const mismo = estado.trabajoDia?.id === b.dataset.trabajoDia && estado.trabajoDia.clave === b.dataset.clave;
+      estado.trabajoDia = mismo ? null : { id: b.dataset.trabajoDia, clave: b.dataset.clave };
+      pintarTrabajos();
+      if (!mismo) document.querySelector(`#lista-trabajos .t-prevision`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
     else if (b.dataset.apuntarTrabajo) apuntarTrabajo(b.dataset.apuntarTrabajo);
     else if (b.dataset.borrarTrabajo) borrarTrabajo(b.dataset.borrarTrabajo);
     else if (b.dataset.calendarioPlan) planAlCalendario(b.dataset.calendarioPlan);
@@ -2363,6 +2475,7 @@ function enlazar() {
   $('#form-vuelo').addEventListener('submit', guardarVuelo);
   $('#form-plan').addEventListener('submit', guardarPlan);
   $('#form-trabajo').addEventListener('submit', guardarTrabajo);
+  $('#fichero-copia').addEventListener('change', (e) => importarCopia(e.target.files?.[0]));
   $('#trab-jornadas').addEventListener('change', pintarFraccionable);
   for (const r of document.querySelectorAll('input[name="trab-forma"]')) r.addEventListener('change', () => pintarFormaTrabajo(true));
   $('#trab-fichero').addEventListener('change', (e) => importarTraza(e.target.files?.[0]));
@@ -2474,6 +2587,9 @@ async function arrancar() {
   // Planes de antes de 0.29.1: se quedan con los ajustes de ahora (una vez).
   const migrados = fijarAjustesPlanes(almacen.planes(), estado.ajustes);
   if (migrados.cambiados) almacen.guardarPlanes(migrados.planes);
+  pintarAvisoNovedades();
+  // Enlace directo a la privacidad (para ponerlo fuera de la app): …/#privacidad
+  if (location.hash === '#privacidad') $('#dlg-privacidad').showModal();
   // El instalador primero: si se cierra la app antes de que acabe todo lo
   // demás, que al menos quede para usarla sin cobertura.
   // Con aviso de ventana, el instalador de tipo módulo (lleva sw.js dentro);
